@@ -1,0 +1,21 @@
+service: swippy-api
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: go1.x
+  stage: dev
+  region: us-east-1
+
+functions:
+  ebay-find-by-keyword:
+    handler: bin/ebay-find-by-keyword
+    events:
+      - httpApi:
+          path: /ebay-find-by-keyword/{Keywords}
+          method: get
+
+package:
+  patterns:
+    - "!./**"
+    - ./bin/**

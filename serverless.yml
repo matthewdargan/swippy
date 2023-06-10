@@ -12,8 +12,10 @@ functions:
     handler: bin/ebay-find-by-keyword
     events:
       - httpApi:
-          path: /ebay-find-by-keyword/{Keywords}
+          path: /ebay-find-by-keyword/{keywords}
           method: get
+    environment:
+      EBAY_APP_ID: ${ssm:/${self:provider.stage}/ebay-app-id}
 
 package:
   patterns:

@@ -2,23 +2,15 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/matthewdargan/swippy-api/ebay-find-by-keyword/finding"
 )
 
-type Response struct {
-	Message string `json:"message"`
-}
-
-func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	keyword := request.PathParameters["Keywords"]
-	resp := Response{
-		Message: fmt.Sprintf("Your keyword is: %s", keyword),
-	}
-	b, err := json.Marshal(resp)
+func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	keywords := request.PathParameters["keywords"]
+	respBody, err := finding.FindItemsByKeywords(keywords)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: 500}, err
 	}
@@ -26,10 +18,10 @@ func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       string(b),
+		Body:       string(respBody),
 	}, nil
 }
 
 func main() {
-	lambda.Start(Handler)
+	lambda.Start(handler)
 }

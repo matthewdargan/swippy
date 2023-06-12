@@ -1,6 +1,7 @@
 package finding
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -12,32 +13,35 @@ const (
 	operationName      = "findItemsByKeywords"
 	serviceVersion     = "1.0.0"
 	responseDataFormat = "JSON"
+	findingHTTPTimeout = 5
 )
 
+// FindItemByKeywords searches the eBay Finding API using provided keywords.
 func FindItemsByKeywords(keywords string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new HTTP request with URL: %w", err)
 	}
-	q := req.URL.Query()
-	q.Add("OPERATION-NAME", operationName)
-	q.Add("SERVICE-VERSION", serviceVersion)
-	q.Add("SECURITY-APPNAME", os.Getenv("EBAY_APP_ID"))
-	q.Add("RESPONSE-DATA-FORMAT", responseDataFormat)
-	q.Add("keywords", keywords)
-	req.URL.RawQuery = q.Encode()
+
+	qry := req.URL.Query()
+	qry.Add("OPERATION-NAME", operationName)
+	qry.Add("SERVICE-VERSION", serviceVersion)
+	qry.Add("SECURITY-APPNAME", os.Getenv("EBAY_APP_ID"))
+	qry.Add("RESPONSE-DATA-FORMAT", responseDataFormat)
+	qry.Add("keywords", keywords)
+	req.URL.RawQuery = qry.Encode()
 
 	c := &http.Client{
-		Timeout: time.Second * 5,
+		Timeout: time.Second * findingHTTPTimeout,
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to perform request to the eBay Finding API: %w", err)
 	}
 	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read in the response body from the eBay Finding API: %w", err)
 	}
 
 	return b, nil

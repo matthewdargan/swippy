@@ -1,0 +1,10 @@
+{
+  "go.formatTool": "goimports",
+  "go.toolsManagement.autoUpdate": true,
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": ["--fast"],
+  "go.useLanguageServer": true,
+  "gopls": {
+    "formatting.gofumpt": true
+  }
+}

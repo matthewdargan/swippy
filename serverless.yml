@@ -15,7 +15,39 @@ functions:
           path: /ebay-find-by-keyword/{keywords}
           method: get
     environment:
-      EBAY_APP_ID: ${ssm:/${self:provider.stage}/ebay-app-id}
+      STAGE: ${self:provider.stage}
+    role: ebayFindKeywordRole
+
+resources:
+  Resources:
+    ebayFindKeywordRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: "swippy-api-${self:provider.stage}-${self:provider.region}-ebay-find-by-keyword-role"
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: "swippy-api-${self:provider.stage}-ebay-find-by-keyword-policy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - logs:TagResource
+                  Resource: "*"
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameter
+                  Resource: "arn:aws:ssm:${self:provider.region}:*:parameter/${self:provider.stage}/ebay-app-id"
 
 package:
   patterns:

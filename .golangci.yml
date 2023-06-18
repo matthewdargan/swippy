@@ -5,6 +5,8 @@ linters:
     - depguard
     - exhaustivestruct
     - exhaustruct
+    - gochecknoglobals
+    - gochecknoinits
     - golint
     - ifshort
     - interfacer
@@ -13,5 +15,6 @@ linters:
     - nosnakecase
     - scopelint
     - structcheck
+    - tagliatelle
     - varcheck
     - wsl

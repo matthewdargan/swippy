@@ -1,8 +1,8 @@
 package finding
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 )
@@ -16,11 +16,12 @@ const (
 )
 
 // FindItemsByKeywords searches the eBay Finding API using provided keywords.
-func FindItemsByKeywords(keywords string, appID string) ([]byte, error) {
+func FindItemsByKeywords(keywords string, appID string) (*SearchResponse, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new HTTP request with URL: %w", err)
 	}
+
 	qry := req.URL.Query()
 	qry.Add("OPERATION-NAME", operationName)
 	qry.Add("SERVICE-VERSION", serviceVersion)
@@ -28,18 +29,22 @@ func FindItemsByKeywords(keywords string, appID string) ([]byte, error) {
 	qry.Add("RESPONSE-DATA-FORMAT", responseDataFormat)
 	qry.Add("keywords", keywords)
 	req.URL.RawQuery = qry.Encode()
+
 	c := &http.Client{
 		Timeout: time.Second * findingHTTPTimeout,
 	}
+
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to perform request to the eBay Finding API: %w", err)
 	}
 	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+
+	var items SearchResponse
+	err = json.NewDecoder(resp.Body).Decode(&items)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read the response body from the eBay Finding API: %w", err)
+		return nil, fmt.Errorf("failed to decode the response body from the eBay Finding API: %w", err)
 	}
 
-	return b, nil
+	return &items, nil
 }

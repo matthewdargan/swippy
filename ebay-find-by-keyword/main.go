@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -13,35 +16,56 @@ import (
 	"github.com/matthewdargan/swippy-api/ebay-find-by-keyword/finding"
 )
 
+var (
+	stage              string
+	ErrKeywordsMissing = errors.New("keywords parameter is required")
+)
+
+func init() {
+	stage = os.Getenv("STAGE")
+}
+
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	sess, err := session.NewSession()
-	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError},
-			fmt.Errorf("failed to create AWS SDK session: %w", err)
+	keywords := request.PathParameters["keywords"]
+	if keywords == "" {
+		return generateErrorResponse(http.StatusBadRequest, ErrKeywordsMissing)
 	}
-	ssmClient := ssm.New(sess)
-	stage := os.Getenv("STAGE")
+
+	ssmClient := ssmClient()
 	appIDParamName := fmt.Sprintf("/%s/ebay-app-id", stage)
 	appID, err := ssmParameterValue(ssmClient, appIDParamName)
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError},
-			fmt.Errorf("failed to retrieve app ID: %w", err)
+		return generateErrorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}
-	keywords := request.PathParameters["keywords"]
+
 	items, err := finding.FindItemsByKeywords(keywords, appID)
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError},
-			fmt.Errorf("failed to find eBay items by keywords: %w", err)
+		return generateErrorResponse(
+			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items by keywords: %w", err))
+	}
+
+	body, err := json.Marshal(items)
+	if err != nil {
+		return generateErrorResponse(
+			http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay items response: %w", err))
 	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       string(items),
+		Body:       string(body),
 	}, nil
 }
 
-// ssmParameterValue retrieves a parameter value from the AWS SSM Parameter Store.
+func ssmClient() *ssm.SSM {
+	sess, err := session.NewSession()
+	if err != nil {
+		log.Fatalf("failed to create AWS SDK session: %v", err)
+	}
+
+	return ssm.New(sess)
+}
+
 func ssmParameterValue(ssmClient *ssm.SSM, paramName string) (string, error) {
 	output, err := ssmClient.GetParameter(&ssm.GetParameterInput{
 		Name:           aws.String(paramName),
@@ -52,6 +76,23 @@ func ssmParameterValue(ssmClient *ssm.SSM, paramName string) (string, error) {
 	}
 
 	return *output.Parameter.Value, nil
+}
+
+func generateErrorResponse(statusCode int, err error) (events.APIGatewayProxyResponse, error) {
+	log.Printf("error: %v", err)
+	resp := map[string]string{
+		"error": err.Error(),
+	}
+	body, err := json.Marshal(resp)
+	if err != nil {
+		return events.APIGatewayProxyResponse{StatusCode: statusCode}, fmt.Errorf("failed to marshal error response: %w", err)
+	}
+
+	return events.APIGatewayProxyResponse{
+		StatusCode: statusCode,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       string(body),
+	}, nil
 }
 
 func main() {

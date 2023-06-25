@@ -1,4 +1,4 @@
-package finding
+package ebay
 
 import "time"
 
@@ -48,6 +48,11 @@ type PrimaryCategory struct {
 	CategoryName []string `json:"categoryName"`
 }
 
+type ProductID struct {
+	Type  string `json:"@type"`
+	Value string `json:"__value__"`
+}
+
 type ShippingInfo struct {
 	ShippingServiceCost     []Price  `json:"shippingServiceCost"`
 	ShippingType            []string `json:"shippingType"`
@@ -89,11 +94,6 @@ type DiscountPriceInfo struct {
 	PricingTreatment    []string `json:"pricingTreatment"`
 	SoldOnEbay          []string `json:"soldOnEbay"`
 	SoldOffEbay         []string `json:"soldOffEbay"`
-}
-
-type ProductID struct {
-	Type  string `json:"@type"`
-	Value string `json:"__value__"`
 }
 
 type Pagination struct {

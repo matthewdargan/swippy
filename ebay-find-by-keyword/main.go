@@ -7,22 +7,29 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/matthewdargan/swippy-api/ebay-find-by-keyword/finding"
+	"github.com/matthewdargan/swippy-api/ebay-find-by-keyword/ebay"
 )
 
+const findingHTTPTimeout = 5
+
 var (
-	stage              string
 	ErrKeywordsMissing = errors.New("keywords parameter is required")
+	stage              string
+	findingClient      *http.Client
 )
 
 func init() {
 	stage = os.Getenv("STAGE")
+	findingClient = &http.Client{
+		Timeout: time.Second * findingHTTPTimeout,
+	}
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -38,7 +45,8 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return generateErrorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}
 
-	items, err := finding.FindItemsByKeywords(keywords, appID)
+	findingSvr := ebay.NewFindingServer(findingClient)
+	items, err := findingSvr.FindItemsByKeywords(keywords, appID)
 	if err != nil {
 		return generateErrorResponse(
 			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items by keywords: %w", err))

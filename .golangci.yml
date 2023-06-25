@@ -18,3 +18,11 @@ linters:
     - tagliatelle
     - varcheck
     - wsl
+issues:
+  exclude-rules:
+    - path: ebay-find-by-keyword/ebay/finding_test.go
+      text: "Function 'TestFindItemsByKeywords' is too long"
+    - path: ebay-find-by-keyword/ebay/finding_test.go
+      text: "calculated cyclomatic complexity for function TestFindItemsByKeywords is"
+    - path: ebay-find-by-keyword/ebay/finding_test.go
+      text: "Function name: TestFindItemsByKeywords, Cyclomatic Complexity:"

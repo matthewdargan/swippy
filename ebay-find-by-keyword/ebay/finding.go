@@ -27,6 +27,12 @@ var (
 	ErrDecodeAPIResponse = fmt.Errorf("failed to decode eBay Finding API response body")
 )
 
+// A AspectFilter refines the number of results in a response. TODO: Finish the rest of the comment.
+type AspectFilter struct {
+	AspectName      string
+	AspectValueName string
+}
+
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
 type FindingClient interface {
 	Do(req *http.Request) (*http.Response, error)

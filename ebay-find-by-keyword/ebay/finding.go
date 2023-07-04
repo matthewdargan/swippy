@@ -27,6 +27,12 @@ var (
 	ErrDecodeAPIResponse = fmt.Errorf("failed to decode eBay Finding API response body")
 )
 
+// FindingParams contains the query parameters needed to refine Finding API requests.
+type FindingParams struct {
+	Keywords     string
+	AspectFilter *AspectFilter
+}
+
 // A AspectFilter refines the number of results in a response. TODO: Finish the rest of the comment.
 type AspectFilter struct {
 	AspectName      string
@@ -49,8 +55,8 @@ func NewFindingServer(client FindingClient) *FindingServer {
 }
 
 // FindItemsByKeywords searches the eBay Finding API using provided keywords.
-func (svr *FindingServer) FindItemsByKeywords(keywords string, appID string) (*SearchResponse, error) {
-	req, err := svr.createRequest(keywords, appID)
+func (svr *FindingServer) FindItemsByKeywords(findingParams *FindingParams, appID string) (*SearchResponse, error) {
+	req, err := svr.createRequest(findingParams, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +73,7 @@ func (svr *FindingServer) FindItemsByKeywords(keywords string, appID string) (*S
 	return svr.parseResponse(resp)
 }
 
-func (svr *FindingServer) createRequest(keywords string, appID string) (*http.Request, error) {
+func (svr *FindingServer) createRequest(findingParams *FindingParams, appID string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCreateRequest, err)
@@ -78,7 +84,8 @@ func (svr *FindingServer) createRequest(keywords string, appID string) (*http.Re
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", appID)
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
-	qry.Add("keywords", keywords)
+	// TODO: Unpack findingParams
+	// qry.Add("keywords", keywords)
 	req.URL.RawQuery = qry.Encode()
 
 	return req, nil

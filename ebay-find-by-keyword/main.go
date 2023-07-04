@@ -38,12 +38,14 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return generateErrorResponse(http.StatusBadRequest, ErrKeywordsMissing)
 	}
 
+	findingParams := &ebay.FindingParams{
+		Keywords: keywords,
+	}
 	aspectName := request.QueryStringParameters["aspectFilter.aspectName"]
 	aspectValueName := request.QueryStringParameters["aspectFilter.aspectValueName"]
 	// TODO: Use function/method from the ebay package to parse the aspectFilter parts into a struct, then pass to FindItemsByKeywords
-	var aspectFilter ebay.AspectFilter
 	if aspectName != "" && aspectValueName != "" {
-		aspectFilter = ebay.AspectFilter{
+		findingParams.AspectFilter = &ebay.AspectFilter{
 			AspectName:      aspectName,
 			AspectValueName: aspectValueName,
 		}
@@ -57,7 +59,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	findingSvr := ebay.NewFindingServer(findingClient)
-	items, err := findingSvr.FindItemsByKeywords(keywords, aspectFilter, appID)
+	items, err := findingSvr.FindItemsByKeywords(findingParams, appID)
 	if err != nil {
 		return generateErrorResponse(
 			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items by keywords: %w", err))

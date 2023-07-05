@@ -43,6 +43,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 	aspectName, anFound := request.QueryStringParameters["aspectFilter.aspectName"]
 	aspectValueName, anvFound := request.QueryStringParameters["aspectFilter.aspectValueName"]
+	// TODO: Stricten this so that it 404s if only 1 of the 2 filter parts are passed in
 	if anFound && anvFound {
 		findingParams.AspectFilter = &ebay.AspectFilter{
 			AspectName:      aspectName,

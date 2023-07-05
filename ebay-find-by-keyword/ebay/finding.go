@@ -31,6 +31,7 @@ var (
 type FindingParams struct {
 	Keywords     string
 	AspectFilter *AspectFilter
+	// TODO: Add ItemFilter here
 }
 
 // A AspectFilter refines the number of results in a response. TODO: Finish the rest of the comment.

@@ -43,7 +43,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 	aspectName := request.QueryStringParameters["aspectFilter.aspectName"]
 	aspectValueName := request.QueryStringParameters["aspectFilter.aspectValueName"]
-	// TODO: Use function/method from the ebay package to parse the aspectFilter parts into a struct, then pass to FindItemsByKeywords
 	if aspectName != "" && aspectValueName != "" {
 		findingParams.AspectFilter = &ebay.AspectFilter{
 			AspectName:      aspectName,

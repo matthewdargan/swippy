@@ -84,8 +84,11 @@ func (svr *FindingServer) createRequest(findingParams *FindingParams, appID stri
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", appID)
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
-	// TODO: Unpack findingParams
-	// qry.Add("keywords", keywords)
+	qry.Add("keywords", findingParams.Keywords)
+	if findingParams.AspectFilter != nil {
+		qry.Add("aspectFilter.aspectName", findingParams.AspectFilter.AspectName)
+		qry.Add("aspectFilter.aspectValueName", findingParams.AspectFilter.AspectValueName)
+	}
 	req.URL.RawQuery = qry.Encode()
 
 	return req, nil

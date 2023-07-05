@@ -26,7 +26,9 @@ func (m *MockFindingClient) Do(req *http.Request) (*http.Response, error) {
 
 func TestFindItemsByKeywords(t *testing.T) {
 	t.Parallel()
-	keywords := "marshmallows"
+	findingParams := ebay.FindingParams{
+		Keywords: "marshmallows",
+	}
 	appID := "super secret ID"
 
 	t.Run("can find items by keywords", func(t *testing.T) {
@@ -159,7 +161,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		resp, err := svr.FindItemsByKeywords(keywords, appID)
+		resp, err := svr.FindItemsByKeywords(&findingParams, appID)
 		assertNoError(t, err)
 		assertSearchResponse(t, resp, &searchResp)
 	})
@@ -172,7 +174,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		_, err := svr.FindItemsByKeywords(keywords, appID)
+		_, err := svr.FindItemsByKeywords(&findingParams, appID)
 		assertError(t, err)
 
 		expected := fmt.Sprintf("%v: %v", ebay.ErrFailedRequest, ErrClientFailure)
@@ -231,7 +233,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 				},
 			}
 			svr := ebay.NewFindingServer(client)
-			_, err := svr.FindItemsByKeywords(keywords, appID)
+			_, err := svr.FindItemsByKeywords(&findingParams, appID)
 			assertError(t, err)
 
 			expected := fmt.Sprintf("%v: %d", ebay.ErrInvalidStatus, statusCode)
@@ -255,7 +257,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		_, err := svr.FindItemsByKeywords(keywords, appID)
+		_, err := svr.FindItemsByKeywords(&findingParams, appID)
 		assertError(t, err)
 
 		var unmarshalErr *json.UnmarshalTypeError

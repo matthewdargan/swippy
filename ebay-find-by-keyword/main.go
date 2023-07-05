@@ -33,17 +33,17 @@ func init() {
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	keywords := request.PathParameters["keywords"]
-	if keywords == "" {
+	keywords, found := request.QueryStringParameters["keywords"]
+	if !found {
 		return generateErrorResponse(http.StatusBadRequest, ErrKeywordsMissing)
 	}
 
 	findingParams := &ebay.FindingParams{
 		Keywords: keywords,
 	}
-	aspectName := request.QueryStringParameters["aspectFilter.aspectName"]
-	aspectValueName := request.QueryStringParameters["aspectFilter.aspectValueName"]
-	if aspectName != "" && aspectValueName != "" {
+	aspectName, anFound := request.QueryStringParameters["aspectFilter.aspectName"]
+	aspectValueName, anvFound := request.QueryStringParameters["aspectFilter.aspectValueName"]
+	if anFound && anvFound {
 		findingParams.AspectFilter = &ebay.AspectFilter{
 			AspectName:      aspectName,
 			AspectValueName: aspectValueName,

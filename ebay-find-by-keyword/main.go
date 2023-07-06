@@ -20,9 +20,12 @@ import (
 const findingHTTPTimeout = 5
 
 var (
-	ErrKeywordsMissing = errors.New("keywords parameter is required")
-	stage              string
-	findingClient      *http.Client
+	ErrKeywordsMissing              = errors.New("keywords parameter is required")
+	ErrIncompleteAspectFilter       = errors.New("incomplete aspect filter: aspectName and aspectValueName are required")
+	ErrIncompleteItemFilterNameOnly = errors.New("incomplete item filter: missing value")
+	ErrIncompleteItemFilterParam    = errors.New("incomplete item filter: missing param value")
+	stage                           string
+	findingClient                   *http.Client
 )
 
 func init() {
@@ -33,22 +36,54 @@ func init() {
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	keywords, found := request.QueryStringParameters["keywords"]
-	if !found {
+	keywords, ok := request.QueryStringParameters["keywords"]
+	if !ok {
 		return generateErrorResponse(http.StatusBadRequest, ErrKeywordsMissing)
 	}
 
 	findingParams := &ebay.FindingParams{
 		Keywords: keywords,
 	}
-	aspectName, anFound := request.QueryStringParameters["aspectFilter.aspectName"]
-	aspectValueName, anvFound := request.QueryStringParameters["aspectFilter.aspectValueName"]
-	// TODO: Stricten this so that it 404s if only 1 of the 2 filter parts are passed in
-	if anFound && anvFound {
+
+	aspectName, anOk := request.QueryStringParameters["aspectFilter.aspectName"]
+	aspectValueName, avnOk := request.QueryStringParameters["aspectFilter.aspectValueName"]
+	if anOk != avnOk {
+		return generateErrorResponse(http.StatusNotFound, ErrIncompleteAspectFilter)
+	}
+	if anOk && avnOk {
 		findingParams.AspectFilter = &ebay.AspectFilter{
 			AspectName:      aspectName,
 			AspectValueName: aspectValueName,
 		}
+	}
+
+	for idx := 0; ; idx++ {
+		ifName, ok := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).name", idx)]
+		if !ok {
+			break
+		}
+
+		ifValue, ok := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).value", idx)]
+		if !ok {
+			return generateErrorResponse(http.StatusNotFound, ErrIncompleteItemFilterNameOnly)
+		}
+
+		itemFilter := ebay.ItemFilter{
+			Name:  ifName,
+			Value: ifValue,
+		}
+
+		ifParamName, pnOk := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).paramName", idx)]
+		ifParamValue, pvOk := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).paramValue", idx)]
+		if pnOk != pvOk {
+			return generateErrorResponse(http.StatusNotFound, ErrIncompleteItemFilterParam)
+		}
+		if pnOk && pvOk {
+			itemFilter.ParamName = &ifParamName
+			itemFilter.ParamValue = &ifParamValue
+		}
+
+		findingParams.ItemFilters = append(findingParams.ItemFilters, itemFilter)
 	}
 
 	ssmClient := ssmClient()

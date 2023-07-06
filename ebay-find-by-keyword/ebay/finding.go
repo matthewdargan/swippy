@@ -31,13 +31,23 @@ var (
 type FindingParams struct {
 	Keywords     string
 	AspectFilter *AspectFilter
-	// TODO: Add ItemFilter here
+	ItemFilters  []ItemFilter
 }
 
-// A AspectFilter refines the number of results in a response. TODO: Finish the rest of the comment.
+// AspectFilter is used to refine the number of results returned in a response
+// by specifying an aspect value within a domain.
 type AspectFilter struct {
-	AspectName      string
-	AspectValueName string
+	AspectName      string // Name of a standard item characteristic associated with a domain.
+	AspectValueName string // Value name for a given aspect.
+}
+
+// ItemFilter is used to refine the number of results returned in a response by specifying filter criteria for items.
+// Multiple item filters can be included in the same request.
+type ItemFilter struct {
+	Name       string  // Name of the item filter.
+	Value      string  // Value associated with the item filter name.
+	ParamName  *string // Additional parameter name for certain filters.
+	ParamValue *string // Additional parameter value for certain filters.
 }
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -86,10 +96,22 @@ func (svr *FindingServer) createRequest(findingParams *FindingParams, appID stri
 	qry.Add("SECURITY-APPNAME", appID)
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
 	qry.Add("keywords", findingParams.Keywords)
+
 	if findingParams.AspectFilter != nil {
 		qry.Add("aspectFilter.aspectName", findingParams.AspectFilter.AspectName)
 		qry.Add("aspectFilter.aspectValueName", findingParams.AspectFilter.AspectValueName)
 	}
+
+	for idx, itemFilter := range findingParams.ItemFilters {
+		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.Name)
+		qry.Add(fmt.Sprintf("itemFilter(%d).value", idx), itemFilter.Value)
+
+		if itemFilter.ParamName != nil && itemFilter.ParamValue != nil {
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.ParamName)
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.ParamValue)
+		}
+	}
+
 	req.URL.RawQuery = qry.Encode()
 
 	return req, nil

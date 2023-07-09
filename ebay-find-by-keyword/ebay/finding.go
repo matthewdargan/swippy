@@ -66,7 +66,12 @@ func NewFindingServer(client FindingClient) *FindingServer {
 }
 
 // FindItemsByKeywords searches the eBay Finding API using provided keywords.
-func (svr *FindingServer) FindItemsByKeywords(findingParams *FindingParams, appID string) (*SearchResponse, error) {
+func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) (*SearchResponse, error) {
+	findingParams, err := svr.validateParams(params)
+	if err != nil {
+		return nil, err
+	}
+
 	req, err := svr.createRequest(findingParams, appID)
 	if err != nil {
 		return nil, err
@@ -82,6 +87,60 @@ func (svr *FindingServer) FindItemsByKeywords(findingParams *FindingParams, appI
 	}
 
 	return svr.parseResponse(resp)
+}
+
+func (svr *FindingServer) validateParams(params map[string]string) (*FindingParams, error) {
+	keywords, ok := params["keywords"]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "keywords are required")
+	}
+
+	findingParams := &FindingParams{
+		Keywords: keywords,
+	}
+
+	aspectName, anOk := params["aspectFilter.aspectName"]
+	aspectValueName, avnOk := params["aspectFilter.aspectValueName"]
+	if anOk != avnOk {
+		return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "aspectFilter requires both aspectName and aspectValueName")
+	}
+	if anOk && avnOk {
+		findingParams.AspectFilter = &AspectFilter{
+			AspectName:      aspectName,
+			AspectValueName: aspectValueName,
+		}
+	}
+
+	for idx := 0; ; idx++ {
+		ifName, ok := params[fmt.Sprintf("itemFilter(%d).name", idx)]
+		if !ok {
+			break
+		}
+
+		ifValue, ok := params[fmt.Sprintf("itemFilter(%d).value", idx)]
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "itemFilter requires both name and value")
+		}
+
+		itemFilter := ItemFilter{
+			Name:  ifName,
+			Value: ifValue,
+		}
+
+		ifParamName, pnOk := params[fmt.Sprintf("itemFilter(%d).paramName", idx)]
+		ifParamValue, pvOk := params[fmt.Sprintf("itemFilter(%d).paramValue", idx)]
+		if pnOk != pvOk {
+			return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "itemFilter requires both paramName and paramValue")
+		}
+		if pnOk && pvOk {
+			itemFilter.ParamName = &ifParamName
+			itemFilter.ParamValue = &ifParamValue
+		}
+
+		findingParams.ItemFilters = append(findingParams.ItemFilters, itemFilter)
+	}
+
+	return findingParams, nil
 }
 
 func (svr *FindingServer) createRequest(findingParams *FindingParams, appID string) (*http.Request, error) {

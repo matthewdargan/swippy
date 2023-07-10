@@ -2,8 +2,10 @@ package ebay
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 const (
@@ -14,41 +16,31 @@ const (
 )
 
 var (
+	// ErrKeywordsMissing is returned when the 'keywords' parameter is missing.
+	ErrKeywordsMissing = errors.New("ebay: keywords parameter is required")
+
+	// ErrIncompleteAspectFilter is returned when the aspect filter is missing
+	// either the 'aspectName' or 'aspectValueName' parameter.
+	ErrIncompleteAspectFilter = errors.New("ebay: incomplete aspect filter: aspectName and aspectValueName are required")
+
+	// ErrIncompleteItemFilterNameOnly is returned when an item filter is missing the 'value' parameter.
+	ErrIncompleteItemFilterNameOnly = errors.New("ebay: incomplete item filter: missing value")
+
+	// ErrIncompleteItemFilterParam is returned when an item filter is missing the 'paramValue' parameter.
+	ErrIncompleteItemFilterParam = errors.New("ebay: incomplete item filter: missing param value")
+
 	// ErrCreateRequest is returned when there is a failure to create a new HTTP request with the provided URL.
-	ErrCreateRequest = fmt.Errorf("failed to create new HTTP request with URL")
+	ErrCreateRequest = errors.New("ebay: failed to create new HTTP request with URL")
 
 	// ErrFailedRequest is returned when the eBay Finding API request fails.
-	ErrFailedRequest = fmt.Errorf("failed to perform eBay Finding API request")
+	ErrFailedRequest = errors.New("ebay: failed to perform eBay Finding API request")
 
 	// ErrInvalidStatus is returned when the eBay Finding API request returns an invalid status code.
-	ErrInvalidStatus = fmt.Errorf("failed to perform eBay Finding API request with status code")
+	ErrInvalidStatus = errors.New("ebay: failed to perform eBay Finding API request with status code")
 
 	// ErrDecodeAPIResponse is returned when there is an error decoding the eBay Finding API response body.
-	ErrDecodeAPIResponse = fmt.Errorf("failed to decode eBay Finding API response body")
+	ErrDecodeAPIResponse = errors.New("ebay: failed to decode eBay Finding API response body")
 )
-
-// FindingParams contains the query parameters needed to refine Finding API requests.
-type FindingParams struct {
-	Keywords     string
-	AspectFilter *AspectFilter
-	ItemFilters  []ItemFilter
-}
-
-// AspectFilter is used to refine the number of results returned in a response
-// by specifying an aspect value within a domain.
-type AspectFilter struct {
-	AspectName      string // Name of a standard item characteristic associated with a domain.
-	AspectValueName string // Value name for a given aspect.
-}
-
-// ItemFilter is used to refine the number of results returned in a response by specifying filter criteria for items.
-// Multiple item filters can be included in the same request.
-type ItemFilter struct {
-	Name       string  // Name of the item filter.
-	Value      string  // Value associated with the item filter name.
-	ParamName  *string // Additional parameter name for certain filters.
-	ParamValue *string // Additional parameter value for certain filters.
-}
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
 type FindingClient interface {
@@ -65,85 +57,133 @@ func NewFindingServer(client FindingClient) *FindingServer {
 	return &FindingServer{client: client}
 }
 
+// An APIError is returned to represent a custom error that includes an error message
+// and an HTTP status code.
+type APIError struct {
+	Err        string
+	StatusCode int
+}
+
+func (e *APIError) Error() string {
+	return e.Err
+}
+
 // FindItemsByKeywords searches the eBay Finding API using provided keywords.
 func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) (*SearchResponse, error) {
-	findingParams, err := svr.validateParams(params)
+	fParams, err := svr.validateParams(params)
 	if err != nil {
-		return nil, err
+		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
 	}
 
-	req, err := svr.createRequest(findingParams, appID)
+	req, err := svr.createRequest(fParams, appID)
 	if err != nil {
-		return nil, err
+		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
 	}
 
 	resp, err := svr.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrFailedRequest, err)
+		return nil, &APIError{Err: ErrFailedRequest.Error() + ": " + err.Error(), StatusCode: http.StatusInternalServerError}
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: %d", ErrInvalidStatus, resp.StatusCode)
+		return nil, &APIError{
+			Err:        ErrInvalidStatus.Error() + ": " + strconv.Itoa(resp.StatusCode),
+			StatusCode: http.StatusInternalServerError,
+		}
 	}
 
-	return svr.parseResponse(resp)
+	searchResp, err := svr.parseResponse(resp)
+	if err != nil {
+		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	return searchResp, nil
 }
 
-func (svr *FindingServer) validateParams(params map[string]string) (*FindingParams, error) {
+type findingParams struct {
+	keywords     string
+	aspectFilter *aspectFilter
+	itemFilters  []itemFilter
+}
+
+type aspectFilter struct {
+	aspectName      string
+	aspectValueName string
+}
+
+type itemFilter struct {
+	name       string
+	value      string
+	paramName  *string
+	paramValue *string
+}
+
+func (svr *FindingServer) validateParams(params map[string]string) (*findingParams, error) {
 	keywords, ok := params["keywords"]
 	if !ok {
-		return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "keywords are required")
+		return nil, ErrKeywordsMissing
 	}
 
-	findingParams := &FindingParams{
-		Keywords: keywords,
+	fParams := &findingParams{
+		keywords: keywords,
 	}
 
 	aspectName, anOk := params["aspectFilter.aspectName"]
 	aspectValueName, avnOk := params["aspectFilter.aspectValueName"]
 	if anOk != avnOk {
-		return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "aspectFilter requires both aspectName and aspectValueName")
+		return nil, ErrIncompleteAspectFilter
 	}
 	if anOk && avnOk {
-		findingParams.AspectFilter = &AspectFilter{
-			AspectName:      aspectName,
-			AspectValueName: aspectValueName,
+		fParams.aspectFilter = &aspectFilter{
+			aspectName:      aspectName,
+			aspectValueName: aspectValueName,
 		}
 	}
 
+	itemFilters, err := svr.processItemFilters(params)
+	if err != nil {
+		return nil, err
+	}
+	fParams.itemFilters = itemFilters
+
+	return fParams, nil
+}
+
+func (svr *FindingServer) processItemFilters(params map[string]string) ([]itemFilter, error) {
+	var itemFilters []itemFilter
 	for idx := 0; ; idx++ {
-		ifName, ok := params[fmt.Sprintf("itemFilter(%d).name", idx)]
-		if !ok {
+		ifName, nOk := params[fmt.Sprintf("itemFilter(%d).name", idx)]
+		if !nOk {
 			break
 		}
 
-		ifValue, ok := params[fmt.Sprintf("itemFilter(%d).value", idx)]
-		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "itemFilter requires both name and value")
+		ifValue, vOk := params[fmt.Sprintf("itemFilter(%d).value", idx)]
+		if !vOk {
+			return nil, ErrIncompleteItemFilterNameOnly
 		}
 
-		itemFilter := ItemFilter{
-			Name:  ifName,
-			Value: ifValue,
+		itemFilter := itemFilter{
+			name:  ifName,
+			value: ifValue,
 		}
 
 		ifParamName, pnOk := params[fmt.Sprintf("itemFilter(%d).paramName", idx)]
 		ifParamValue, pvOk := params[fmt.Sprintf("itemFilter(%d).paramValue", idx)]
 		if pnOk != pvOk {
-			return nil, fmt.Errorf("%w: %s", ErrValidationFailed, "itemFilter requires both paramName and paramValue")
+			return nil, ErrIncompleteItemFilterParam
 		}
 		if pnOk && pvOk {
-			itemFilter.ParamName = &ifParamName
-			itemFilter.ParamValue = &ifParamValue
+			itemFilter.paramName = &ifParamName
+			itemFilter.paramValue = &ifParamValue
 		}
 
-		findingParams.ItemFilters = append(findingParams.ItemFilters, itemFilter)
+		itemFilters = append(itemFilters, itemFilter)
 	}
 
-	return findingParams, nil
+	return itemFilters, nil
 }
 
-func (svr *FindingServer) createRequest(findingParams *FindingParams, appID string) (*http.Request, error) {
+func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCreateRequest, err)
@@ -154,20 +194,20 @@ func (svr *FindingServer) createRequest(findingParams *FindingParams, appID stri
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", appID)
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
-	qry.Add("keywords", findingParams.Keywords)
+	qry.Add("keywords", fParams.keywords)
 
-	if findingParams.AspectFilter != nil {
-		qry.Add("aspectFilter.aspectName", findingParams.AspectFilter.AspectName)
-		qry.Add("aspectFilter.aspectValueName", findingParams.AspectFilter.AspectValueName)
+	if fParams.aspectFilter != nil {
+		qry.Add("aspectFilter.aspectName", fParams.aspectFilter.aspectName)
+		qry.Add("aspectFilter.aspectValueName", fParams.aspectFilter.aspectValueName)
 	}
 
-	for idx, itemFilter := range findingParams.ItemFilters {
-		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.Name)
-		qry.Add(fmt.Sprintf("itemFilter(%d).value", idx), itemFilter.Value)
+	for idx, itemFilter := range fParams.itemFilters {
+		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
+		qry.Add(fmt.Sprintf("itemFilter(%d).value", idx), itemFilter.value)
 
-		if itemFilter.ParamName != nil && itemFilter.ParamValue != nil {
-			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.ParamName)
-			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.ParamValue)
+		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
 		}
 	}
 

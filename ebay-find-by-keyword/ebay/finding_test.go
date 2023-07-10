@@ -26,8 +26,8 @@ func (m *MockFindingClient) Do(req *http.Request) (*http.Response, error) {
 
 func TestFindItemsByKeywords(t *testing.T) {
 	t.Parallel()
-	findingParams := ebay.FindingParams{
-		Keywords: "marshmallows",
+	params := map[string]string{
+		"keywords": "marshmallows",
 	}
 	appID := "super secret ID"
 
@@ -161,7 +161,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		resp, err := svr.FindItemsByKeywords(&findingParams, appID)
+		resp, err := svr.FindItemsByKeywords(params, appID)
 		assertNoError(t, err)
 		assertSearchResponse(t, resp, &searchResp)
 	})
@@ -174,7 +174,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		_, err := svr.FindItemsByKeywords(&findingParams, appID)
+		_, err := svr.FindItemsByKeywords(params, appID)
 		assertError(t, err)
 
 		expected := fmt.Sprintf("%v: %v", ebay.ErrFailedRequest, ErrClientFailure)
@@ -233,7 +233,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 				},
 			}
 			svr := ebay.NewFindingServer(client)
-			_, err := svr.FindItemsByKeywords(&findingParams, appID)
+			_, err := svr.FindItemsByKeywords(params, appID)
 			assertError(t, err)
 
 			expected := fmt.Sprintf("%v: %d", ebay.ErrInvalidStatus, statusCode)
@@ -244,11 +244,10 @@ func TestFindItemsByKeywords(t *testing.T) {
 
 	t.Run("returns error if the response cannot be parsed into SearchResponse", func(t *testing.T) {
 		t.Parallel()
-		badData := []float32{123.1, 234.2}
+		badData := `[123.1, 234.2]`
 		client := &MockFindingClient{
 			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(badData)
-				assertNoError(t, err)
+				body := []byte(badData)
 
 				return &http.Response{
 					StatusCode: http.StatusOK,
@@ -257,15 +256,11 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		_, err := svr.FindItemsByKeywords(&findingParams, appID)
+		_, err := svr.FindItemsByKeywords(params, appID)
 		assertError(t, err)
 
-		var unmarshalErr *json.UnmarshalTypeError
-		if !errors.As(err, &unmarshalErr) {
-			t.Errorf("expected error of type *json.UnmarshalTypeError but got %v", err)
-		}
-
-		expected := fmt.Sprintf("%v: %v", ebay.ErrDecodeAPIResponse, unmarshalErr)
+		expected := fmt.Sprintf("%v: %v", ebay.ErrDecodeAPIResponse,
+			"json: cannot unmarshal array into Go value of type ebay.SearchResponse")
 		got := err.Error()
 		assertErrorEquals(t, got, expected)
 	})

@@ -20,12 +20,8 @@ import (
 const findingHTTPTimeout = 5
 
 var (
-	ErrKeywordsMissing              = errors.New("keywords parameter is required")
-	ErrIncompleteAspectFilter       = errors.New("incomplete aspect filter: aspectName and aspectValueName are required")
-	ErrIncompleteItemFilterNameOnly = errors.New("incomplete item filter: missing value")
-	ErrIncompleteItemFilterParam    = errors.New("incomplete item filter: missing param value")
-	stage                           string
-	findingClient                   *http.Client
+	stage         string
+	findingClient *http.Client
 )
 
 func init() {
@@ -36,56 +32,6 @@ func init() {
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	keywords, ok := request.QueryStringParameters["keywords"]
-	if !ok {
-		return generateErrorResponse(http.StatusBadRequest, ErrKeywordsMissing)
-	}
-
-	findingParams := &ebay.FindingParams{
-		Keywords: keywords,
-	}
-
-	aspectName, anOk := request.QueryStringParameters["aspectFilter.aspectName"]
-	aspectValueName, avnOk := request.QueryStringParameters["aspectFilter.aspectValueName"]
-	if anOk != avnOk {
-		return generateErrorResponse(http.StatusNotFound, ErrIncompleteAspectFilter)
-	}
-	if anOk && avnOk {
-		findingParams.AspectFilter = &ebay.AspectFilter{
-			AspectName:      aspectName,
-			AspectValueName: aspectValueName,
-		}
-	}
-
-	for idx := 0; ; idx++ {
-		ifName, ok := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).name", idx)]
-		if !ok {
-			break
-		}
-
-		ifValue, ok := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).value", idx)]
-		if !ok {
-			return generateErrorResponse(http.StatusNotFound, ErrIncompleteItemFilterNameOnly)
-		}
-
-		itemFilter := ebay.ItemFilter{
-			Name:  ifName,
-			Value: ifValue,
-		}
-
-		ifParamName, pnOk := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).paramName", idx)]
-		ifParamValue, pvOk := request.QueryStringParameters[fmt.Sprintf("itemFilter(%d).paramValue", idx)]
-		if pnOk != pvOk {
-			return generateErrorResponse(http.StatusNotFound, ErrIncompleteItemFilterParam)
-		}
-		if pnOk && pvOk {
-			itemFilter.ParamName = &ifParamName
-			itemFilter.ParamValue = &ifParamValue
-		}
-
-		findingParams.ItemFilters = append(findingParams.ItemFilters, itemFilter)
-	}
-
 	ssmClient := ssmClient()
 	appIDParamName := fmt.Sprintf("/%s/ebay-app-id", stage)
 	appID, err := ssmParameterValue(ssmClient, appIDParamName)
@@ -94,7 +40,15 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	findingSvr := ebay.NewFindingServer(findingClient)
-	items, err := findingSvr.FindItemsByKeywords(findingParams, appID)
+	items, err := findingSvr.FindItemsByKeywords(request.QueryStringParameters, appID)
+	if err != nil {
+		var ebayErr *ebay.APIError
+		if errors.As(err, &ebayErr) {
+			return generateErrorResponse(ebayErr.StatusCode, ebayErr)
+		}
+
+		return generateErrorResponse(http.StatusInternalServerError, err)
+	}
 	if err != nil {
 		return generateErrorResponse(
 			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items by keywords: %w", err))

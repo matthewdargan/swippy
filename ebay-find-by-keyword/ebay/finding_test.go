@@ -294,6 +294,14 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
+			Name: "returns error if params contains aspectFilter but not keywords",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "squish level",
+				"aspectFilter.aspectValueName": "very squishy",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
 			Name: "returns error if params contains aspectName but not aspectValueName",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
@@ -374,6 +382,14 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).paramName":  "width",
 				"itemFilter(1).paramValue": "wide",
 			},
+		},
+		{
+			Name: "returns error if params contains itemFilter but not keywords",
+			Params: map[string]string{
+				"itemFilter(0).name":  "color",
+				"itemFilter(0).value": "purple",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
 			Name: "returns error if params contains itemFilter name but not value",

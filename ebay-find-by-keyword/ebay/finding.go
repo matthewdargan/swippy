@@ -26,8 +26,11 @@ var (
 	// ErrIncompleteItemFilterNameOnly is returned when an item filter is missing the 'value' parameter.
 	ErrIncompleteItemFilterNameOnly = errors.New("ebay: incomplete item filter: missing value")
 
-	// ErrIncompleteItemFilterParam is returned when an item filter is missing the 'paramValue' parameter.
-	ErrIncompleteItemFilterParam = errors.New("ebay: incomplete item filter: missing param value")
+	// ErrIncompleteItemFilterParam is returned when an item filter is missing
+	// either the 'paramName' or 'paramValue' parameter, as both 'paramName' and 'paramValue'
+	// are required when either one is specified.
+	ErrIncompleteItemFilterParam = errors.New(
+		"ebay: incomplete item filter: both paramName and paramValue must be specified together")
 
 	// ErrCreateRequest is returned when there is a failure to create a new HTTP request with the provided URL.
 	ErrCreateRequest = errors.New("ebay: failed to create new HTTP request with URL")

@@ -167,61 +167,6 @@ func TestFindItemsByKeywords(t *testing.T) {
 		assertSearchResponse(t, resp, &searchResp)
 	})
 
-	t.Run("returns error if params does not contain keywords", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{}
-		svr := ebay.NewFindingServer(client)
-		emptyParams := make(map[string]string)
-		_, err := svr.FindItemsByKeywords(emptyParams, appID)
-		assertError(t, err)
-
-		expected := ebay.ErrKeywordsMissing.Error()
-		got := err.Error()
-		assertErrorEquals(t, got, expected)
-		assertStatusCodeEquals(t, err, http.StatusBadRequest)
-	})
-
-	t.Run("can find items by keywords and aspectFilter", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{
-			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(searchResp)
-				assertNoError(t, err)
-
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBuffer(body)),
-				}, nil
-			},
-		}
-		svr := ebay.NewFindingServer(client)
-		aspectFilterParams := map[string]string{
-			"keywords":                     "marshmallows",
-			"aspectFilter.aspectName":      "squish level",
-			"aspectFilter.aspectValueName": "very squishy",
-		}
-		resp, err := svr.FindItemsByKeywords(aspectFilterParams, appID)
-		assertNoError(t, err)
-		assertSearchResponse(t, resp, &searchResp)
-	})
-
-	t.Run("returns error if params contains aspectName but not aspectValueName", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{}
-		svr := ebay.NewFindingServer(client)
-		aspectFilterParams := map[string]string{
-			"keywords":                "marshmallows",
-			"aspectFilter.aspectName": "squish level",
-		}
-		_, err := svr.FindItemsByKeywords(aspectFilterParams, appID)
-		assertError(t, err)
-
-		expected := ebay.ErrIncompleteAspectFilter.Error()
-		got := err.Error()
-		assertErrorEquals(t, got, expected)
-		assertStatusCodeEquals(t, err, http.StatusBadRequest)
-	})
-
 	t.Run("returns error if the client returns an error", func(t *testing.T) {
 		t.Parallel()
 		client := &MockFindingClient{
@@ -283,6 +228,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			http.StatusNotExtended,
 			http.StatusNetworkAuthenticationRequired,
 		}
+
 		for _, statusCode := range badStatusCodes {
 			client := &MockFindingClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
@@ -325,12 +271,44 @@ func TestFindItemsByKeywords(t *testing.T) {
 	})
 }
 
-func TestValidateItemFilter(t *testing.T) {
-	testCases := []struct {
-		Name          string
-		Params        map[string]string
-		ExpectedError error
-	}{
+type findItemsTestCase struct {
+	Name          string
+	Params        map[string]string
+	ExpectedError error
+}
+
+func TestValidateParams(t *testing.T) {
+	t.Parallel()
+	testCases := []findItemsTestCase{
+		{
+			Name:          "returns error if params does not contain keywords",
+			Params:        map[string]string{},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "can find items by keywords and aspectFilter",
+			Params: map[string]string{
+				"keywords":                     "marshmallows",
+				"aspectFilter.aspectName":      "squish level",
+				"aspectFilter.aspectValueName": "very squishy",
+			},
+		},
+		{
+			Name: "returns error if params contains aspectName but not aspectValueName",
+			Params: map[string]string{
+				"keywords":                "marshmallows",
+				"aspectFilter.aspectName": "squish level",
+			},
+			ExpectedError: ebay.ErrIncompleteAspectFilter,
+		},
+		{
+			Name: "returns error if params contains aspectValueName but not aspectName",
+			Params: map[string]string{
+				"keywords":                     "marshmallows",
+				"aspectFilter.aspectValueName": "very squishy",
+			},
+			ExpectedError: ebay.ErrIncompleteAspectFilter,
+		},
 		{
 			Name: "can find items by keywords and basic itemFilter",
 			Params: map[string]string{
@@ -406,12 +384,30 @@ func TestValidateItemFilter(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
 		},
 		{
+			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params
+			Name: "can find items if params contains itemFilter value but not name",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).value": "purple",
+			},
+		},
+		{
 			Name: "returns error if params contains itemFilter paramName but not paramValue",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
 				"itemFilter(0).name":      "color",
 				"itemFilter(0).value":     "purple",
 				"itemFilter(0).paramName": "brightness",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+		},
+		{
+			Name: "returns error if params contains itemFilter paramValue but not paramName",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "color",
+				"itemFilter(0).value":      "purple",
+				"itemFilter(0).paramValue": "super bright",
 			},
 			ExpectedError: ebay.ErrIncompleteItemFilterParam,
 		},

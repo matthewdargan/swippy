@@ -327,8 +327,9 @@ func TestFindItemsByKeywords(t *testing.T) {
 
 func TestValidateItemFilter(t *testing.T) {
 	testCases := []struct {
-		Name   string
-		Params map[string]string
+		Name          string
+		Params        map[string]string
+		ExpectedError error
 	}{
 		{
 			Name: "can find items by keywords and basic itemFilter",
@@ -396,6 +397,24 @@ func TestValidateItemFilter(t *testing.T) {
 				"itemFilter(1).paramValue": "wide",
 			},
 		},
+		{
+			Name: "returns error if params contains itemFilter name but not value",
+			Params: map[string]string{
+				"keywords":           "marshmallows",
+				"itemFilter(0).name": "color",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+		},
+		{
+			Name: "returns error if params contains itemFilter paramName but not paramValue",
+			Params: map[string]string{
+				"keywords":                "marshmallows",
+				"itemFilter(0).name":      "color",
+				"itemFilter(0).value":     "purple",
+				"itemFilter(0).paramName": "brightness",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -415,46 +434,16 @@ func TestValidateItemFilter(t *testing.T) {
 			}
 			svr := ebay.NewFindingServer(client)
 			resp, err := svr.FindItemsByKeywords(testCase.Params, appID)
-			assertNoError(t, err)
-			assertSearchResponse(t, resp, &searchResp)
+
+			if testCase.ExpectedError != nil {
+				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
+				assertStatusCodeEquals(t, err, http.StatusBadRequest)
+			} else {
+				assertNoError(t, err)
+				assertSearchResponse(t, resp, &searchResp)
+			}
 		})
 	}
-
-	t.Run("returns error if params contains itemFilter name but not value", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{}
-		svr := ebay.NewFindingServer(client)
-		itemFilterParams := map[string]string{
-			"keywords":           "marshmallows",
-			"itemFilter(0).name": "color",
-		}
-		_, err := svr.FindItemsByKeywords(itemFilterParams, appID)
-		assertError(t, err)
-
-		expected := ebay.ErrIncompleteItemFilterNameOnly.Error()
-		got := err.Error()
-		assertErrorEquals(t, got, expected)
-		assertStatusCodeEquals(t, err, http.StatusBadRequest)
-	})
-
-	t.Run("returns error if params contains itemFilter paramName but not paramValue", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{}
-		svr := ebay.NewFindingServer(client)
-		itemFilterParams := map[string]string{
-			"keywords":                "marshmallows",
-			"itemFilter(0).name":      "color",
-			"itemFilter(0).value":     "purple",
-			"itemFilter(0).paramName": "brightness",
-		}
-		_, err := svr.FindItemsByKeywords(itemFilterParams, appID)
-		assertError(t, err)
-
-		expected := ebay.ErrIncompleteItemFilterParam.Error()
-		got := err.Error()
-		assertErrorEquals(t, got, expected)
-		assertStatusCodeEquals(t, err, http.StatusBadRequest)
-	})
 }
 
 func assertError(tb testing.TB, err error) {

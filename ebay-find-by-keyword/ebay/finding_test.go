@@ -401,10 +401,26 @@ func TestValidateParams(t *testing.T) {
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params
-			Name: "can find items if params contains itemFilter value but not name",
+			Name: "can find items if params contains itemFilter value only",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).value": "purple",
+			},
+		},
+		{
+			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params
+			Name: "can find items if params contains itemFilter paramName only",
+			Params: map[string]string{
+				"keywords":                "marshmallows",
+				"itemFilter(0).paramName": "brightness",
+			},
+		},
+		{
+			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params
+			Name: "can find items if params contains itemFilter paramValue only",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).paramValue": "super bright",
 			},
 		},
 		{

@@ -23,6 +23,10 @@ var (
 	// either the 'aspectName' or 'aspectValueName' parameter.
 	ErrIncompleteAspectFilter = errors.New("ebay: incomplete aspect filter: aspectName and aspectValueName are required")
 
+	// ErrInvalidItemFilterSyntax is returned when both syntax types for itemFilters are used in the params.
+	ErrInvalidItemFilterSyntax = errors.New(
+		"ebay: invalid item filter syntax: both itemFilter.name and itemFilter(0).name are present")
+
 	// ErrIncompleteItemFilterNameOnly is returned when an item filter is missing the 'value' parameter.
 	ErrIncompleteItemFilterNameOnly = errors.New("ebay: incomplete item filter: missing value")
 
@@ -115,6 +119,7 @@ type aspectFilter struct {
 }
 
 type itemFilter struct {
+	// TODO: Change name to more specifically support only the ItemFilterType: https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html.
 	name       string
 	value      string
 	paramName  *string
@@ -153,6 +158,47 @@ func (svr *FindingServer) validateParams(params map[string]string) (*findingPara
 }
 
 func (svr *FindingServer) processItemFilters(params map[string]string) ([]itemFilter, error) {
+	_, nonNumberedExists := params["itemFilter.name"]
+	_, numberedExists := params["itemFilter(0).name"]
+
+	// Check if both syntax types occur in the params.
+	if nonNumberedExists && numberedExists {
+		return nil, ErrInvalidItemFilterSyntax
+	}
+
+	if nonNumberedExists {
+		return processNonNumberedItemFilter(params)
+	}
+
+	return processNumberedItemFilters(params)
+}
+
+func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error) {
+	ifValue, vOk := params["itemFilter.value"]
+	if !vOk {
+		return nil, ErrIncompleteItemFilterNameOnly
+	}
+
+	filter := itemFilter{
+		// No need to check itemFilter.name exists due to how this function is invoked from processItemFilters.
+		name:  params["itemFilter.name"],
+		value: ifValue,
+	}
+
+	ifParamName, pnOk := params["itemFilter.paramName"]
+	ifParamValue, pvOk := params["itemFilter.paramValue"]
+	if pnOk != pvOk {
+		return nil, ErrIncompleteItemFilterParam
+	}
+	if pnOk && pvOk {
+		filter.paramName = &ifParamName
+		filter.paramValue = &ifParamValue
+	}
+
+	return []itemFilter{filter}, nil
+}
+
+func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) {
 	var itemFilters []itemFilter
 	for idx := 0; ; idx++ {
 		ifName, nOk := params[fmt.Sprintf("itemFilter(%d).name", idx)]

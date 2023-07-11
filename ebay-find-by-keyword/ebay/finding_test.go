@@ -318,7 +318,96 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteAspectFilter,
 		},
 		{
-			Name: "can find items by keywords and basic itemFilter",
+			Name: "can find items by keywords and basic, non-numbered itemFilter",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "color",
+				"itemFilter.value": "purple",
+			},
+		},
+		{
+			Name: "can find items by keywords and non-numbered itemFilter with name, value, paramName, and paramValue",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "color",
+				"itemFilter.value":      "purple",
+				"itemFilter.paramName":  "brightness",
+				"itemFilter.paramValue": "super bright",
+			},
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter but not keywords",
+			Params: map[string]string{
+				"itemFilter.name":  "color",
+				"itemFilter.value": "purple",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter name but not value",
+			Params: map[string]string{
+				"keywords":        "marshmallows",
+				"itemFilter.name": "color",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+		},
+		{
+			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
+			Name: "can find items if params contains non-numbered itemFilter value only",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.value": "purple",
+			},
+		},
+		{
+			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
+			Name: "can find items if params contains non-numbered itemFilter paramName only",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"itemFilter.paramName": "brightness",
+			},
+		},
+		{
+			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
+			Name: "can find items if params contains non-numbered itemFilter paramValue only",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.paramValue": "super bright",
+			},
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter paramName but not paramValue",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"itemFilter.name":      "color",
+				"itemFilter.value":     "purple",
+				"itemFilter.paramName": "brightness",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter paramValue but not paramName",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "color",
+				"itemFilter.value":      "purple",
+				"itemFilter.paramValue": "super bright",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+		},
+		{
+			Name: "returns error if params contain both numbered and non-numbered syntax types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "color",
+				"itemFilter.value":    "purple",
+				"itemFilter(0).name":  "color",
+				"itemFilter(0).value": "blue",
+			},
+			ExpectedError: ebay.ErrInvalidItemFilterSyntax,
+		},
+		{
+			Name: "can find items by keywords and basic, numbered itemFilter",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "color",
@@ -326,7 +415,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords and itemFilter with name, value, paramName, and paramValue",
+			Name: "can find items by keywords and numbered itemFilter with name, value, paramName, and paramValue",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "color",
@@ -336,7 +425,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords and 2 basic itemFilters",
+			Name: "can find items by keywords and 2 basic, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "color",
@@ -346,7 +435,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords, 1st advanced itemFilter, and 2nd basic itemFilter",
+			Name: "can find items by keywords, 1st advanced, numbered and 2nd basic, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "color",
@@ -358,7 +447,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords, 1st basic itemFilter, and 2nd advanced itemFilter",
+			Name: "can find items by keywords, 1st basic, numbered and 2nd advanced, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "size",
@@ -370,7 +459,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords and 2 advanced itemFilters",
+			Name: "can find items by keywords and 2 advanced, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "color",
@@ -384,7 +473,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "returns error if params contains itemFilter but not keywords",
+			Name: "returns error if params contains numbered itemFilter but not keywords",
 			Params: map[string]string{
 				"itemFilter(0).name":  "color",
 				"itemFilter(0).value": "purple",
@@ -392,7 +481,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
-			Name: "returns error if params contains itemFilter name but not value",
+			Name: "returns error if params contains numbered itemFilter name but not value",
 			Params: map[string]string{
 				"keywords":           "marshmallows",
 				"itemFilter(0).name": "color",
@@ -400,31 +489,31 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
 		},
 		{
-			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params
-			Name: "can find items if params contains itemFilter value only",
+			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
+			Name: "can find items if params contains numbered itemFilter value only",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).value": "purple",
 			},
 		},
 		{
-			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params
-			Name: "can find items if params contains itemFilter paramName only",
+			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
+			Name: "can find items if params contains numbered itemFilter paramName only",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
 				"itemFilter(0).paramName": "brightness",
 			},
 		},
 		{
-			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params
-			Name: "can find items if params contains itemFilter paramValue only",
+			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
+			Name: "can find items if params contains numbered itemFilter paramValue only",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).paramValue": "super bright",
 			},
 		},
 		{
-			Name: "returns error if params contains itemFilter paramName but not paramValue",
+			Name: "returns error if params contains numbered itemFilter paramName but not paramValue",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
 				"itemFilter(0).name":      "color",
@@ -434,7 +523,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
-			Name: "returns error if params contains itemFilter paramValue but not paramName",
+			Name: "returns error if params contains numbered itemFilter paramValue but not paramName",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "color",

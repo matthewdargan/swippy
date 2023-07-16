@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"unicode"
 )
 
 const (
@@ -47,6 +48,15 @@ var (
 
 	// ErrDecodeAPIResponse is returned when there is an error decoding the eBay Finding API response body.
 	ErrDecodeAPIResponse = errors.New("ebay: failed to decode eBay Finding API response body")
+
+	// ErrInvalidItemFilterValue is returned when an item filter has an invalid 'value' parameter.
+	ErrInvalidItemFilterValue = errors.New("ebay: invalid item filter value")
+
+	// ErrUnsupportedItemFilterType is returned when an item filter 'name' parameter has an unsupported type.
+	ErrUnsupportedItemFilterType = errors.New("ebay: unsupported item filter type")
+
+	// ErrInvalidCountryCode is returned when an item filter 'value' parameter contains an invalid country code.
+	ErrInvalidCountryCode = errors.New("ebay: invalid country code")
 )
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -119,7 +129,6 @@ type aspectFilter struct {
 }
 
 type itemFilter struct {
-	// TODO: Change name to more specifically support only the ItemFilterType: https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html.
 	name       string
 	value      string
 	paramName  *string
@@ -243,6 +252,8 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 }
 
 const (
+	// ItemFilterType values from the eBay documentation.
+	// See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html
 	authorizedSellerOnly  = "AuthorizedSellerOnly"
 	availableTo           = "AvailableTo"
 	bestOfferOnly         = "BestOfferOnly"
@@ -298,13 +309,33 @@ func handleItemFilterType(filter *itemFilter) error {
 		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
 		topRatedSellerOnly, worldOfGoodOnly:
 		if filter.value != trueValue && filter.value != falseValue {
-			return fmt.Errorf("Invalid value for %s itemFilter: %s", filter.name, filter.value)
+			return fmt.Errorf("%w: %s", ErrInvalidItemFilterValue, filter.value)
+		}
+	case availableTo:
+		if !isValidCountryCode(filter.value) {
+			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.value)
 		}
 	default:
-		return fmt.Errorf("Unsupported itemFilter type: %s", filter.name)
+		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
 	}
 
 	return nil
+}
+
+const countryCodeLength = 2
+
+func isValidCountryCode(value string) bool {
+	if len(value) != countryCodeLength {
+		return false
+	}
+
+	for _, ch := range value {
+		if !unicode.IsUpper(ch) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {

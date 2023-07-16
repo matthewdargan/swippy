@@ -195,6 +195,11 @@ func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error
 		filter.paramValue = &ifParamValue
 	}
 
+	err := handleItemFilterType(&filter)
+	if err != nil {
+		return nil, err
+	}
+
 	return []itemFilter{filter}, nil
 }
 
@@ -226,10 +231,36 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 			itemFilter.paramValue = &ifParamValue
 		}
 
+		err := handleItemFilterType(&itemFilter)
+		if err != nil {
+			return nil, err
+		}
+
 		itemFilters = append(itemFilters, itemFilter)
 	}
 
 	return itemFilters, nil
+}
+
+const (
+	bestOfferOnly        = "BestOfferOnly"
+	charityOnly          = "CharityOnly"
+	authorizedSellerOnly = "AuthorizedSellerOnly"
+	trueValue            = "true"
+	falseValue           = "false"
+)
+
+func handleItemFilterType(filter *itemFilter) error {
+	switch filter.name {
+	case bestOfferOnly, charityOnly, authorizedSellerOnly:
+		if filter.value != trueValue && filter.value != falseValue {
+			return fmt.Errorf("Invalid value for %s itemFilter: %s", filter.name, filter.value)
+		}
+	default:
+		return fmt.Errorf("Unsupported itemFilter type: %s", filter.name)
+	}
+
+	return nil
 }
 
 func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {

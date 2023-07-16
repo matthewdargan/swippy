@@ -243,16 +243,60 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 }
 
 const (
-	bestOfferOnly        = "BestOfferOnly"
-	charityOnly          = "CharityOnly"
-	authorizedSellerOnly = "AuthorizedSellerOnly"
-	trueValue            = "true"
-	falseValue           = "false"
+	authorizedSellerOnly  = "AuthorizedSellerOnly"
+	availableTo           = "AvailableTo"
+	bestOfferOnly         = "BestOfferOnly"
+	charityOnly           = "CharityOnly"
+	condition             = "Condition"
+	currency              = "Currency"
+	endTimeFrom           = "EndTimeFrom"
+	endTimeTo             = "EndTimeTo"
+	excludeAutoPay        = "ExcludeAutoPay"
+	excludeCategory       = "ExcludeCategory"
+	excludeSeller         = "ExcludeSeller"
+	expeditedShippingType = "ExpeditedShippingType"
+	featuredOnly          = "FeaturedOnly"
+	feedbackScoreMax      = "FeedbackScoreMax"
+	feedbackScoreMin      = "FeedbackScoreMin"
+	freeShippingOnly      = "FreeShippingOnly"
+	getItFastOnly         = "GetItFastOnly"
+	hideDuplicateItems    = "HideDuplicateItems"
+	listedIn              = "ListedIn"
+	listingType           = "ListingType"
+	localPickupOnly       = "LocalPickupOnly"
+	localSearchOnly       = "LocalSearchOnly"
+	locatedIn             = "LocatedIn"
+	lotsOnly              = "LotsOnly"
+	maxBids               = "MaxBids"
+	maxDistance           = "MaxDistance"
+	maxHandlingTime       = "MaxHandlingTime"
+	maxPrice              = "MaxPrice"
+	maxQuantity           = "MaxQuantity"
+	minBids               = "MinBids"
+	minPrice              = "MinPrice"
+	minQuantity           = "MinQuantity"
+	modTimeFrom           = "ModTimeFrom"
+	outletSellerOnly      = "OutletSellerOnly"
+	paymentMethod         = "PaymentMethod"
+	returnsAcceptedOnly   = "ReturnsAcceptedOnly"
+	seller                = "Seller"
+	sellerBusinessType    = "SellerBusinessType"
+	soldItemsOnly         = "SoldItemsOnly"
+	startTimeFrom         = "StartTimeFrom"
+	startTimeTo           = "StartTimeTo"
+	topRatedSellerOnly    = "TopRatedSellerOnly"
+	valueBoxInventory     = "ValueBoxInventory"
+	worldOfGoodOnly       = "WorldOfGoodOnly"
+
+	trueValue  = "true"
+	falseValue = "false"
 )
 
 func handleItemFilterType(filter *itemFilter) error {
 	switch filter.name {
-	case bestOfferOnly, charityOnly, authorizedSellerOnly:
+	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, featuredOnly, freeShippingOnly, getItFastOnly,
+		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
+		topRatedSellerOnly, worldOfGoodOnly:
 		if filter.value != trueValue && filter.value != falseValue {
 			return fmt.Errorf("Invalid value for %s itemFilter: %s", filter.name, filter.value)
 		}

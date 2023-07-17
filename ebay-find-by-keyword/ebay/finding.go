@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 	"unicode"
 )
 
@@ -57,6 +58,19 @@ var (
 
 	// ErrInvalidCountryCode is returned when an item filter 'value' parameter contains an invalid country code.
 	ErrInvalidCountryCode = errors.New("ebay: invalid country code")
+
+	// ErrInvalidConditionValue is returned when an item filter 'value' parameter contains an invalid condition ID or name.
+	ErrInvalidConditionValue = errors.New("ebay: invalid condition value")
+
+	// ErrInvalidCurrencyID is returned when an item filter 'value' parameter contains an invalid currency ID.
+	ErrInvalidCurrencyID = errors.New("ebay: invalid currency ID")
+
+	// ErrInvalidDateTime is returned when an item filter 'value' parameter contains an invalid date time value.
+	ErrInvalidDateTime = errors.New("ebay: invalid date time value")
+
+	// ErrInvalidNonNegativeInteger is returned when an item filter 'value' parameter contains
+	// an invalid non-negative integer.
+	ErrInvalidNonNegativeInteger = errors.New("ebay: invalid non-negative integer")
 )
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -315,6 +329,28 @@ func handleItemFilterType(filter *itemFilter) error {
 		if !isValidCountryCode(filter.value) {
 			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.value)
 		}
+	case condition:
+		if !isValidConditionValue(filter.value) {
+			return fmt.Errorf("%w: %s", ErrInvalidConditionValue, filter.value)
+		}
+	case currency:
+		if !isValidCurrencyID(filter.value) {
+			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, filter.value)
+		}
+	case endTimeFrom, endTimeTo, startTimeFrom, startTimeTo:
+		if !isValidDateTime(filter.value, true) {
+			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
+		}
+	case feedbackScoreMax, feedbackScoreMin, maxBids, minBids:
+		// TODO: feedbackScoreMax value must be greator than or equal to feedbackScoreMin value
+		// if both occur in a request. The same logic applies to maxBid and minBid.
+		if !isValidNonNegativeInteger(filter.value) {
+			return fmt.Errorf("%w: %s", ErrInvalidNonNegativeInteger, filter.value)
+		}
+	case modTimeFrom:
+		if !isValidDateTime(filter.value, false) {
+			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
+		}
 	default:
 		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
 	}
@@ -336,6 +372,73 @@ func isValidCountryCode(value string) bool {
 	}
 
 	return true
+}
+
+// Valid Condition IDs from the eBay documentation.
+// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html#ConditionDefinitions
+var validConditionIDs = []int{1000, 1500, 1750, 2000, 2010, 2020, 2030, 2500, 2750, 3000, 4000, 5000, 6000, 7000}
+
+func isValidConditionValue(value string) bool {
+	conditionID, err := strconv.Atoi(value)
+	if err == nil {
+		for _, id := range validConditionIDs {
+			if conditionID == id {
+				return true
+			}
+		}
+	} else {
+		// Value is a condition name, refer to the eBay documentation for condition name definitions.
+		// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html
+		return true
+	}
+
+	return false
+}
+
+// Valid Currency ID values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html
+var validCurrencyIDs = []string{
+	"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
+}
+
+func isValidCurrencyID(value string) bool {
+	for _, currency := range validCurrencyIDs {
+		if value == currency {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isValidDateTime(value string, future bool) bool {
+	dateTime, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return false
+	}
+
+	if dateTime.Location() != time.UTC {
+		return false
+	}
+
+	now := time.Now().UTC()
+	if future && dateTime.Before(now) {
+		return false
+	}
+	if !future && dateTime.After(now) {
+		return false
+	}
+
+	return true
+}
+
+func isValidNonNegativeInteger(value string) bool {
+	num, err := strconv.Atoi(value)
+	if err != nil {
+		return false
+	}
+
+	return num >= 0
 }
 
 func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {

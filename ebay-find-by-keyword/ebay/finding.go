@@ -68,12 +68,8 @@ var (
 	// ErrInvalidDateTime is returned when an item filter 'value' parameter contains an invalid date time value.
 	ErrInvalidDateTime = errors.New("ebay: invalid date time value")
 
-	// ErrInvalidNonNegativeInteger is returned when an item filter 'value' parameter contains
-	// an invalid non-negative integer.
-	ErrInvalidNonNegativeInteger = errors.New("ebay: invalid non-negative integer")
-
-	// ErrInvalidPositiveInteger is returned when an item filter 'value' parameter contains an invalid positive integer.
-	ErrInvalidPositiveInteger = errors.New("ebay: invalid positive integer")
+	// ErrInvalidInteger is returned when an item filter 'value' parameter contains an invalid integer.
+	ErrInvalidInteger = errors.New("ebay: invalid integer")
 
 	// ErrInvalidFilterRelationship is returned when an item filter relationship is invalid.
 	ErrInvalidFilterRelationship = errors.New("ebay: invalid item filter relationship")
@@ -334,6 +330,9 @@ const (
 
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 	switch filter.name {
+	// TODO: Refactor case localSearchOnly - add logic for only can be used with MaxDistance item filter,
+	// and the request must also specify buyerPostalCode.
+	// TODO: Refactor case topRatedSellerOnly - add logic for only can be used with either the Seller or ExcludeSeller item filters.
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, featuredOnly, freeShippingOnly, getItFastOnly,
 		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
 		topRatedSellerOnly, worldOfGoodOnly:
@@ -356,16 +355,17 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		if !isValidDateTime(filter.value, true) {
 			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
 		}
+	// TODO: Implement case excludeCategory, case excludeSeller
 	case expeditedShippingType:
 		if filter.value != "Expedited" && filter.value != "OneDayShipping" {
 			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingValue, filter.value)
 		}
 	case feedbackScoreMax, feedbackScoreMin:
 		if !isValidIntegerInRange(filter.value, 0) {
-			return fmt.Errorf("%w: %s", ErrInvalidNonNegativeInteger, filter.value)
+			return invalidIntegerError(filter.value, 0)
 		}
 
-		relatedFilterName := feedbackScoreMin
+		relatedFilterName := feedbackScoreMax
 		isCurrentMin := true
 		if filter.name == feedbackScoreMax {
 			relatedFilterName = feedbackScoreMin
@@ -380,12 +380,13 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		if !isValidGlobalID(filter.value) {
 			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.value)
 		}
+	// TODO: Implement case listingType, case locatedIn
 	case maxBids, minBids:
 		if !isValidIntegerInRange(filter.value, 0) {
-			return fmt.Errorf("%w: %s", ErrInvalidNonNegativeInteger, filter.value)
+			return invalidIntegerError(filter.value, 0)
 		}
 
-		relatedFilterName := minBids
+		relatedFilterName := maxBids
 		isCurrentMin := true
 		if filter.name == maxBids {
 			relatedFilterName = minBids
@@ -396,19 +397,33 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		if err != nil {
 			return err
 		}
+	// TODO: Implement case maxDistance
 	case maxHandlingTime:
 		if !isValidIntegerInRange(filter.value, 1) {
-			return fmt.Errorf("%w: %s", ErrInvalidPositiveInteger, filter.value)
+			return invalidIntegerError(filter.value, 1)
 		}
+	// TODO: Implement case maxPrice/minPrice
 	case maxQuantity, minQuantity:
-		// TODO: Insert maxBids/minBids logic here
 		if !isValidIntegerInRange(filter.value, 1) {
-			return fmt.Errorf("%w: %s", ErrInvalidPositiveInteger, filter.value)
+			return invalidIntegerError(filter.value, 1)
+		}
+
+		relatedFilterName := maxQuantity
+		isCurrentMin := true
+		if filter.name == maxQuantity {
+			relatedFilterName = minQuantity
+			isCurrentMin = false
+		}
+
+		err := validateNumFilterRelationship(itemFilters, filter.name, filter.value, relatedFilterName, isCurrentMin)
+		if err != nil {
+			return err
 		}
 	case modTimeFrom:
 		if !isValidDateTime(filter.value, false) {
 			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
 		}
+	// TODO: Implement case paymentMethod, case seller, case sellerBusinessType, case valueBoxInventory
 	default:
 		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
 	}
@@ -499,10 +514,8 @@ func isValidIntegerInRange(value string, min int) bool {
 	return num >= min
 }
 
-// ErrInvalidInteger is a generic error for an invalid integer value in an item filter.
-func ErrInvalidInteger(min int) error {
-	// TODO: Use this instead of the NonNegative and Positive errors defined/used above.
-	return fmt.Errorf("ebay: invalid integer (minimum value: %d)", min)
+func invalidIntegerError(value string, min int) error {
+	return fmt.Errorf("%w: %s (minimum value: %d)", ErrInvalidInteger, value, min)
 }
 
 func validateNumFilterRelationship(

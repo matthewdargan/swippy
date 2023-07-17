@@ -71,6 +71,19 @@ var (
 	// ErrInvalidNonNegativeInteger is returned when an item filter 'value' parameter contains
 	// an invalid non-negative integer.
 	ErrInvalidNonNegativeInteger = errors.New("ebay: invalid non-negative integer")
+
+	// ErrInvalidPositiveInteger is returned when an item filter 'value' parameter contains an invalid positive integer.
+	ErrInvalidPositiveInteger = errors.New("ebay: invalid positive integer")
+
+	// ErrInvalidFilterRelationship is returned when an item filter relationship is invalid.
+	ErrInvalidFilterRelationship = errors.New("ebay: invalid item filter relationship")
+
+	// ErrInvalidExpeditedShippingValue is returned when an item filter 'value' parameter
+	// contains an invalid expedited shipping value.
+	ErrInvalidExpeditedShippingValue = errors.New("ebay: invalid expedited shipping value")
+
+	// ErrInvalidGlobalID is returned when an item filter 'value' parameter contains an invalid global ID.
+	ErrInvalidGlobalID = errors.New("ebay: invalid global ID")
 )
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -218,7 +231,7 @@ func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error
 		filter.paramValue = &ifParamValue
 	}
 
-	err := handleItemFilterType(&filter)
+	err := handleItemFilterType(&filter, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -254,12 +267,14 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 			itemFilter.paramValue = &ifParamValue
 		}
 
-		err := handleItemFilterType(&itemFilter)
+		itemFilters = append(itemFilters, itemFilter)
+	}
+
+	for i := range itemFilters {
+		err := handleItemFilterType(&itemFilters[i], itemFilters)
 		if err != nil {
 			return nil, err
 		}
-
-		itemFilters = append(itemFilters, itemFilter)
 	}
 
 	return itemFilters, nil
@@ -317,7 +332,7 @@ const (
 	falseValue = "false"
 )
 
-func handleItemFilterType(filter *itemFilter) error {
+func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 	switch filter.name {
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, featuredOnly, freeShippingOnly, getItFastOnly,
 		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
@@ -341,11 +356,54 @@ func handleItemFilterType(filter *itemFilter) error {
 		if !isValidDateTime(filter.value, true) {
 			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
 		}
-	case feedbackScoreMax, feedbackScoreMin, maxBids, minBids:
-		// TODO: feedbackScoreMax value must be greator than or equal to feedbackScoreMin value
-		// if both occur in a request. The same logic applies to maxBid and minBid.
-		if !isValidNonNegativeInteger(filter.value) {
+	case expeditedShippingType:
+		if filter.value != "Expedited" && filter.value != "OneDayShipping" {
+			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingValue, filter.value)
+		}
+	case feedbackScoreMax, feedbackScoreMin:
+		if !isValidIntegerInRange(filter.value, 0) {
 			return fmt.Errorf("%w: %s", ErrInvalidNonNegativeInteger, filter.value)
+		}
+
+		relatedFilterName := feedbackScoreMin
+		isCurrentMin := true
+		if filter.name == feedbackScoreMax {
+			relatedFilterName = feedbackScoreMin
+			isCurrentMin = false
+		}
+
+		err := validateNumFilterRelationship(itemFilters, filter.name, filter.value, relatedFilterName, isCurrentMin)
+		if err != nil {
+			return err
+		}
+	case listedIn:
+		if !isValidGlobalID(filter.value) {
+			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.value)
+		}
+	case maxBids, minBids:
+		if !isValidIntegerInRange(filter.value, 0) {
+			return fmt.Errorf("%w: %s", ErrInvalidNonNegativeInteger, filter.value)
+		}
+
+		relatedFilterName := minBids
+		isCurrentMin := true
+		if filter.name == maxBids {
+			relatedFilterName = minBids
+			isCurrentMin = false
+		}
+
+		err := validateNumFilterRelationship(itemFilters, filter.name, filter.value, relatedFilterName, isCurrentMin)
+		if err != nil {
+			return err
+		}
+	case maxHandlingTime:
+		if !isValidIntegerInRange(filter.value, 1) {
+			return fmt.Errorf("%w: %s", ErrInvalidPositiveInteger, filter.value)
+		}
+	case maxQuantity, minQuantity:
+		// TODO: Insert maxBids/minBids logic here
+		if !isValidIntegerInRange(filter.value, 1) {
+			return fmt.Errorf("%w: %s", ErrInvalidPositiveInteger, filter.value)
 		}
 	case modTimeFrom:
 		if !isValidDateTime(filter.value, false) {
@@ -432,13 +490,85 @@ func isValidDateTime(value string, future bool) bool {
 	return true
 }
 
-func isValidNonNegativeInteger(value string) bool {
+func isValidIntegerInRange(value string, min int) bool {
 	num, err := strconv.Atoi(value)
 	if err != nil {
 		return false
 	}
 
-	return num >= 0
+	return num >= min
+}
+
+// ErrInvalidInteger is a generic error for an invalid integer value in an item filter.
+func ErrInvalidInteger(min int) error {
+	// TODO: Use this instead of the NonNegative and Positive errors defined/used above.
+	return fmt.Errorf("ebay: invalid integer (minimum value: %d)", min)
+}
+
+func validateNumFilterRelationship(
+	itemFilters []itemFilter, currentName, currentValue, relatedName string, isCurrentMin bool,
+) error {
+	for _, f := range itemFilters {
+		if f.name == relatedName {
+			relatedValue, err := strconv.Atoi(f.value)
+			if err != nil {
+				return fmt.Errorf("ebay: %w: %s", err, f.value)
+			}
+
+			value, err := strconv.Atoi(currentValue)
+			if err != nil {
+				return fmt.Errorf("ebay: %w: %s", err, currentValue)
+			}
+
+			if isCurrentMin && value >= relatedValue {
+				return fmt.Errorf("%w: %s must be less than or equal to %s", ErrInvalidFilterRelationship, currentName, relatedName)
+			}
+
+			if !isCurrentMin && value <= relatedValue {
+				return fmt.Errorf("%w: %s must be greater than or equal to %s",
+					ErrInvalidFilterRelationship, currentName, relatedName)
+			}
+
+			break
+		}
+	}
+
+	return nil
+}
+
+var validGlobalIDs = []string{
+	"EBAY-AT",
+	"EBAY-AU",
+	"EBAY-CH",
+	"EBAY-DE",
+	"EBAY-ENCA",
+	"EBAY-ES",
+	"EBAY-FR",
+	"EBAY-FRBE",
+	"EBAY-FRCA",
+	"EBAY-GB",
+	"EBAY-HK",
+	"EBAY-IE",
+	"EBAY-IN",
+	"EBAY-IT",
+	"EBAY-MOTOR",
+	"EBAY-MY",
+	"EBAY-NL",
+	"EBAY-NLBE",
+	"EBAY-PH",
+	"EBAY-PL",
+	"EBAY-SG",
+	"EBAY-US",
+}
+
+func isValidGlobalID(value string) bool {
+	for _, id := range validGlobalIDs {
+		if value == id {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {

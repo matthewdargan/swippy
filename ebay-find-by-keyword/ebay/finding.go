@@ -80,6 +80,21 @@ var (
 
 	// ErrInvalidGlobalID is returned when an item filter 'value' parameter contains an invalid global ID.
 	ErrInvalidGlobalID = errors.New("ebay: invalid global ID")
+
+	// ErrInvalidPaymentMethodValue is returned when an item filter 'value' parameter
+	// contains an invalid payment method value.
+	ErrInvalidPaymentMethodValue = errors.New("ebay: invalid payment method value")
+
+	// ErrInvalidSellerBusinessValue is returned when an item filter 'value' parameter
+	// contains an invalid seller business value.
+	ErrInvalidSellerBusinessValue = errors.New("ebay: invalid seller business value")
+
+	// ErrMultipleSellerBusinessValue is returned when multiple item filters contain seller business values.
+	ErrMultipleSellerBusinessValue = errors.New("ebay: multiple sellerBusinessType values found")
+
+	// ErrInvalidValueBoxInventoryValue is returned when an item filter 'value' parameter
+	// contains an invalid value box inventory value.
+	ErrInvalidValueBoxInventoryValue = errors.New("ebay: invalid value box inventory value")
 )
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -326,6 +341,8 @@ const (
 
 	trueValue  = "true"
 	falseValue = "false"
+	trueNum    = "1"
+	falseNum   = "0"
 )
 
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
@@ -423,7 +440,20 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		if !isValidDateTime(filter.value, false) {
 			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
 		}
-	// TODO: Implement case paymentMethod, case seller, case sellerBusinessType, case valueBoxInventory
+	case paymentMethod:
+		if !isValidPaymentMethod(filter.value) {
+			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethodValue, filter.value)
+		}
+	// TODO: Implement case seller
+	case sellerBusinessType:
+		err := validateSellerBusinessValue(itemFilters, filter.value)
+		if err != nil {
+			return err
+		}
+	case valueBoxInventory:
+		if filter.value != trueNum && filter.value != falseNum {
+			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventoryValue, filter.value)
+		}
 	default:
 		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
 	}
@@ -582,6 +612,58 @@ func isValidGlobalID(value string) bool {
 	}
 
 	return false
+}
+
+var supportedPaymentMethods = []string{
+	"AmEx",
+	"CashOnPickup",
+	"CCAccepted",
+	"COD",
+	"CreditCard",
+	"CustomCode",
+	"DirectDebit",
+	"Discover",
+	"ELV",
+	"LoanCheck",
+	"MOCC",
+	"MoneyXferAccepted",
+	"MoneyXferAcceptedInCheckout",
+	"None",
+	"Other",
+	"OtherOnlinePayments",
+	"PaymentSeeDescription",
+	"PayPal",
+	"PersonalCheck",
+	"VisaMC",
+}
+
+func isValidPaymentMethod(value string) bool {
+	for _, method := range supportedPaymentMethods {
+		if value == method {
+			return true
+		}
+	}
+
+	return false
+}
+
+func validateSellerBusinessValue(itemFilters []itemFilter, value string) error {
+	if value != "Business" && value != "Private" {
+		return fmt.Errorf("%w: %s", ErrInvalidSellerBusinessValue, value)
+	}
+
+	cnt := 0
+	for _, f := range itemFilters {
+		if f.name == sellerBusinessType {
+			cnt++
+		}
+	}
+
+	if cnt > 1 {
+		return fmt.Errorf("%w: %s", ErrMultipleSellerBusinessValue, sellerBusinessType)
+	}
+
+	return nil
 }
 
 func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {

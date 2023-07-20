@@ -59,13 +59,13 @@ var (
 	// ErrInvalidCountryCode is returned when an item filter 'value' parameter contains an invalid country code.
 	ErrInvalidCountryCode = errors.New("ebay: invalid country code")
 
-	// ErrInvalidConditionValue is returned when an item filter 'value' parameter contains an invalid condition ID or name.
-	ErrInvalidConditionValue = errors.New("ebay: invalid condition value")
+	// ErrInvalidCondition is returned when an item filter 'value' parameter contains an invalid condition ID or name.
+	ErrInvalidCondition = errors.New("ebay: invalid condition")
 
 	// ErrInvalidCurrencyID is returned when an item filter 'value' parameter contains an invalid currency ID.
 	ErrInvalidCurrencyID = errors.New("ebay: invalid currency ID")
 
-	// ErrInvalidDateTime is returned when an item filter 'value' parameter contains an invalid date time value.
+	// ErrInvalidDateTime is returned when an item filter 'value' parameter contains an invalid date time.
 	ErrInvalidDateTime = errors.New("ebay: invalid date time value")
 
 	// ErrInvalidInteger is returned when an item filter 'value' parameter contains an invalid integer.
@@ -74,27 +74,32 @@ var (
 	// ErrInvalidFilterRelationship is returned when an item filter relationship is invalid.
 	ErrInvalidFilterRelationship = errors.New("ebay: invalid item filter relationship")
 
-	// ErrInvalidExpeditedShippingValue is returned when an item filter 'value' parameter
-	// contains an invalid expedited shipping value.
-	ErrInvalidExpeditedShippingValue = errors.New("ebay: invalid expedited shipping value")
+	// ErrInvalidExpeditedShippingType is returned when an item filter 'value' parameter
+	// contains an invalid expedited shipping type.
+	ErrInvalidExpeditedShippingType = errors.New("ebay: invalid expedited shipping type")
 
 	// ErrInvalidGlobalID is returned when an item filter 'value' parameter contains an invalid global ID.
 	ErrInvalidGlobalID = errors.New("ebay: invalid global ID")
 
-	// ErrInvalidPaymentMethodValue is returned when an item filter 'value' parameter
-	// contains an invalid payment method value.
-	ErrInvalidPaymentMethodValue = errors.New("ebay: invalid payment method value")
+	// ErrInvalidMaxPrice is returned when an item filter 'value' parameter contains an invalid maximum price.
+	ErrInvalidMaxPrice = errors.New("ebay: invalid maximum price")
 
-	// ErrInvalidSellerBusinessValue is returned when an item filter 'value' parameter
-	// contains an invalid seller business value.
-	ErrInvalidSellerBusinessValue = errors.New("ebay: invalid seller business value")
+	// ErrInvalidMinPrice is returned when an item filter 'value' parameter contains an invalid minimum price.
+	ErrInvalidMinPrice = errors.New("ebay: invalid minimum price")
 
-	// ErrMultipleSellerBusinessValue is returned when multiple item filters contain seller business values.
-	ErrMultipleSellerBusinessValue = errors.New("ebay: multiple sellerBusinessType values found")
+	// ErrInvalidPaymentMethod is returned when an item filter 'value' parameter contains an invalid payment method.
+	ErrInvalidPaymentMethod = errors.New("ebay: invalid payment method")
 
-	// ErrInvalidValueBoxInventoryValue is returned when an item filter 'value' parameter
-	// contains an invalid value box inventory value.
-	ErrInvalidValueBoxInventoryValue = errors.New("ebay: invalid value box inventory value")
+	// ErrInvalidSellerBusinessType is returned when an item filter 'value' parameter
+	// contains an invalid seller business type.
+	ErrInvalidSellerBusinessType = errors.New("ebay: invalid seller business type")
+
+	// ErrMultipleSellerBusinessType is returned when multiple item filters contain seller business types.
+	ErrMultipleSellerBusinessType = errors.New("ebay: multiple sellerBusinessType types found")
+
+	// ErrInvalidValueBoxInventory is returned when an item filter 'value' parameter
+	// contains an invalid value box inventory.
+	ErrInvalidValueBoxInventory = errors.New("ebay: invalid value box inventory")
 )
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -361,8 +366,8 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.value)
 		}
 	case condition:
-		if !isValidConditionValue(filter.value) {
-			return fmt.Errorf("%w: %s", ErrInvalidConditionValue, filter.value)
+		if !isValidCondition(filter.value) {
+			return fmt.Errorf("%w: %s", ErrInvalidCondition, filter.value)
 		}
 	case currency:
 		if !isValidCurrencyID(filter.value) {
@@ -375,7 +380,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 	// TODO: Implement case excludeCategory, case excludeSeller
 	case expeditedShippingType:
 		if filter.value != "Expedited" && filter.value != "OneDayShipping" {
-			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingValue, filter.value)
+			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.value)
 		}
 	case feedbackScoreMax, feedbackScoreMin:
 		if !isValidIntegerInRange(filter.value, 0) {
@@ -398,6 +403,11 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.value)
 		}
 	// TODO: Implement case listingType, case locatedIn
+	// case locatedIn:
+	// 	err := validateLocatedInValues(itemFilters, filter.value)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 	case maxBids, minBids:
 		if !isValidIntegerInRange(filter.value, 0) {
 			return invalidIntegerError(filter.value, 0)
@@ -419,7 +429,11 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		if !isValidIntegerInRange(filter.value, 1) {
 			return invalidIntegerError(filter.value, 1)
 		}
-	// TODO: Implement case maxPrice/minPrice
+	case maxPrice, minPrice:
+		err := validateMinMaxPriceType(itemFilters)
+		if err != nil {
+			return err
+		}
 	case maxQuantity, minQuantity:
 		if !isValidIntegerInRange(filter.value, 1) {
 			return invalidIntegerError(filter.value, 1)
@@ -442,17 +456,17 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		}
 	case paymentMethod:
 		if !isValidPaymentMethod(filter.value) {
-			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethodValue, filter.value)
+			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethod, filter.value)
 		}
 	// TODO: Implement case seller
 	case sellerBusinessType:
-		err := validateSellerBusinessValue(itemFilters, filter.value)
+		err := validateSellerBusinessType(itemFilters, filter.value)
 		if err != nil {
 			return err
 		}
 	case valueBoxInventory:
 		if filter.value != trueNum && filter.value != falseNum {
-			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventoryValue, filter.value)
+			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventory, filter.value)
 		}
 	default:
 		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
@@ -481,7 +495,7 @@ func isValidCountryCode(value string) bool {
 // See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html#ConditionDefinitions
 var validConditionIDs = []int{1000, 1500, 1750, 2000, 2010, 2020, 2030, 2500, 2750, 3000, 4000, 5000, 6000, 7000}
 
-func isValidConditionValue(value string) bool {
+func isValidCondition(value string) bool {
 	conditionID, err := strconv.Atoi(value)
 	if err == nil {
 		for _, id := range validConditionIDs {
@@ -614,6 +628,70 @@ func isValidGlobalID(value string) bool {
 	return false
 }
 
+func validateMinMaxPriceType(itemFilters []itemFilter) error {
+	var minPriceValue, maxPriceValue float64
+	var minPriceParam, maxPriceParam *string
+	for _, filter := range itemFilters {
+		if filter.name == maxPrice {
+			value, err := strconv.ParseFloat(filter.value, 64)
+			if err != nil {
+				return fmt.Errorf("%w: %s", ErrInvalidMaxPrice, filter.value)
+			}
+			maxPriceValue = value
+			maxPriceParam = filter.paramName
+		} else if filter.name == minPrice {
+			value, err := strconv.ParseFloat(filter.value, 64)
+			if err != nil {
+				return fmt.Errorf("%w: %s", ErrInvalidMinPrice, filter.value)
+			}
+			minPriceValue = value
+			minPriceParam = filter.paramName
+		}
+	}
+
+	if maxPriceValue != 0.0 && minPriceValue != 0.0 {
+		if maxPriceValue < minPriceValue {
+			return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidMaxPrice)
+		}
+	}
+
+	if maxPriceParam != nil && minPriceParam != nil {
+		err := validateCurrencyParams(itemFilters, maxPriceParam, minPriceParam)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateCurrencyParams(itemFilters []itemFilter, maxPriceParam, minPriceParam *string) error {
+	var maxCurrencyID, minCurrencyID string
+	for _, f := range itemFilters {
+		if f.paramName != nil && f.paramValue != nil {
+			if f.paramName == maxPriceParam {
+				maxCurrencyID = *f.paramValue
+			} else if f.paramName == minPriceParam {
+				minCurrencyID = *f.paramValue
+			}
+		}
+	}
+
+	if maxCurrencyID != "" {
+		if !isValidCurrencyID(maxCurrencyID) {
+			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, maxCurrencyID)
+		}
+	}
+
+	if minCurrencyID != "" {
+		if !isValidCurrencyID(minCurrencyID) {
+			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, minCurrencyID)
+		}
+	}
+
+	return nil
+}
+
 var supportedPaymentMethods = []string{
 	"AmEx",
 	"CashOnPickup",
@@ -647,9 +725,9 @@ func isValidPaymentMethod(value string) bool {
 	return false
 }
 
-func validateSellerBusinessValue(itemFilters []itemFilter, value string) error {
+func validateSellerBusinessType(itemFilters []itemFilter, value string) error {
 	if value != "Business" && value != "Private" {
-		return fmt.Errorf("%w: %s", ErrInvalidSellerBusinessValue, value)
+		return fmt.Errorf("%w: %s", ErrInvalidSellerBusinessType, value)
 	}
 
 	cnt := 0
@@ -660,7 +738,7 @@ func validateSellerBusinessValue(itemFilters []itemFilter, value string) error {
 	}
 
 	if cnt > 1 {
-		return fmt.Errorf("%w: %s", ErrMultipleSellerBusinessValue, sellerBusinessType)
+		return fmt.Errorf("%w: %s", ErrMultipleSellerBusinessType, sellerBusinessType)
 	}
 
 	return nil

@@ -50,8 +50,8 @@ var (
 	// ErrDecodeAPIResponse is returned when there is an error decoding the eBay Finding API response body.
 	ErrDecodeAPIResponse = errors.New("ebay: failed to decode eBay Finding API response body")
 
-	// ErrInvalidItemFilterValue is returned when an item filter has an invalid 'value' parameter.
-	ErrInvalidItemFilterValue = errors.New("ebay: invalid item filter value")
+	// ErrInvalidBooleanValue is returned when an item filter has an invalid boolean 'value' parameter.
+	ErrInvalidBooleanValue = errors.New("ebay: invalid boolean item filter value, allowed values are true and false")
 
 	// ErrUnsupportedItemFilterType is returned when an item filter 'name' parameter has an unsupported type.
 	ErrUnsupportedItemFilterType = errors.New("ebay: unsupported item filter type")
@@ -96,6 +96,11 @@ var (
 
 	// ErrMultipleSellerBusinessType is returned when multiple item filters contain seller business types.
 	ErrMultipleSellerBusinessType = errors.New("ebay: multiple sellerBusinessType types found")
+
+	// ErrTopRatedSellerCannotBeUsedWithSellers is returned when there is an attempt to use
+	// the TopRatedSellerOnly item filter together with either the Seller or ExcludeSeller item filters.
+	ErrTopRatedSellerCannotBeUsedWithSellers = errors.New(
+		"ebay: TopRatedSellerOnly item filter cannot be used together with either the Seller or ExcludeSeller item filters")
 
 	// ErrInvalidValueBoxInventory is returned when an item filter 'value' parameter
 	// contains an invalid value box inventory.
@@ -354,12 +359,11 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 	switch filter.name {
 	// TODO: Refactor case localSearchOnly - add logic for only can be used with MaxDistance item filter,
 	// and the request must also specify buyerPostalCode.
-	// TODO: Refactor case topRatedSellerOnly - add logic for only can be used with either the Seller or ExcludeSeller item filters.
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, featuredOnly, freeShippingOnly, getItFastOnly,
 		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
-		topRatedSellerOnly, worldOfGoodOnly:
+		worldOfGoodOnly:
 		if filter.value != trueValue && filter.value != falseValue {
-			return fmt.Errorf("%w: %s", ErrInvalidItemFilterValue, filter.value)
+			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.value)
 		}
 	case availableTo:
 		if !isValidCountryCode(filter.value) {
@@ -461,6 +465,11 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 	// TODO: Implement case seller
 	case sellerBusinessType:
 		err := validateSellerBusinessType(itemFilters, filter.value)
+		if err != nil {
+			return err
+		}
+	case topRatedSellerOnly:
+		err := validateTopRatedSellerOnly(itemFilters, filter.value)
 		if err != nil {
 			return err
 		}
@@ -739,6 +748,20 @@ func validateSellerBusinessType(itemFilters []itemFilter, value string) error {
 
 	if cnt > 1 {
 		return fmt.Errorf("%w: %s", ErrMultipleSellerBusinessType, sellerBusinessType)
+	}
+
+	return nil
+}
+
+func validateTopRatedSellerOnly(itemFilters []itemFilter, value string) error {
+	if value != trueValue && value != falseValue {
+		return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, value)
+	}
+
+	for _, f := range itemFilters {
+		if f.name == seller || f.name == excludeSeller {
+			return ErrTopRatedSellerCannotBeUsedWithSellers
+		}
 	}
 
 	return nil

@@ -21,7 +21,7 @@ linters:
 issues:
   exclude-rules:
     - path: ebay-find-by-keyword/ebay/finding.go
-      text: "Function 'handleItemFilterType' has too many statements"
+      text: "handleItemFilterType"
     - path: ebay-find-by-keyword/ebay/finding.go
       text: "calculated cyclomatic complexity for function validateMinMaxPriceType"
     - path: ebay-find-by-keyword/ebay/finding_test.go

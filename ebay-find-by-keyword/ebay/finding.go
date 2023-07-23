@@ -74,6 +74,17 @@ var (
 	// contains more categories to exclude than the maximum allowed.
 	ErrMaxExcludeCategories = fmt.Errorf("ebay: maximum categories to exclude is %d", maxExcludeCategories)
 
+	maxExcludeSellers = 100
+
+	// ErrMaxExcludeSellers is returned when an item filter 'values' parameter
+	// contains more categories to exclude than the maximum allowed.
+	ErrMaxExcludeSellers = fmt.Errorf("ebay: maximum sellers to exclude is %d", maxExcludeSellers)
+
+	// ErrExcludeSellerCannotBeUsedWithSellers is returned when there is an attempt to use
+	// the ExcludeSeller item filter together with either the Seller or TopRatedSellerOnly item filters.
+	ErrExcludeSellerCannotBeUsedWithSellers = errors.New(
+		"ebay: ExcludeSeller item filter cannot be used together with either the Seller or TopRatedSellerOnly item filters")
+
 	// ErrInvalidInteger is returned when an item filter 'values' parameter contains an invalid integer.
 	ErrInvalidInteger = errors.New("ebay: invalid integer")
 
@@ -87,6 +98,18 @@ var (
 	// ErrInvalidGlobalID is returned when an item filter 'values' parameter contains an invalid global ID.
 	ErrInvalidGlobalID = errors.New("ebay: invalid global ID")
 
+	// ErrInvalidListingType is returned when an item filter 'values' parameter contains an invalid listing type.
+	ErrInvalidListingType = errors.New("ebay: invalid listing type")
+
+	// ErrDuplicateListingType is returned when an item filter 'values' parameter contains duplicate listing types.
+	ErrDuplicateListingType = errors.New("ebay: duplicate listing type")
+
+	maxLocatedIns = 25
+
+	// ErrMaxLocatedIns is returned when an item filter 'values' parameter
+	// contains more countries to locate items in than the maximum allowed.
+	ErrMaxLocatedIns = fmt.Errorf("ebay: maximum countries to locate items in is %d", maxLocatedIns)
+
 	// ErrInvalidMaxPrice is returned when an item filter 'values' parameter contains an invalid maximum price.
 	ErrInvalidMaxPrice = errors.New("ebay: invalid maximum price")
 
@@ -95,6 +118,17 @@ var (
 
 	// ErrInvalidPaymentMethod is returned when an item filter 'values' parameter contains an invalid payment method.
 	ErrInvalidPaymentMethod = errors.New("ebay: invalid payment method")
+
+	maxSellers = 100
+
+	// ErrMaxExcludeSellers is returned when an item filter 'values' parameter
+	// contains more categories to include than the maximum allowed.
+	ErrMaxSellers = fmt.Errorf("ebay: maximum sellers to include is %d", maxExcludeSellers)
+
+	// ErrSellerCannotBeUsedWithOtherSellers is returned when there is an attempt to use
+	// the Seller item filter together with either the ExcludeSeller or TopRatedSellerOnly item filters.
+	ErrSellerCannotBeUsedWithOtherSellers = errors.New(
+		"ebay: Seller item filter cannot be used together with either the ExcludeSeller or TopRatedSellerOnly item filters")
 
 	// ErrInvalidSellerBusinessType is returned when an item filter 'values' parameter
 	// contains an invalid seller business type.
@@ -394,33 +428,37 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
 		worldOfGoodOnly:
 		if filter.values[0] != trueValue && filter.values[0] != falseValue {
-			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values[0])
 		}
 	case availableTo:
 		if !isValidCountryCode(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.values[0])
 		}
 	case condition:
 		if !isValidCondition(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidCondition, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidCondition, filter.values[0])
 		}
 	case currency:
 		if !isValidCurrencyID(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, filter.values[0])
 		}
 	case endTimeFrom, endTimeTo, startTimeFrom, startTimeTo:
 		if !isValidDateTime(filter.values[0], true) {
-			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values[0])
 		}
 	case excludeCategory:
-		err := validateExcludeCategory(filter.values)
+		err := validateExcludeCategories(filter.values)
 		if err != nil {
 			return err
 		}
-	// TODO: Implement case excludeSeller
+	case excludeSeller:
+		err := validateExcludeSellers(itemFilters, filter.values)
+		if err != nil {
+			return err
+		}
 	case expeditedShippingType:
 		if filter.values[0] != "Expedited" && filter.values[0] != "OneDayShipping" {
-			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.values[0])
 		}
 	case feedbackScoreMax, feedbackScoreMin:
 		if !isValidIntegerInRange(filter.values[0], 0) {
@@ -440,14 +478,18 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		}
 	case listedIn:
 		if !isValidGlobalID(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.values[0])
 		}
-	// TODO: Implement case listingType, case locatedIn
-	// case locatedIn:
-	// 	err := validateLocatedInValues(itemFilters, filter.value)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	case listingType:
+		err := validateListingTypes(filter.values)
+		if err != nil {
+			return err
+		}
+	case locatedIn:
+		err := validateLocatedIns(filter.values)
+		if err != nil {
+			return err
+		}
 	case maxBids, minBids:
 		if !isValidIntegerInRange(filter.values[0], 0) {
 			return invalidIntegerError(filter.values[0], 0)
@@ -492,13 +534,17 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		}
 	case modTimeFrom:
 		if !isValidDateTime(filter.values[0], false) {
-			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values[0])
 		}
 	case paymentMethod:
 		if !isValidPaymentMethod(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethod, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethod, filter.values[0])
 		}
-	// TODO: Implement case seller
+	case seller:
+		err := validateSellers(itemFilters, filter.values)
+		if err != nil {
+			return err
+		}
 	case sellerBusinessType:
 		err := validateSellerBusinessType(itemFilters, filter.values[0])
 		if err != nil {
@@ -511,7 +557,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		}
 	case valueBoxInventory:
 		if filter.values[0] != trueNum && filter.values[0] != falseNum {
-			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventory, filter.values)
+			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventory, filter.values[0])
 		}
 	default:
 		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
@@ -594,7 +640,7 @@ func isValidDateTime(value string, future bool) bool {
 	return true
 }
 
-func validateExcludeCategory(values []string) error {
+func validateExcludeCategories(values []string) error {
 	if len(values) > maxExcludeCategories {
 		return ErrMaxExcludeCategories
 	}
@@ -602,6 +648,20 @@ func validateExcludeCategory(values []string) error {
 	for _, v := range values {
 		if !isValidIntegerInRange(v, 0) {
 			return invalidIntegerError(v, 0)
+		}
+	}
+
+	return nil
+}
+
+func validateExcludeSellers(itemFilters []itemFilter, values []string) error {
+	if len(values) > maxExcludeSellers {
+		return ErrMaxExcludeSellers
+	}
+
+	for _, f := range itemFilters {
+		if f.name == seller || f.name == topRatedSellerOnly {
+			return ErrExcludeSellerCannotBeUsedWithSellers
 		}
 	}
 
@@ -685,6 +745,48 @@ func isValidGlobalID(value string) bool {
 	}
 
 	return false
+}
+
+var validListingTypes = []string{"Auction", "AuctionWithBIN", "Classified", "FixedPrice", "StoreInventory", "All"}
+
+func validateListingTypes(values []string) error {
+	seenTypes := make(map[string]bool)
+
+	for _, val := range values {
+		found := false
+		for _, lt := range validListingTypes {
+			if val == lt {
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("%w: %s", ErrInvalidListingType, val)
+		}
+		if seenTypes[val] {
+			return fmt.Errorf("%w: %s", ErrDuplicateListingType, val)
+		}
+
+		seenTypes[val] = true
+	}
+
+	return nil
+}
+
+func validateLocatedIns(values []string) error {
+	if len(values) > maxLocatedIns {
+		return ErrMaxLocatedIns
+	}
+
+	for _, v := range values {
+		if !isValidCountryCode(v) {
+			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, v)
+		}
+	}
+
+	return nil
 }
 
 func validateMinMaxPriceType(itemFilters []itemFilter) error {
@@ -782,6 +884,20 @@ func isValidPaymentMethod(value string) bool {
 	}
 
 	return false
+}
+
+func validateSellers(itemFilters []itemFilter, values []string) error {
+	if len(values) > maxSellers {
+		return ErrMaxSellers
+	}
+
+	for _, f := range itemFilters {
+		if f.name == excludeSeller || f.name == topRatedSellerOnly {
+			return ErrSellerCannotBeUsedWithOtherSellers
+		}
+	}
+
+	return nil
 }
 
 func validateSellerBusinessType(itemFilters []itemFilter, value string) error {

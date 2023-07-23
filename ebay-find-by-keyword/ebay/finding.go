@@ -178,7 +178,7 @@ type aspectFilter struct {
 
 type itemFilter struct {
 	name       string
-	value      string
+	values     []string
 	paramName  *string
 	paramValue *string
 }
@@ -231,28 +231,28 @@ func (svr *FindingServer) processItemFilters(params map[string]string) ([]itemFi
 }
 
 func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error) {
-	ifValue, vOk := params["itemFilter.value"]
-	if !vOk {
-		return nil, ErrIncompleteItemFilterNameOnly
+	filterValues, err := parseItemFilterValues(params, "itemFilter")
+	if err != nil {
+		return nil, err
 	}
 
 	filter := itemFilter{
 		// No need to check itemFilter.name exists due to how this function is invoked from processItemFilters.
-		name:  params["itemFilter.name"],
-		value: ifValue,
+		name:   params["itemFilter.name"],
+		values: filterValues,
 	}
 
-	ifParamName, pnOk := params["itemFilter.paramName"]
-	ifParamValue, pvOk := params["itemFilter.paramValue"]
+	pName, pnOk := params["itemFilter.paramName"]
+	pValue, pvOk := params["itemFilter.paramValue"]
 	if pnOk != pvOk {
 		return nil, ErrIncompleteItemFilterParam
 	}
 	if pnOk && pvOk {
-		filter.paramName = &ifParamName
-		filter.paramValue = &ifParamValue
+		filter.paramName = &pName
+		filter.paramValue = &pValue
 	}
 
-	err := handleItemFilterType(&filter, nil)
+	err = handleItemFilterType(&filter, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -263,29 +263,29 @@ func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error
 func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) {
 	var itemFilters []itemFilter
 	for idx := 0; ; idx++ {
-		ifName, nOk := params[fmt.Sprintf("itemFilter(%d).name", idx)]
-		if !nOk {
+		name, ok := params[fmt.Sprintf("itemFilter(%d).name", idx)]
+		if !ok {
 			break
 		}
 
-		ifValue, vOk := params[fmt.Sprintf("itemFilter(%d).value", idx)]
-		if !vOk {
-			return nil, ErrIncompleteItemFilterNameOnly
+		filterValues, err := parseItemFilterValues(params, "itemFilter")
+		if err != nil {
+			return nil, err
 		}
 
 		itemFilter := itemFilter{
-			name:  ifName,
-			value: ifValue,
+			name:   name,
+			values: filterValues,
 		}
 
-		ifParamName, pnOk := params[fmt.Sprintf("itemFilter(%d).paramName", idx)]
-		ifParamValue, pvOk := params[fmt.Sprintf("itemFilter(%d).paramValue", idx)]
+		pName, pnOk := params[fmt.Sprintf("itemFilter(%d).paramName", idx)]
+		pValue, pvOk := params[fmt.Sprintf("itemFilter(%d).paramValue", idx)]
 		if pnOk != pvOk {
 			return nil, ErrIncompleteItemFilterParam
 		}
 		if pnOk && pvOk {
-			itemFilter.paramName = &ifParamName
-			itemFilter.paramValue = &ifParamValue
+			itemFilter.paramName = &pName
+			itemFilter.paramValue = &pValue
 		}
 
 		itemFilters = append(itemFilters, itemFilter)
@@ -299,6 +299,31 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 	}
 
 	return itemFilters, nil
+}
+
+func parseItemFilterValues(params map[string]string, prefix string) ([]string, error) {
+	var filterValues []string
+	valueExists := false
+	if v, ok := params[prefix+".value"]; ok {
+		filterValues = []string{v}
+		valueExists = true
+	} else {
+		for i := 0; ; i++ {
+			key := fmt.Sprintf(prefix+".value(%d)", i)
+			if v, ok := params[key]; ok {
+				filterValues = append(filterValues, v)
+				valueExists = true
+			} else {
+				break
+			}
+		}
+	}
+
+	if !valueExists {
+		return nil, ErrIncompleteItemFilterNameOnly
+	}
+
+	return filterValues, nil
 }
 
 const (
@@ -362,33 +387,33 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, featuredOnly, freeShippingOnly, getItFastOnly,
 		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
 		worldOfGoodOnly:
-		if filter.value != trueValue && filter.value != falseValue {
-			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.value)
+		if filter.values[0] != trueValue && filter.values[0] != falseValue {
+			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values)
 		}
 	case availableTo:
-		if !isValidCountryCode(filter.value) {
-			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.value)
+		if !isValidCountryCode(filter.values[0]) {
+			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.values)
 		}
 	case condition:
-		if !isValidCondition(filter.value) {
-			return fmt.Errorf("%w: %s", ErrInvalidCondition, filter.value)
+		if !isValidCondition(filter.values[0]) {
+			return fmt.Errorf("%w: %s", ErrInvalidCondition, filter.values)
 		}
 	case currency:
-		if !isValidCurrencyID(filter.value) {
-			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, filter.value)
+		if !isValidCurrencyID(filter.values[0]) {
+			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, filter.values)
 		}
 	case endTimeFrom, endTimeTo, startTimeFrom, startTimeTo:
-		if !isValidDateTime(filter.value, true) {
-			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
+		if !isValidDateTime(filter.values[0], true) {
+			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values)
 		}
 	// TODO: Implement case excludeCategory, case excludeSeller
 	case expeditedShippingType:
-		if filter.value != "Expedited" && filter.value != "OneDayShipping" {
-			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.value)
+		if filter.values[0] != "Expedited" && filter.values[0] != "OneDayShipping" {
+			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.values)
 		}
 	case feedbackScoreMax, feedbackScoreMin:
-		if !isValidIntegerInRange(filter.value, 0) {
-			return invalidIntegerError(filter.value, 0)
+		if !isValidIntegerInRange(filter.values[0], 0) {
+			return invalidIntegerError(filter.values[0], 0)
 		}
 
 		relatedFilterName := feedbackScoreMax
@@ -398,13 +423,13 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			isCurrentMin = false
 		}
 
-		err := validateNumFilterRelationship(itemFilters, filter.name, filter.value, relatedFilterName, isCurrentMin)
+		err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
 		if err != nil {
 			return err
 		}
 	case listedIn:
-		if !isValidGlobalID(filter.value) {
-			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.value)
+		if !isValidGlobalID(filter.values[0]) {
+			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.values)
 		}
 	// TODO: Implement case listingType, case locatedIn
 	// case locatedIn:
@@ -413,8 +438,8 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 	// 		return err
 	// 	}
 	case maxBids, minBids:
-		if !isValidIntegerInRange(filter.value, 0) {
-			return invalidIntegerError(filter.value, 0)
+		if !isValidIntegerInRange(filter.values[0], 0) {
+			return invalidIntegerError(filter.values[0], 0)
 		}
 
 		relatedFilterName := maxBids
@@ -424,14 +449,14 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			isCurrentMin = false
 		}
 
-		err := validateNumFilterRelationship(itemFilters, filter.name, filter.value, relatedFilterName, isCurrentMin)
+		err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
 		if err != nil {
 			return err
 		}
 	// TODO: Implement case maxDistance
 	case maxHandlingTime:
-		if !isValidIntegerInRange(filter.value, 1) {
-			return invalidIntegerError(filter.value, 1)
+		if !isValidIntegerInRange(filter.values[0], 1) {
+			return invalidIntegerError(filter.values[0], 1)
 		}
 	case maxPrice, minPrice:
 		err := validateMinMaxPriceType(itemFilters)
@@ -439,8 +464,8 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			return err
 		}
 	case maxQuantity, minQuantity:
-		if !isValidIntegerInRange(filter.value, 1) {
-			return invalidIntegerError(filter.value, 1)
+		if !isValidIntegerInRange(filter.values[0], 1) {
+			return invalidIntegerError(filter.values[0], 1)
 		}
 
 		relatedFilterName := maxQuantity
@@ -450,32 +475,32 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			isCurrentMin = false
 		}
 
-		err := validateNumFilterRelationship(itemFilters, filter.name, filter.value, relatedFilterName, isCurrentMin)
+		err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
 		if err != nil {
 			return err
 		}
 	case modTimeFrom:
-		if !isValidDateTime(filter.value, false) {
-			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.value)
+		if !isValidDateTime(filter.values[0], false) {
+			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values)
 		}
 	case paymentMethod:
-		if !isValidPaymentMethod(filter.value) {
-			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethod, filter.value)
+		if !isValidPaymentMethod(filter.values[0]) {
+			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethod, filter.values)
 		}
 	// TODO: Implement case seller
 	case sellerBusinessType:
-		err := validateSellerBusinessType(itemFilters, filter.value)
+		err := validateSellerBusinessType(itemFilters, filter.values[0])
 		if err != nil {
 			return err
 		}
 	case topRatedSellerOnly:
-		err := validateTopRatedSellerOnly(itemFilters, filter.value)
+		err := validateTopRatedSellerOnly(itemFilters, filter.values[0])
 		if err != nil {
 			return err
 		}
 	case valueBoxInventory:
-		if filter.value != trueNum && filter.value != falseNum {
-			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventory, filter.value)
+		if filter.values[0] != trueNum && filter.values[0] != falseNum {
+			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventory, filter.values)
 		}
 	default:
 		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
@@ -576,9 +601,9 @@ func validateNumFilterRelationship(
 ) error {
 	for _, f := range itemFilters {
 		if f.name == relatedName {
-			relatedValue, err := strconv.Atoi(f.value)
+			relatedValue, err := strconv.Atoi(f.values[0])
 			if err != nil {
-				return fmt.Errorf("ebay: %w: %s", err, f.value)
+				return fmt.Errorf("ebay: %w: %s", err, f.values)
 			}
 
 			value, err := strconv.Atoi(currentValue)
@@ -642,16 +667,16 @@ func validateMinMaxPriceType(itemFilters []itemFilter) error {
 	var minPriceParam, maxPriceParam *string
 	for _, filter := range itemFilters {
 		if filter.name == maxPrice {
-			value, err := strconv.ParseFloat(filter.value, 64)
+			value, err := strconv.ParseFloat(filter.values[0], 64)
 			if err != nil {
-				return fmt.Errorf("%w: %s", ErrInvalidMaxPrice, filter.value)
+				return fmt.Errorf("%w: %s", ErrInvalidMaxPrice, filter.values)
 			}
 			maxPriceValue = value
 			maxPriceParam = filter.paramName
 		} else if filter.name == minPrice {
-			value, err := strconv.ParseFloat(filter.value, 64)
+			value, err := strconv.ParseFloat(filter.values[0], 64)
 			if err != nil {
-				return fmt.Errorf("%w: %s", ErrInvalidMinPrice, filter.value)
+				return fmt.Errorf("%w: %s", ErrInvalidMinPrice, filter.values)
 			}
 			minPriceValue = value
 			minPriceParam = filter.paramName
@@ -787,7 +812,9 @@ func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*
 
 	for idx, itemFilter := range fParams.itemFilters {
 		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
-		qry.Add(fmt.Sprintf("itemFilter(%d).value", idx), itemFilter.value)
+		for j, v := range itemFilter.values {
+			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", idx, j), v)
+		}
 
 		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)

@@ -29,7 +29,7 @@ var (
 	ErrInvalidItemFilterSyntax = errors.New(
 		"ebay: invalid item filter syntax: both itemFilter.name and itemFilter(0).name are present")
 
-	// ErrIncompleteItemFilterNameOnly is returned when an item filter is missing the 'value' parameter.
+	// ErrIncompleteItemFilterNameOnly is returned when an item filter is missing the 'values' parameter.
 	ErrIncompleteItemFilterNameOnly = errors.New("ebay: incomplete item filter: missing value")
 
 	// ErrIncompleteItemFilterParam is returned when an item filter is missing
@@ -50,47 +50,53 @@ var (
 	// ErrDecodeAPIResponse is returned when there is an error decoding the eBay Finding API response body.
 	ErrDecodeAPIResponse = errors.New("ebay: failed to decode eBay Finding API response body")
 
-	// ErrInvalidBooleanValue is returned when an item filter has an invalid boolean 'value' parameter.
+	// ErrInvalidBooleanValue is returned when an item filter has an invalid boolean 'values' parameter.
 	ErrInvalidBooleanValue = errors.New("ebay: invalid boolean item filter value, allowed values are true and false")
 
 	// ErrUnsupportedItemFilterType is returned when an item filter 'name' parameter has an unsupported type.
 	ErrUnsupportedItemFilterType = errors.New("ebay: unsupported item filter type")
 
-	// ErrInvalidCountryCode is returned when an item filter 'value' parameter contains an invalid country code.
+	// ErrInvalidCountryCode is returned when an item filter 'values' parameter contains an invalid country code.
 	ErrInvalidCountryCode = errors.New("ebay: invalid country code")
 
-	// ErrInvalidCondition is returned when an item filter 'value' parameter contains an invalid condition ID or name.
+	// ErrInvalidCondition is returned when an item filter 'values' parameter contains an invalid condition ID or name.
 	ErrInvalidCondition = errors.New("ebay: invalid condition")
 
-	// ErrInvalidCurrencyID is returned when an item filter 'value' parameter contains an invalid currency ID.
+	// ErrInvalidCurrencyID is returned when an item filter 'values' parameter contains an invalid currency ID.
 	ErrInvalidCurrencyID = errors.New("ebay: invalid currency ID")
 
-	// ErrInvalidDateTime is returned when an item filter 'value' parameter contains an invalid date time.
+	// ErrInvalidDateTime is returned when an item filter 'values' parameter contains an invalid date time.
 	ErrInvalidDateTime = errors.New("ebay: invalid date time value")
 
-	// ErrInvalidInteger is returned when an item filter 'value' parameter contains an invalid integer.
+	maxExcludeCategories = 25
+
+	// ErrMaxExcludeCategories is returned when an item filter 'values' parameter
+	// contains more categories to exclude than the maximum allowed.
+	ErrMaxExcludeCategories = fmt.Errorf("ebay: maximum categories to exclude is %d", maxExcludeCategories)
+
+	// ErrInvalidInteger is returned when an item filter 'values' parameter contains an invalid integer.
 	ErrInvalidInteger = errors.New("ebay: invalid integer")
 
 	// ErrInvalidFilterRelationship is returned when an item filter relationship is invalid.
 	ErrInvalidFilterRelationship = errors.New("ebay: invalid item filter relationship")
 
-	// ErrInvalidExpeditedShippingType is returned when an item filter 'value' parameter
+	// ErrInvalidExpeditedShippingType is returned when an item filter 'values' parameter
 	// contains an invalid expedited shipping type.
 	ErrInvalidExpeditedShippingType = errors.New("ebay: invalid expedited shipping type")
 
-	// ErrInvalidGlobalID is returned when an item filter 'value' parameter contains an invalid global ID.
+	// ErrInvalidGlobalID is returned when an item filter 'values' parameter contains an invalid global ID.
 	ErrInvalidGlobalID = errors.New("ebay: invalid global ID")
 
-	// ErrInvalidMaxPrice is returned when an item filter 'value' parameter contains an invalid maximum price.
+	// ErrInvalidMaxPrice is returned when an item filter 'values' parameter contains an invalid maximum price.
 	ErrInvalidMaxPrice = errors.New("ebay: invalid maximum price")
 
-	// ErrInvalidMinPrice is returned when an item filter 'value' parameter contains an invalid minimum price.
+	// ErrInvalidMinPrice is returned when an item filter 'values' parameter contains an invalid minimum price.
 	ErrInvalidMinPrice = errors.New("ebay: invalid minimum price")
 
-	// ErrInvalidPaymentMethod is returned when an item filter 'value' parameter contains an invalid payment method.
+	// ErrInvalidPaymentMethod is returned when an item filter 'values' parameter contains an invalid payment method.
 	ErrInvalidPaymentMethod = errors.New("ebay: invalid payment method")
 
-	// ErrInvalidSellerBusinessType is returned when an item filter 'value' parameter
+	// ErrInvalidSellerBusinessType is returned when an item filter 'values' parameter
 	// contains an invalid seller business type.
 	ErrInvalidSellerBusinessType = errors.New("ebay: invalid seller business type")
 
@@ -102,7 +108,7 @@ var (
 	ErrTopRatedSellerCannotBeUsedWithSellers = errors.New(
 		"ebay: TopRatedSellerOnly item filter cannot be used together with either the Seller or ExcludeSeller item filters")
 
-	// ErrInvalidValueBoxInventory is returned when an item filter 'value' parameter
+	// ErrInvalidValueBoxInventory is returned when an item filter 'values' parameter
 	// contains an invalid value box inventory.
 	ErrInvalidValueBoxInventory = errors.New("ebay: invalid value box inventory")
 )
@@ -406,7 +412,12 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		if !isValidDateTime(filter.values[0], true) {
 			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values)
 		}
-	// TODO: Implement case excludeCategory, case excludeSeller
+	case excludeCategory:
+		err := validateExcludeCategory(filter.values)
+		if err != nil {
+			return err
+		}
+	// TODO: Implement case excludeSeller
 	case expeditedShippingType:
 		if filter.values[0] != "Expedited" && filter.values[0] != "OneDayShipping" {
 			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.values)
@@ -581,6 +592,20 @@ func isValidDateTime(value string, future bool) bool {
 	}
 
 	return true
+}
+
+func validateExcludeCategory(values []string) error {
+	if len(values) > maxExcludeCategories {
+		return ErrMaxExcludeCategories
+	}
+
+	for _, v := range values {
+		if !isValidIntegerInRange(v, 0) {
+			return invalidIntegerError(v, 0)
+		}
+	}
+
+	return nil
 }
 
 func isValidIntegerInRange(value string, min int) bool {

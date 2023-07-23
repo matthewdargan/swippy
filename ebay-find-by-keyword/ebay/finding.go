@@ -25,7 +25,7 @@ var (
 	// either the 'aspectName' or 'aspectValueName' parameter.
 	ErrIncompleteAspectFilter = errors.New("ebay: incomplete aspect filter: aspectName and aspectValueName are required")
 
-	// ErrInvalidItemFilterSyntax is returned when both syntax types for itemFilters are used in the params.
+	// ErrInvalidItemFilterSyntax is returned when both syntax types for item filters are used in the params.
 	ErrInvalidItemFilterSyntax = errors.New(
 		"ebay: invalid item filter syntax: both itemFilter.name and itemFilter(0).name are present")
 
@@ -103,6 +103,14 @@ var (
 
 	// ErrDuplicateListingType is returned when an item filter 'values' parameter contains duplicate listing types.
 	ErrDuplicateListingType = errors.New("ebay: duplicate listing type")
+
+	// ErrBuyerPostalCodeMissing is returned when the LocalSearchOnly or MaxDistance item filter is used,
+	// but the buyerPostalCode parameter is missing in the request.
+	ErrBuyerPostalCodeMissing = errors.New("ebay: buyerPostalCode is missing")
+
+	// ErrMaxDistanceMissing is returned when the LocalSearchOnly item filter is used,
+	// but the MaxDistance item filter is missing in the request.
+	ErrMaxDistanceMissing = errors.New("ebay: MaxDistance item filter is missing when using LocalSearchOnly item filter")
 
 	maxLocatedIns = 25
 
@@ -292,7 +300,7 @@ func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error
 		filter.paramValue = &pValue
 	}
 
-	err = handleItemFilterType(&filter, nil)
+	err = handleItemFilterType(&filter, nil, params)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +340,7 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 	}
 
 	for i := range itemFilters {
-		err := handleItemFilterType(&itemFilters[i], itemFilters)
+		err := handleItemFilterType(&itemFilters[i], itemFilters, params)
 		if err != nil {
 			return nil, err
 		}
@@ -414,18 +422,17 @@ const (
 	valueBoxInventory     = "ValueBoxInventory"
 	worldOfGoodOnly       = "WorldOfGoodOnly"
 
-	trueValue  = "true"
-	falseValue = "false"
-	trueNum    = "1"
-	falseNum   = "0"
+	trueValue           = "true"
+	falseValue          = "false"
+	trueNum             = "1"
+	falseNum            = "0"
+	smallestMaxDistance = 5
 )
 
-func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
+func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params map[string]string) error {
 	switch filter.name {
-	// TODO: Refactor case localSearchOnly - add logic for only can be used with MaxDistance item filter,
-	// and the request must also specify buyerPostalCode.
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, featuredOnly, freeShippingOnly, getItFastOnly,
-		hideDuplicateItems, localPickupOnly, localSearchOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
+		hideDuplicateItems, localPickupOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
 		worldOfGoodOnly:
 		if filter.values[0] != trueValue && filter.values[0] != falseValue {
 			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values[0])
@@ -465,16 +472,18 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			return invalidIntegerError(filter.values[0], 0)
 		}
 
-		relatedFilterName := feedbackScoreMax
-		isCurrentMin := true
-		if filter.name == feedbackScoreMax {
-			relatedFilterName = feedbackScoreMin
-			isCurrentMin = false
-		}
+		if len(itemFilters) > 1 {
+			relatedFilterName := feedbackScoreMax
+			isCurrentMin := true
+			if filter.name == feedbackScoreMax {
+				relatedFilterName = feedbackScoreMin
+				isCurrentMin = false
+			}
 
-		err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
-		if err != nil {
-			return err
+			err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
+			if err != nil {
+				return err
+			}
 		}
 	case listedIn:
 		if !isValidGlobalID(filter.values[0]) {
@@ -482,6 +491,11 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 		}
 	case listingType:
 		err := validateListingTypes(filter.values)
+		if err != nil {
+			return err
+		}
+	case localSearchOnly:
+		err := validateLocalSearchOnly(itemFilters, filter.values, params)
 		if err != nil {
 			return err
 		}
@@ -495,22 +509,32 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter) error {
 			return invalidIntegerError(filter.values[0], 0)
 		}
 
-		relatedFilterName := maxBids
-		isCurrentMin := true
-		if filter.name == maxBids {
-			relatedFilterName = minBids
-			isCurrentMin = false
-		}
+		if len(itemFilters) > 1 {
+			relatedFilterName := maxBids
+			isCurrentMin := true
+			if filter.name == maxBids {
+				relatedFilterName = minBids
+				isCurrentMin = false
+			}
 
-		err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
-		if err != nil {
-			return err
+			err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
+			if err != nil {
+				return err
+			}
 		}
-	// TODO: Implement case maxDistance
+	case maxDistance:
+		if _, ok := params["buyerPostalCode"]; !ok {
+			return ErrBuyerPostalCodeMissing
+		}
+		if !isValidIntegerInRange(filter.values[0], smallestMaxDistance) {
+			return invalidIntegerError(filter.values[0], smallestMaxDistance)
+		}
 	case maxHandlingTime:
 		if !isValidIntegerInRange(filter.values[0], 1) {
 			return invalidIntegerError(filter.values[0], 1)
 		}
+	// TODO: Check use of itemFilters downwards from here.
+	// Potential misuse because of itemFilters = nil in single itemFilter case
 	case maxPrice, minPrice:
 		err := validateMinMaxPriceType(itemFilters)
 		if err != nil {
@@ -770,6 +794,31 @@ func validateListingTypes(values []string) error {
 		}
 
 		seenTypes[val] = true
+	}
+
+	return nil
+}
+
+func validateLocalSearchOnly(itemFilters []itemFilter, values []string, params map[string]string) error {
+	if _, ok := params["buyerPostalCode"]; !ok {
+		return ErrBuyerPostalCodeMissing
+	}
+
+	foundMaxDistance := false
+	for _, f := range itemFilters {
+		if f.name == maxDistance {
+			foundMaxDistance = true
+
+			break
+		}
+	}
+
+	if !foundMaxDistance {
+		return ErrMaxDistanceMissing
+	}
+
+	if values[0] != trueValue && values[0] != falseValue {
+		return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, values[0])
 	}
 
 	return nil

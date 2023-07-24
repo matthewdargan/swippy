@@ -534,8 +534,6 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 		if !isValidIntegerInRange(filter.values[0], 1) {
 			return invalidIntegerError(filter.values[0], 1)
 		}
-	// TODO: Check use of itemFilters downwards from here.
-	// Potential misuse because of itemFilters = nil in single itemFilter case
 	case maxPrice:
 		maxP, err := parsePrice(filter)
 		if err != nil {
@@ -577,16 +575,18 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return invalidIntegerError(filter.values[0], 1)
 		}
 
-		relatedFilterName := maxQuantity
-		isCurrentMin := true
-		if filter.name == maxQuantity {
-			relatedFilterName = minQuantity
-			isCurrentMin = false
-		}
+		if len(itemFilters) > 1 {
+			relatedFilterName := maxQuantity
+			isCurrentMin := true
+			if filter.name == maxQuantity {
+				relatedFilterName = minQuantity
+				isCurrentMin = false
+			}
 
-		err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
-		if err != nil {
-			return err
+			err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
+			if err != nil {
+				return err
+			}
 		}
 	case modTimeFrom:
 		if !isValidDateTime(filter.values[0], false) {
@@ -752,11 +752,11 @@ func validateNumFilterRelationship(
 				return fmt.Errorf("ebay: %w: %s", err, currentValue)
 			}
 
-			if isCurrentMin && value >= relatedValue {
+			if isCurrentMin && value > relatedValue {
 				return fmt.Errorf("%w: %s must be less than or equal to %s", ErrInvalidFilterRelationship, currentName, relatedName)
 			}
 
-			if !isCurrentMin && value <= relatedValue {
+			if !isCurrentMin && value < relatedValue {
 				return fmt.Errorf("%w: %s must be greater than or equal to %s",
 					ErrInvalidFilterRelationship, currentName, relatedName)
 			}

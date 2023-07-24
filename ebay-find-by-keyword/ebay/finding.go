@@ -118,11 +118,12 @@ var (
 	// contains more countries to locate items in than the maximum allowed.
 	ErrMaxLocatedIns = fmt.Errorf("ebay: maximum countries to locate items in is %d", maxLocatedIns)
 
-	// ErrInvalidMaxPrice is returned when an item filter 'values' parameter contains an invalid maximum price.
-	ErrInvalidMaxPrice = errors.New("ebay: invalid maximum price")
+	// ErrInvalidPrice is returned when an item filter 'values' parameter contains an invalid price.
+	ErrInvalidPrice = errors.New("ebay: invalid maximum price")
 
-	// ErrInvalidMinPrice is returned when an item filter 'values' parameter contains an invalid minimum price.
-	ErrInvalidMinPrice = errors.New("ebay: invalid minimum price")
+	// ErrInvalidPriceParamName is returned when an item filter 'paramName' parameter
+	// contains anything other than "Currency".
+	ErrInvalidPriceParamName = errors.New(`ebay: invalid price parameter name, must be "Currency"`)
 
 	// ErrInvalidPaymentMethod is returned when an item filter 'values' parameter contains an invalid payment method.
 	ErrInvalidPaymentMethod = errors.New("ebay: invalid payment method")
@@ -535,10 +536,41 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 		}
 	// TODO: Check use of itemFilters downwards from here.
 	// Potential misuse because of itemFilters = nil in single itemFilter case
-	case maxPrice, minPrice:
-		err := validateMinMaxPriceType(itemFilters)
+	case maxPrice:
+		maxP, err := parsePrice(filter)
 		if err != nil {
 			return err
+		}
+
+		for i := range itemFilters {
+			if itemFilters[i].name == minPrice {
+				minP, err := parsePrice(&itemFilters[i])
+				if err != nil {
+					return err
+				}
+
+				if maxP < minP {
+					return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidPrice)
+				}
+			}
+		}
+	case minPrice:
+		minP, err := parsePrice(filter)
+		if err != nil {
+			return err
+		}
+
+		for i := range itemFilters {
+			if itemFilters[i].name == maxPrice {
+				maxP, err := parsePrice(&itemFilters[i])
+				if err != nil {
+					return err
+				}
+
+				if minP < maxP {
+					return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidPrice)
+				}
+			}
 		}
 	case maxQuantity, minQuantity:
 		if !isValidIntegerInRange(filter.values[0], 1) {
@@ -712,7 +744,7 @@ func validateNumFilterRelationship(
 		if f.name == relatedName {
 			relatedValue, err := strconv.Atoi(f.values[0])
 			if err != nil {
-				return fmt.Errorf("ebay: %w: %s", err, f.values)
+				return fmt.Errorf("ebay: %w: %s", err, f.values[0])
 			}
 
 			value, err := strconv.Atoi(currentValue)
@@ -838,68 +870,21 @@ func validateLocatedIns(values []string) error {
 	return nil
 }
 
-func validateMinMaxPriceType(itemFilters []itemFilter) error {
-	var minPriceValue, maxPriceValue float64
-	var minPriceParam, maxPriceParam *string
-	for _, filter := range itemFilters {
-		if filter.name == maxPrice {
-			value, err := strconv.ParseFloat(filter.values[0], 64)
-			if err != nil {
-				return fmt.Errorf("%w: %s", ErrInvalidMaxPrice, filter.values)
-			}
-			maxPriceValue = value
-			maxPriceParam = filter.paramName
-		} else if filter.name == minPrice {
-			value, err := strconv.ParseFloat(filter.values[0], 64)
-			if err != nil {
-				return fmt.Errorf("%w: %s", ErrInvalidMinPrice, filter.values)
-			}
-			minPriceValue = value
-			minPriceParam = filter.paramName
-		}
+func parsePrice(filter *itemFilter) (float64, error) {
+	price, err := strconv.ParseFloat(filter.values[0], 64)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s", ErrInvalidPrice, filter.values[0])
 	}
 
-	if maxPriceValue != 0.0 && minPriceValue != 0.0 {
-		if maxPriceValue < minPriceValue {
-			return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidMaxPrice)
-		}
+	if filter.paramName != nil && *filter.paramName != currency {
+		return 0, fmt.Errorf("%w: %s", ErrInvalidPriceParamName, *filter.paramName)
 	}
 
-	if maxPriceParam != nil && minPriceParam != nil {
-		err := validateCurrencyParams(itemFilters, maxPriceParam, minPriceParam)
-		if err != nil {
-			return err
-		}
+	if !isValidCurrencyID(*filter.paramValue) {
+		return 0, fmt.Errorf("%w: %s", ErrInvalidCurrencyID, *filter.paramValue)
 	}
 
-	return nil
-}
-
-func validateCurrencyParams(itemFilters []itemFilter, maxPriceParam, minPriceParam *string) error {
-	var maxCurrencyID, minCurrencyID string
-	for _, f := range itemFilters {
-		if f.paramName != nil && f.paramValue != nil {
-			if f.paramName == maxPriceParam {
-				maxCurrencyID = *f.paramValue
-			} else if f.paramName == minPriceParam {
-				minCurrencyID = *f.paramValue
-			}
-		}
-	}
-
-	if maxCurrencyID != "" {
-		if !isValidCurrencyID(maxCurrencyID) {
-			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, maxCurrencyID)
-		}
-	}
-
-	if minCurrencyID != "" {
-		if !isValidCurrencyID(minCurrencyID) {
-			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, minCurrencyID)
-		}
-	}
-
-	return nil
+	return price, nil
 }
 
 var supportedPaymentMethods = []string{

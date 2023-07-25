@@ -460,7 +460,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return err
 		}
 	case excludeSeller:
-		err := validateExcludeSellers(itemFilters, filter.values)
+		err := validateExcludeSellers(filter.values, itemFilters)
 		if err != nil {
 			return err
 		}
@@ -469,22 +469,9 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.values[0])
 		}
 	case feedbackScoreMax, feedbackScoreMin:
-		if !isValidIntegerInRange(filter.values[0], 0) {
-			return invalidIntegerError(filter.values[0], 0)
-		}
-
-		if len(itemFilters) > 1 {
-			relatedFilterName := feedbackScoreMax
-			isCurrentMin := true
-			if filter.name == feedbackScoreMax {
-				relatedFilterName = feedbackScoreMin
-				isCurrentMin = false
-			}
-
-			err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
-			if err != nil {
-				return err
-			}
+		err := validateFeedbackScore(filter, itemFilters)
+		if err != nil {
+			return err
 		}
 	case listedIn:
 		if !isValidGlobalID(filter.values[0]) {
@@ -496,7 +483,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return err
 		}
 	case localSearchOnly:
-		err := validateLocalSearchOnly(itemFilters, filter.values, params)
+		err := validateLocalSearchOnly(filter.values, itemFilters, params)
 		if err != nil {
 			return err
 		}
@@ -597,17 +584,17 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethod, filter.values[0])
 		}
 	case seller:
-		err := validateSellers(itemFilters, filter.values)
+		err := validateSellers(filter.values, itemFilters)
 		if err != nil {
 			return err
 		}
 	case sellerBusinessType:
-		err := validateSellerBusinessType(itemFilters, filter.values[0])
+		err := validateSellerBusinessType(filter.values[0], itemFilters)
 		if err != nil {
 			return err
 		}
 	case topRatedSellerOnly:
-		err := validateTopRatedSellerOnly(itemFilters, filter.values[0])
+		err := validateTopRatedSellerOnly(filter.values[0], itemFilters)
 		if err != nil {
 			return err
 		}
@@ -710,7 +697,7 @@ func validateExcludeCategories(values []string) error {
 	return nil
 }
 
-func validateExcludeSellers(itemFilters []itemFilter, values []string) error {
+func validateExcludeSellers(values []string, itemFilters []itemFilter) error {
 	if len(values) > maxExcludeSellers {
 		return ErrMaxExcludeSellers
 	}
@@ -735,6 +722,37 @@ func isValidIntegerInRange(value string, min int) bool {
 
 func invalidIntegerError(value string, min int) error {
 	return fmt.Errorf("%w: %s (minimum value: %d)", ErrInvalidInteger, value, min)
+}
+
+func validateFeedbackScore(filter *itemFilter, itemFilters []itemFilter) error {
+	value, err := strconv.Atoi(filter.values[0])
+	if err != nil {
+		return fmt.Errorf("ebay: %w: %s", err, filter.values[0])
+	}
+	if value < 0 {
+		return invalidIntegerError(filter.values[0], 0)
+	}
+
+	relatedFilterName := feedbackScoreMax
+	if filter.name == feedbackScoreMax {
+		relatedFilterName = feedbackScoreMin
+	}
+
+	for _, f := range itemFilters {
+		if f.name == relatedFilterName {
+			relatedValue, err := strconv.Atoi(f.values[0])
+			if err != nil {
+				return fmt.Errorf("ebay: %w: %s", err, f.values[0])
+			}
+
+			if value < relatedValue {
+				return fmt.Errorf("%w: %s must be greater than or equal to %s",
+					ErrInvalidFilterRelationship, feedbackScoreMax, feedbackScoreMin)
+			}
+		}
+	}
+
+	return nil
 }
 
 func validateNumFilterRelationship(
@@ -831,7 +849,7 @@ func validateListingTypes(values []string) error {
 	return nil
 }
 
-func validateLocalSearchOnly(itemFilters []itemFilter, values []string, params map[string]string) error {
+func validateLocalSearchOnly(values []string, itemFilters []itemFilter, params map[string]string) error {
 	if _, ok := params["buyerPostalCode"]; !ok {
 		return ErrBuyerPostalCodeMissing
 	}
@@ -920,7 +938,7 @@ func isValidPaymentMethod(value string) bool {
 	return false
 }
 
-func validateSellers(itemFilters []itemFilter, values []string) error {
+func validateSellers(values []string, itemFilters []itemFilter) error {
 	if len(values) > maxSellers {
 		return ErrMaxSellers
 	}
@@ -934,7 +952,7 @@ func validateSellers(itemFilters []itemFilter, values []string) error {
 	return nil
 }
 
-func validateSellerBusinessType(itemFilters []itemFilter, value string) error {
+func validateSellerBusinessType(value string, itemFilters []itemFilter) error {
 	if value != "Business" && value != "Private" {
 		return fmt.Errorf("%w: %s", ErrInvalidSellerBusinessType, value)
 	}
@@ -953,7 +971,7 @@ func validateSellerBusinessType(itemFilters []itemFilter, value string) error {
 	return nil
 }
 
-func validateTopRatedSellerOnly(itemFilters []itemFilter, value string) error {
+func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	if value != trueValue && value != falseValue {
 		return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, value)
 	}

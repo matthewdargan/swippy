@@ -88,8 +88,8 @@ var (
 	// ErrInvalidInteger is returned when an item filter 'values' parameter contains an invalid integer.
 	ErrInvalidInteger = errors.New("ebay: invalid integer")
 
-	// ErrInvalidFilterRelationship is returned when an item filter relationship is invalid.
-	ErrInvalidFilterRelationship = errors.New("ebay: invalid item filter relationship")
+	// ErrInvalidNumericFilter is returned when a numeric item filter is invalid.
+	ErrInvalidNumericFilter = errors.New("ebay: invalid numeric item filter")
 
 	// ErrInvalidExpeditedShippingType is returned when an item filter 'values' parameter
 	// contains an invalid expedited shipping type.
@@ -469,7 +469,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.values[0])
 		}
 	case feedbackScoreMax, feedbackScoreMin:
-		err := validateFeedbackScore(filter, itemFilters)
+		err := validateNumericFilter(filter, itemFilters, 0, feedbackScoreMax, feedbackScoreMin)
 		if err != nil {
 			return err
 		}
@@ -493,22 +493,9 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return err
 		}
 	case maxBids, minBids:
-		if !isValidIntegerInRange(filter.values[0], 0) {
-			return invalidIntegerError(filter.values[0], 0)
-		}
-
-		if len(itemFilters) > 1 {
-			relatedFilterName := maxBids
-			isCurrentMin := true
-			if filter.name == maxBids {
-				relatedFilterName = minBids
-				isCurrentMin = false
-			}
-
-			err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
-			if err != nil {
-				return err
-			}
+		err := validateNumericFilter(filter, itemFilters, 0, maxBids, minBids)
+		if err != nil {
+			return err
 		}
 	case maxDistance:
 		if _, ok := params["buyerPostalCode"]; !ok {
@@ -558,22 +545,9 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			}
 		}
 	case maxQuantity, minQuantity:
-		if !isValidIntegerInRange(filter.values[0], 1) {
-			return invalidIntegerError(filter.values[0], 1)
-		}
-
-		if len(itemFilters) > 1 {
-			relatedFilterName := maxQuantity
-			isCurrentMin := true
-			if filter.name == maxQuantity {
-				relatedFilterName = minQuantity
-				isCurrentMin = false
-			}
-
-			err := validateNumFilterRelationship(itemFilters, filter.name, filter.values[0], relatedFilterName, isCurrentMin)
-			if err != nil {
-				return err
-			}
+		err := validateNumericFilter(filter, itemFilters, 1, maxQuantity, minQuantity)
+		if err != nil {
+			return err
 		}
 	case modTimeFrom:
 		if !isValidDateTime(filter.values[0], false) {
@@ -711,31 +685,20 @@ func validateExcludeSellers(values []string, itemFilters []itemFilter) error {
 	return nil
 }
 
-func isValidIntegerInRange(value string, min int) bool {
-	num, err := strconv.Atoi(value)
-	if err != nil {
-		return false
-	}
-
-	return num >= min
-}
-
-func invalidIntegerError(value string, min int) error {
-	return fmt.Errorf("%w: %s (minimum value: %d)", ErrInvalidInteger, value, min)
-}
-
-func validateFeedbackScore(filter *itemFilter, itemFilters []itemFilter) error {
+func validateNumericFilter(
+	filter *itemFilter, itemFilters []itemFilter, minAllowedValue int, filterA, filterB string,
+) error {
 	value, err := strconv.Atoi(filter.values[0])
 	if err != nil {
 		return fmt.Errorf("ebay: %w: %s", err, filter.values[0])
 	}
-	if value < 0 {
-		return invalidIntegerError(filter.values[0], 0)
+	if value < minAllowedValue {
+		return invalidIntegerError(filter.values[0], minAllowedValue)
 	}
 
-	relatedFilterName := feedbackScoreMax
-	if filter.name == feedbackScoreMax {
-		relatedFilterName = feedbackScoreMin
+	relatedFilterName := filterA
+	if filter.name == filterA {
+		relatedFilterName = filterB
 	}
 
 	for _, f := range itemFilters {
@@ -747,7 +710,7 @@ func validateFeedbackScore(filter *itemFilter, itemFilters []itemFilter) error {
 
 			if value < relatedValue {
 				return fmt.Errorf("%w: %s must be greater than or equal to %s",
-					ErrInvalidFilterRelationship, feedbackScoreMax, feedbackScoreMin)
+					ErrInvalidNumericFilter, filterA, filterB)
 			}
 		}
 	}
@@ -755,35 +718,17 @@ func validateFeedbackScore(filter *itemFilter, itemFilters []itemFilter) error {
 	return nil
 }
 
-func validateNumFilterRelationship(
-	itemFilters []itemFilter, currentName, currentValue, relatedName string, isCurrentMin bool,
-) error {
-	for _, f := range itemFilters {
-		if f.name == relatedName {
-			relatedValue, err := strconv.Atoi(f.values[0])
-			if err != nil {
-				return fmt.Errorf("ebay: %w: %s", err, f.values[0])
-			}
+func invalidIntegerError(value string, min int) error {
+	return fmt.Errorf("%w: %s (minimum value: %d)", ErrInvalidInteger, value, min)
+}
 
-			value, err := strconv.Atoi(currentValue)
-			if err != nil {
-				return fmt.Errorf("ebay: %w: %s", err, currentValue)
-			}
-
-			if isCurrentMin && value > relatedValue {
-				return fmt.Errorf("%w: %s must be less than or equal to %s", ErrInvalidFilterRelationship, currentName, relatedName)
-			}
-
-			if !isCurrentMin && value < relatedValue {
-				return fmt.Errorf("%w: %s must be greater than or equal to %s",
-					ErrInvalidFilterRelationship, currentName, relatedName)
-			}
-
-			break
-		}
+func isValidIntegerInRange(value string, min int) bool {
+	num, err := strconv.Atoi(value)
+	if err != nil {
+		return false
 	}
 
-	return nil
+	return num >= min
 }
 
 var validGlobalIDs = []string{

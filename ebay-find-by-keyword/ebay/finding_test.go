@@ -532,6 +532,56 @@ func TestValidateParams(t *testing.T) {
 			},
 			ExpectedError: ebay.ErrIncompleteItemFilterParam,
 		},
+		{
+			Name: "returns error if params contains non-numbered unsupported itemFilter name",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "UnsupportedFilter",
+				"itemFilter.value": "true",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+		},
+		{
+			Name: "returns error if params contains numbered unsupported itemFilter name",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "UnsupportedFilter",
+				"itemFilter(0).value": "true",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+		},
+		{
+			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter (value true)",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "AuthorizedSellerOnly",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter (value false)",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "AuthorizedSellerOnly",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter (value true)",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "AuthorizedSellerOnly",
+				"itemFilter(0).value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter (value false)",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "AuthorizedSellerOnly",
+				"itemFilter(0).value": "false",
+			},
+		},
 	}
 
 	for _, tc := range testCases {

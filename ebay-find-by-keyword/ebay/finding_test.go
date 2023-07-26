@@ -286,7 +286,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
-			Name: "can find items by keywords and aspectFilter",
+			Name: "can find items by aspectFilter",
 			Params: map[string]string{
 				"keywords":                     "marshmallows",
 				"aspectFilter.aspectName":      "squish level",
@@ -318,7 +318,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteAspectFilter,
 		},
 		{
-			Name: "can find items by keywords and basic, non-numbered itemFilter",
+			Name: "can find items by basic, non-numbered itemFilter with non-numbered value",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "BestOfferOnly",
@@ -326,7 +326,16 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords and non-numbered itemFilter with name, value, paramName, and paramValue",
+			Name: "can find items by basic, non-numbered itemFilter with numbered values",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ExcludeCategory",
+				"itemFilter.value(0)": "1",
+				"itemFilter.value(1)": "2",
+			},
+		},
+		{
+			Name: "can find items by non-numbered itemFilter with name, value, paramName, and paramValue",
 			Params: map[string]string{
 				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
@@ -350,6 +359,27 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name": "BestOfferOnly",
 			},
 			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+		},
+		{
+			// The numbered itemFilter.value(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains non-numbered itemFilter name and numbered value greater than 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "BestOfferOnly",
+				"itemFilter.value(1)": "true",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+		},
+		{
+			// The numbered itemFilter.value(1) will be ignored because indexing does not start at 0.
+			// Therefore, only the itemFilter.value is considered and this becomes a basic, non-numbered itemFilter.
+			Name: "can find items by basic, non-numbered itemFilter with non-numbered value and numbered value greater than 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "BestOfferOnly",
+				"itemFilter.value":    "true",
+				"itemFilter.value(1)": "true",
+			},
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
@@ -396,7 +426,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
-			Name: "returns error if params contain both numbered and non-numbered syntax types",
+			Name: "returns error if params contain numbered and non-numbered itemFilter syntax types",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter.name":     "BestOfferOnly",
@@ -407,7 +437,27 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrInvalidItemFilterSyntax,
 		},
 		{
-			Name: "can find items by keywords and basic, numbered itemFilter",
+			Name: "returns error if params contain non-numbered itemFilter with numbered and non-numbered value syntax types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ExcludeCategory",
+				"itemFilter.value":    "1",
+				"itemFilter.value(0)": "2",
+			},
+			ExpectedError: ebay.ErrInvalidItemFilterSyntax,
+		},
+		{
+			Name: "returns error if params contain numbered itemFilter with numbered and non-numbered value syntax types",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"itemFilter(0).name":     "ExcludeCategory",
+				"itemFilter(0).value":    "1",
+				"itemFilter(0).value(0)": "2",
+			},
+			ExpectedError: ebay.ErrInvalidItemFilterSyntax,
+		},
+		{
+			Name: "can find items by basic, numbered itemFilter with non-numbered value",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "BestOfferOnly",
@@ -415,7 +465,16 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords and numbered itemFilter with name, value, paramName, and paramValue",
+			Name: "can find items by basic, numbered itemFilter with numbered values",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"itemFilter(0).name":     "ExcludeCategory",
+				"itemFilter(0).value(0)": "1",
+				"itemFilter(0).value(1)": "2",
+			},
+		},
+		{
+			Name: "can find items by numbered itemFilter with name, value, paramName, and paramValue",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
@@ -425,7 +484,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords and 2 basic, numbered itemFilters",
+			Name: "can find items by 2 basic, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "BestOfferOnly",
@@ -435,7 +494,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords, 1st advanced, numbered and 2nd basic, numbered itemFilters",
+			Name: "can find items by 1st advanced, numbered and 2nd basic, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
@@ -447,7 +506,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords, 1st basic, numbered and 2nd advanced, numbered itemFilters",
+			Name: "can find items by 1st basic, numbered and 2nd advanced, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "BestOfferOnly",
@@ -459,7 +518,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by keywords and 2 advanced, numbered itemFilters",
+			Name: "can find items by 2 advanced, numbered itemFilters",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MinPrice",
@@ -487,6 +546,27 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(0).name": "BestOfferOnly",
 			},
 			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+		},
+		{
+			// The numbered itemFilter(0).value(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains numbered itemFilter name and numbered value greater than 0",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"itemFilter(0).name":     "BestOfferOnly",
+				"itemFilter(0).value(1)": "true",
+			},
+			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+		},
+		{
+			// The numbered itemFilter(0).value(1) will be ignored because indexing does not start at 0.
+			// Therefore, only the itemFilter(0).value is considered and this becomes a basic, numbered itemFilter.
+			Name: "can find items by basic, numbered itemFilter with non-numbered value and numbered value greater than 0",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"itemFilter(0).name":     "BestOfferOnly",
+				"itemFilter(0).value":    "true",
+				"itemFilter(0).value(1)": "true",
+			},
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
@@ -551,7 +631,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
-			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter (value true)",
+			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter.value=true",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "AuthorizedSellerOnly",
@@ -559,7 +639,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter (value false)",
+			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter.value=false",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "AuthorizedSellerOnly",
@@ -567,7 +647,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter (value true)",
+			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter.value=true",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "AuthorizedSellerOnly",
@@ -575,7 +655,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter (value false)",
+			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter.value=false",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "AuthorizedSellerOnly",
@@ -603,6 +683,7 @@ func TestValidateParams(t *testing.T) {
 			resp, err := svr.FindItemsByKeywords(testCase.Params, appID)
 
 			if testCase.ExpectedError != nil {
+				assertError(t, err)
 				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
 				assertStatusCodeEquals(t, err, http.StatusBadRequest)
 			} else {

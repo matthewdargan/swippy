@@ -26,8 +26,7 @@ var (
 	ErrIncompleteAspectFilter = errors.New("ebay: incomplete aspect filter: aspectName and aspectValueName are required")
 
 	// ErrInvalidItemFilterSyntax is returned when both syntax types for item filters are used in the params.
-	ErrInvalidItemFilterSyntax = errors.New(
-		"ebay: invalid item filter syntax: both itemFilter.name and itemFilter(0).name are present")
+	ErrInvalidItemFilterSyntax = errors.New("ebay: invalid item filter syntax: both syntax types are present")
 
 	// ErrIncompleteItemFilterNameOnly is returned when an item filter is missing the 'values' parameter.
 	ErrIncompleteItemFilterNameOnly = errors.New("ebay: incomplete item filter: missing value")
@@ -37,9 +36,6 @@ var (
 	// are required when either one is specified.
 	ErrIncompleteItemFilterParam = errors.New(
 		"ebay: incomplete item filter: both paramName and paramValue must be specified together")
-
-	// ErrCreateRequest is returned when there is a failure to create a new HTTP request with the provided URL.
-	ErrCreateRequest = errors.New("ebay: failed to create new HTTP request with URL")
 
 	// ErrFailedRequest is returned when the eBay Finding API request fails.
 	ErrFailedRequest = errors.New("ebay: failed to perform eBay Finding API request")
@@ -264,10 +260,9 @@ func (svr *FindingServer) validateParams(params map[string]string) (*findingPara
 }
 
 func (svr *FindingServer) processItemFilters(params map[string]string) ([]itemFilter, error) {
+	// Check if both "itemFilter.name" and "itemFilter(0).name" syntax types occur in the params.
 	_, nonNumberedExists := params["itemFilter.name"]
 	_, numberedExists := params["itemFilter(0).name"]
-
-	// Check if both syntax types occur in the params.
 	if nonNumberedExists && numberedExists {
 		return nil, ErrInvalidItemFilterSyntax
 	}
@@ -352,24 +347,28 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 
 func parseItemFilterValues(params map[string]string, prefix string) ([]string, error) {
 	var filterValues []string
-	valueExists := false
-	if v, ok := params[prefix+".value"]; ok {
-		filterValues = []string{v}
-		valueExists = true
-	} else {
-		for i := 0; ; i++ {
-			key := fmt.Sprintf(prefix+".value(%d)", i)
-			if v, ok := params[key]; ok {
-				filterValues = append(filterValues, v)
-				valueExists = true
-			} else {
-				break
-			}
+	for i := 0; ; i++ {
+		key := fmt.Sprintf(prefix+".value(%d)", i)
+		if v, ok := params[key]; ok {
+			filterValues = append(filterValues, v)
+		} else {
+			break
 		}
 	}
 
-	if !valueExists {
+	if v, ok := params[prefix+".value"]; ok {
+		filterValues = append(filterValues, v)
+	}
+
+	if len(filterValues) == 0 {
 		return nil, ErrIncompleteItemFilterNameOnly
+	}
+
+	// Check if both "itemFilter.value" and "itemFilter.value(0)" syntax types occur in the params.
+	_, nonNumberedExists := params[prefix+".value"]
+	_, numberedExists := params[prefix+".value(0)"]
+	if nonNumberedExists && numberedExists {
+		return nil, ErrInvalidItemFilterSyntax
 	}
 
 	return filterValues, nil
@@ -933,7 +932,7 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrCreateRequest, err)
+		return nil, fmt.Errorf("ebay: %w", err)
 	}
 
 	qry := req.URL.Query()

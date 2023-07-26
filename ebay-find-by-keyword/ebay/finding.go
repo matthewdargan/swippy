@@ -317,7 +317,7 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 			break
 		}
 
-		filterValues, err := parseItemFilterValues(params, "itemFilter")
+		filterValues, err := parseItemFilterValues(params, fmt.Sprintf("itemFilter(%d)", idx))
 		if err != nil {
 			return nil, err
 		}
@@ -521,7 +521,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 					return err
 				}
 
-				if maxP < minP {
+				if minP > maxP {
 					return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidPrice)
 				}
 			}
@@ -539,7 +539,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 					return err
 				}
 
-				if minP < maxP {
+				if minP > maxP {
 					return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidPrice)
 				}
 			}
@@ -843,7 +843,7 @@ func parsePrice(filter *itemFilter) (float64, error) {
 		return 0, fmt.Errorf("%w: %s", ErrInvalidPriceParamName, *filter.paramName)
 	}
 
-	if !isValidCurrencyID(*filter.paramValue) {
+	if filter.paramValue != nil && !isValidCurrencyID(*filter.paramValue) {
 		return 0, fmt.Errorf("%w: %s", ErrInvalidCurrencyID, *filter.paramValue)
 	}
 

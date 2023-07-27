@@ -675,8 +675,8 @@ func validateExcludeSellers(values []string, itemFilters []itemFilter) error {
 		return ErrMaxExcludeSellers
 	}
 
-	for _, f := range itemFilters {
-		if f.name == seller || f.name == topRatedSellerOnly {
+	for _, flt := range itemFilters {
+		if flt.name == seller || flt.name == topRatedSellerOnly {
 			return ErrExcludeSellerCannotBeUsedWithSellers
 		}
 	}
@@ -691,27 +691,29 @@ func validateNumericFilter(
 	if err != nil {
 		return fmt.Errorf("ebay: %w: %s", err, filter.values[0])
 	}
-	if value < minAllowedValue {
+	if minAllowedValue > value {
 		return invalidIntegerError(filter.values[0], minAllowedValue)
 	}
 
-	relatedFilterName := filterA
-	if filter.name == filterA {
-		relatedFilterName = filterB
+	var filterAValue, filterBValue *int
+	for _, flt := range itemFilters {
+		if flt.name == filterA {
+			val, err := strconv.Atoi(flt.values[0])
+			if err != nil {
+				return fmt.Errorf("ebay: %w: %s", err, flt.values[0])
+			}
+			filterAValue = &val
+		} else if flt.name == filterB {
+			val, err := strconv.Atoi(flt.values[0])
+			if err != nil {
+				return fmt.Errorf("ebay: %w: %s", err, flt.values[0])
+			}
+			filterBValue = &val
+		}
 	}
 
-	for _, f := range itemFilters {
-		if f.name == relatedFilterName {
-			relatedValue, err := strconv.Atoi(f.values[0])
-			if err != nil {
-				return fmt.Errorf("ebay: %w: %s", err, f.values[0])
-			}
-
-			if value < relatedValue {
-				return fmt.Errorf("%w: %s must be greater than or equal to %s",
-					ErrInvalidNumericFilter, filterA, filterB)
-			}
-		}
+	if filterAValue != nil && filterBValue != nil && *filterBValue > *filterAValue {
+		return fmt.Errorf("%w: %s must be greater than or equal to %s", ErrInvalidNumericFilter, filterA, filterB)
 	}
 
 	return nil
@@ -799,8 +801,8 @@ func validateLocalSearchOnly(values []string, itemFilters []itemFilter, params m
 	}
 
 	foundMaxDistance := false
-	for _, f := range itemFilters {
-		if f.name == maxDistance {
+	for _, flt := range itemFilters {
+		if flt.name == maxDistance {
 			foundMaxDistance = true
 
 			break
@@ -887,8 +889,8 @@ func validateSellers(values []string, itemFilters []itemFilter) error {
 		return ErrMaxSellers
 	}
 
-	for _, f := range itemFilters {
-		if f.name == excludeSeller || f.name == topRatedSellerOnly {
+	for _, flt := range itemFilters {
+		if flt.name == excludeSeller || flt.name == topRatedSellerOnly {
 			return ErrSellerCannotBeUsedWithOtherSellers
 		}
 	}
@@ -902,8 +904,8 @@ func validateSellerBusinessType(value string, itemFilters []itemFilter) error {
 	}
 
 	cnt := 0
-	for _, f := range itemFilters {
-		if f.name == sellerBusinessType {
+	for _, flt := range itemFilters {
+		if flt.name == sellerBusinessType {
 			cnt++
 		}
 	}
@@ -920,8 +922,8 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 		return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, value)
 	}
 
-	for _, f := range itemFilters {
-		if f.name == seller || f.name == excludeSeller {
+	for _, flt := range itemFilters {
+		if flt.name == seller || flt.name == excludeSeller {
 			return ErrTopRatedSellerCannotBeUsedWithSellers
 		}
 	}

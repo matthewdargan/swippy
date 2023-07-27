@@ -613,7 +613,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
-			Name: "returns error if params contains non-numbered unsupported itemFilter name",
+			Name: "returns error if params contains non-numbered, unsupported itemFilter name",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "UnsupportedFilter",
@@ -622,7 +622,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
-			Name: "returns error if params contains numbered unsupported itemFilter name",
+			Name: "returns error if params contains numbered, unsupported itemFilter name",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "UnsupportedFilter",
@@ -631,7 +631,18 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
-			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter.value=true",
+			Name: "returns error if params contains numbered supported and unsupported itemFilter names",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "BestOfferOnly",
+				"itemFilter(0).value": "true",
+				"itemFilter(1).name":  "UnsupportedFilter",
+				"itemFilter(1).value": "true",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+		},
+		{
+			Name: "can find items if params contains AuthorizedSellerOnly itemFilter.value=true",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "AuthorizedSellerOnly",
@@ -639,7 +650,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items if params contains non-numbered AuthorizedSellerOnly itemFilter.value=false",
+			Name: "can find items if params contains AuthorizedSellerOnly itemFilter.value=false",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "AuthorizedSellerOnly",
@@ -647,20 +658,447 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter.value=true",
+			Name: "returns error if params contains AuthorizedSellerOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
-				"itemFilter(0).name":  "AuthorizedSellerOnly",
-				"itemFilter(0).value": "true",
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "AuthorizedSellerOnly",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contains valid AvailableTo itemFilter",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "AvailableTo",
+				"itemFilter.value": "US",
 			},
 		},
 		{
-			Name: "can find items if params contains numbered AuthorizedSellerOnly itemFilter.value=false",
+			Name: "returns error if params contains AvailableTo itemFilter with lowercase characters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
-				"itemFilter(0).name":  "AuthorizedSellerOnly",
-				"itemFilter(0).value": "false",
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "AvailableTo",
+				"itemFilter.value": "us",
 			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "us"),
+		},
+		{
+			Name: "returns error if params contains AvailableTo itemFilter with 1 uppercase character",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "AvailableTo",
+				"itemFilter.value": "U",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "U"),
+		},
+		{
+			Name: "returns error if params contains AvailableTo itemFilter with 3 uppercase character",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "AvailableTo",
+				"itemFilter.value": "USA",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "USA"),
+		},
+		{
+			Name: "can find items if params contains BestOfferOnly itemFilter.value=true",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains BestOfferOnly itemFilter.value=false",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains BestOfferOnly itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contains CharityOnly itemFilter.value=true",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "CharityOnly",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains CharityOnly itemFilter.value=false",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "CharityOnly",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains CharityOnly itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "CharityOnly",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition name",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "dirty",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 1000",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "1000",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 1500",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "1500",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 1750",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "1750",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 2000",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "2000",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 2010",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "2010",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 2020",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "2020",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 2030",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "2030",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 2500",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "2500",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 2750",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "2750",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 3000",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "3000",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 4000",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "4000",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 5000",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "5000",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 6000",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "6000",
+			},
+		},
+		{
+			Name: "can find items if params contains Condition itemFilter with condition ID 7000",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "7000",
+			},
+		},
+		{
+			Name: "returns error if params contains Condition itemFilter with condition ID 1",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Condition",
+				"itemFilter.value": "1",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCondition, "1"),
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID AUD",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "AUD",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID CAD",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "CAD",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID CHF",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "CHF",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID CNY",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "CNY",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID EUR",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "EUR",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID GBP",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "GBP",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID HKD",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "HKD",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID INR",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "INR",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID MYR",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "MYR",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID PHP",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "PHP",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID PLN",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "PLN",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID SEK",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "SEK",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID SGD",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "SGD",
+			},
+		},
+		{
+			Name: "can find items if params contains Currency itemFilter with currency ID TWD",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "TWD",
+			},
+		},
+		{
+			Name: "returns error if params contains Currency itemFilter with currency ID ZZZ",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "Currency",
+				"itemFilter.value": "ZZZ",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+		},
+		{
+			Name: "can find items if params contains EndTimeFrom itemFilter with future timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeFrom",
+				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+			},
+		},
+		{
+			Name: "returns error if params contains EndTimeFrom itemFilter with non-parsable value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeFrom",
+				"itemFilter.value": "not a timestamp",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+		},
+		{
+			Name: "returns error if params contains EndTimeFrom itemFilter with non-UTC timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeFrom",
+				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+		},
+		{
+			Name: "returns error if params contains EndTimeFrom itemFilter with past timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeFrom",
+				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
+		},
+		{
+			Name: "can find items if params contains EndTimeTo itemFilter with future timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeTo",
+				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+			},
+		},
+		{
+			Name: "returns error if params contains EndTimeTo itemFilter with non-parsable value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeTo",
+				"itemFilter.value": "not a timestamp",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+		},
+		{
+			Name: "returns error if params contains EndTimeTo itemFilter with non-UTC timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeTo",
+				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+		},
+		{
+			Name: "returns error if params contains EndTimeTo itemFilter with past timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "EndTimeTo",
+				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
+		},
+		{
+			Name: "can find items if params contains ExcludeAutoPay itemFilter.value=true",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ExcludeAutoPay",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains ExcludeAutoPay itemFilter.value=false",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ExcludeAutoPay",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains ExcludeAutoPay itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ExcludeAutoPay",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
 		},
 	}
 

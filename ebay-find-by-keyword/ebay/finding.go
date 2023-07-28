@@ -389,11 +389,9 @@ const (
 	excludeCategory       = "ExcludeCategory"
 	excludeSeller         = "ExcludeSeller"
 	expeditedShippingType = "ExpeditedShippingType"
-	featuredOnly          = "FeaturedOnly"
 	feedbackScoreMax      = "FeedbackScoreMax"
 	feedbackScoreMin      = "FeedbackScoreMin"
 	freeShippingOnly      = "FreeShippingOnly"
-	getItFastOnly         = "GetItFastOnly"
 	hideDuplicateItems    = "HideDuplicateItems"
 	listedIn              = "ListedIn"
 	listingType           = "ListingType"
@@ -431,9 +429,8 @@ const (
 
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params map[string]string) error {
 	switch filter.name {
-	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, featuredOnly, freeShippingOnly, getItFastOnly,
-		hideDuplicateItems, localPickupOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly,
-		worldOfGoodOnly:
+	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, freeShippingOnly, hideDuplicateItems,
+		localPickupOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly, worldOfGoodOnly:
 		if filter.values[0] != trueValue && filter.values[0] != falseValue {
 			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values[0])
 		}

@@ -1734,6 +1734,241 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("ebay: %s: %w: %s",
 				`strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax, "not a maximum"),
 		},
+		{
+			Name: "can find items if params contains FreeShippingOnly itemFilter.value=true",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "FreeShippingOnly",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains FreeShippingOnly itemFilter.value=false",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "FreeShippingOnly",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains FreeShippingOnly itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "FreeShippingOnly",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contains HideDuplicateItems itemFilter.value=true",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "HideDuplicateItems",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains HideDuplicateItems itemFilter.value=false",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "HideDuplicateItems",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains HideDuplicateItems itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "HideDuplicateItems",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-AT",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-AT",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-AU",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-AU",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-CH",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-CH",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-DE",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-DE",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-ENCA",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-ENCA",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-ES",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-ES",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-FR",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-FR",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-FRBE",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-FRBE",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-FRCA",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-FRCA",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-GB",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-GB",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-HK",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-HK",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-IE",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-IE",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-IN",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-IN",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-IT",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-IT",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-MOTOR",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-MOTOR",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-MY",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-MY",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-NL",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-NL",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-NLBE",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-NLBE",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-PH",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-PH",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-PL",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-PL",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-SG",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-SG",
+			},
+		},
+		{
+			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-US",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-US",
+			},
+		},
+		{
+			Name: "returns error if params contains ListedIn itemFilter with Global ID EBAY-ZZZ",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListedIn",
+				"itemFilter.value": "EBAY-ZZZ",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidGlobalID, "EBAY-ZZZ"),
+		},
 	}
 
 	for _, tc := range testCases {

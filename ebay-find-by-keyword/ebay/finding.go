@@ -94,11 +94,19 @@ var (
 	// ErrInvalidGlobalID is returned when an item filter 'values' parameter contains an invalid global ID.
 	ErrInvalidGlobalID = errors.New("ebay: invalid global ID")
 
+	// ErrInvalidAllListingType is returned when an item filter 'values' parameter
+	// contains the 'All' listing type and other listing types.
+	ErrInvalidAllListingType = errors.New("ebay: 'All' listing type cannot be combined with other listing types")
+
 	// ErrInvalidListingType is returned when an item filter 'values' parameter contains an invalid listing type.
 	ErrInvalidListingType = errors.New("ebay: invalid listing type")
 
 	// ErrDuplicateListingType is returned when an item filter 'values' parameter contains duplicate listing types.
 	ErrDuplicateListingType = errors.New("ebay: duplicate listing type")
+
+	// ErrInvalidAuctionListingTypes is returned when an item filter 'values' parameter
+	// contains both 'Auction' and 'AuctionWithBIN' listing types.
+	ErrInvalidAuctionListingTypes = errors.New("ebay: 'Auction' and 'AuctionWithBIN' listing types cannot be combined")
 
 	// ErrBuyerPostalCodeMissing is returned when the LocalSearchOnly or MaxDistance item filter is used,
 	// but the buyerPostalCode parameter is missing in the request.
@@ -120,6 +128,10 @@ var (
 	// ErrInvalidPriceParamName is returned when an item filter 'paramName' parameter
 	// contains anything other than "Currency".
 	ErrInvalidPriceParamName = errors.New(`ebay: invalid price parameter name, must be "Currency"`)
+
+	// ErrInvalidMaxPrice is returned when an item filter 'values' parameter
+	// contains a maximum price less than a minimum price.
+	ErrInvalidMaxPrice = errors.New("ebay: maximum price must be greater than or equal to minimum price")
 
 	// ErrInvalidPaymentMethod is returned when an item filter 'values' parameter contains an invalid payment method.
 	ErrInvalidPaymentMethod = errors.New("ebay: invalid payment method")
@@ -518,7 +530,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 				}
 
 				if minP > maxP {
-					return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidPrice)
+					return ErrInvalidMaxPrice
 				}
 			}
 		}
@@ -536,7 +548,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 				}
 
 				if minP > maxP {
-					return fmt.Errorf("%w: maximum price must be greater than or equal to minimum price", ErrInvalidPrice)
+					return ErrInvalidMaxPrice
 				}
 			}
 		}
@@ -768,12 +780,21 @@ var validListingTypes = []string{"Auction", "AuctionWithBIN", "Classified", "Fix
 
 func validateListingTypes(values []string) error {
 	seenTypes := make(map[string]bool)
-
+	hasAuction, hasAuctionWithBIN := false, false
 	for _, val := range values {
+		if val == "All" && len(values) > 1 {
+			return ErrInvalidAllListingType
+		}
+
 		found := false
 		for _, lt := range validListingTypes {
 			if val == lt {
 				found = true
+				if val == "Auction" {
+					hasAuction = true
+				} else if val == "AuctionWithBIN" {
+					hasAuctionWithBIN = true
+				}
 
 				break
 			}
@@ -784,6 +805,9 @@ func validateListingTypes(values []string) error {
 		}
 		if seenTypes[val] {
 			return fmt.Errorf("%w: %s", ErrDuplicateListingType, val)
+		}
+		if hasAuction && hasAuctionWithBIN {
+			return ErrInvalidAuctionListingTypes
 		}
 
 		seenTypes[val] = true

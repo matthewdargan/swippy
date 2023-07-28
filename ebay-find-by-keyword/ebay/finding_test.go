@@ -1969,6 +1969,123 @@ func TestValidateParams(t *testing.T) {
 			},
 			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidGlobalID, "EBAY-ZZZ"),
 		},
+		{
+			Name: "can find items if params contains ListingType itemFilter with listing type Auction",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "Auction",
+			},
+		},
+		{
+			Name: "can find items if params contains ListingType itemFilter with listing type AuctionWithBIN",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "AuctionWithBIN",
+			},
+		},
+		{
+			Name: "can find items if params contains ListingType itemFilter with listing type Classified",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "Classified",
+			},
+		},
+		{
+			Name: "can find items if params contains ListingType itemFilter with listing type FixedPrice",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "FixedPrice",
+			},
+		},
+		{
+			Name: "can find items if params contains ListingType itemFilter with listing type StoreInventory",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "StoreInventory",
+			},
+		},
+		{
+			Name: "can find items if params contains ListingType itemFilter with listing type All",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "All",
+			},
+		},
+		{
+			Name: "returns error if params contains ListingType itemFilter with invalid listing type",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "not a listing type",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidListingType, "not a listing type"),
+		},
+		{
+			Name: "returns error if params contains ListingType itemFilters with All and Auction listing types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ListingType",
+				"itemFilter.value(0)": "All",
+				"itemFilter.value(1)": "Auction",
+			},
+			ExpectedError: ebay.ErrInvalidAllListingType,
+		},
+		{
+			Name: "returns error if params contains ListingType itemFilters with StoreInventory and All listing types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ListingType",
+				"itemFilter.value(0)": "StoreInventory",
+				"itemFilter.value(1)": "All",
+			},
+			ExpectedError: ebay.ErrInvalidAllListingType,
+		},
+		{
+			Name: "returns error if params contains ListingType itemFilters with 2 Auction listing types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ListingType",
+				"itemFilter.value(0)": "Auction",
+				"itemFilter.value(1)": "Auction",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrDuplicateListingType, "Auction"),
+		},
+		{
+			Name: "returns error if params contains ListingType itemFilters with 2 StoreInventory listing types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ListingType",
+				"itemFilter.value(0)": "StoreInventory",
+				"itemFilter.value(1)": "StoreInventory",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrDuplicateListingType, "StoreInventory"),
+		},
+		{
+			Name: "returns error if params contains ListingType itemFilters with Auction and AuctionWithBIN listing types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ListingType",
+				"itemFilter.value(0)": "Auction",
+				"itemFilter.value(1)": "AuctionWithBIN",
+			},
+			ExpectedError: ebay.ErrInvalidAuctionListingTypes,
+		},
+		{
+			Name: "returns error if params contains ListingType itemFilters with AuctionWithBIN and Auction listing types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "ListingType",
+				"itemFilter.value(0)": "AuctionWithBIN",
+				"itemFilter.value(1)": "Auction",
+			},
+			ExpectedError: ebay.ErrInvalidAuctionListingTypes,
+		},
 	}
 
 	for _, tc := range testCases {

@@ -3342,6 +3342,78 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("%w: %s",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
+		{
+			Name: "can find items if params contains TopRatedSellerOnly itemFilter.value=true",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "TopRatedSellerOnly",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains TopRatedSellerOnly itemFilter.value=false",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "TopRatedSellerOnly",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains TopRatedSellerOnly itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "TopRatedSellerOnly",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "returns error if params contains TopRatedSellerOnly and Seller itemFilters",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "TopRatedSellerOnly",
+				"itemFilter(0).value": "true",
+				"itemFilter(1).name":  "Seller",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: ebay.ErrTopRatedSellerCannotBeUsedWithSellers,
+		},
+		{
+			Name: "returns error if params contains TopRatedSellerOnly and ExcludeSeller itemFilters",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "TopRatedSellerOnly",
+				"itemFilter(0).value": "true",
+				"itemFilter(1).name":  "ExcludeSeller",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: ebay.ErrTopRatedSellerCannotBeUsedWithSellers,
+		},
+		{
+			Name: "can find items if params contains ValueBoxInventory itemFilter.value=1",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ValueBoxInventory",
+				"itemFilter.value": "1",
+			},
+		},
+		{
+			Name: "can find items if params contains ValueBoxInventory itemFilter.value=0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ValueBoxInventory",
+				"itemFilter.value": "0",
+			},
+		},
+		{
+			Name: "returns error if params contains ValueBoxInventory itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ValueBoxInventory",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidValueBoxInventory, "123"),
+		},
 	}
 
 	for _, tc := range testCases {

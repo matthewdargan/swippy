@@ -133,12 +133,9 @@ var (
 	// contains a maximum price less than a minimum price.
 	ErrInvalidMaxPrice = errors.New("ebay: maximum price must be greater than or equal to minimum price")
 
-	// ErrInvalidPaymentMethod is returned when an item filter 'values' parameter contains an invalid payment method.
-	ErrInvalidPaymentMethod = errors.New("ebay: invalid payment method")
-
 	maxSellers = 100
 
-	// ErrMaxExcludeSellers is returned when an item filter 'values' parameter
+	// ErrMaxSellers is returned when an item filter 'values' parameter
 	// contains more categories to include than the maximum allowed.
 	ErrMaxSellers = fmt.Errorf("ebay: maximum sellers to include is %d", maxExcludeSellers)
 
@@ -191,7 +188,7 @@ func (e *APIError) Error() string {
 	return e.Err
 }
 
-// FindItemsByKeywords searches the eBay Finding API using provided keywords.
+// FindItemsByKeywords searches the eBay Finding API using the provided parameters and a valid eBay application ID.
 func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) (*SearchResponse, error) {
 	fParams, err := svr.validateParams(params)
 	if err != nil {
@@ -388,7 +385,7 @@ func parseItemFilterValues(params map[string]string, prefix string) ([]string, e
 }
 
 const (
-	// ItemFilterType values from the eBay documentation.
+	// ItemFilterType enumeration values from the eBay documentation.
 	// See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html
 	authorizedSellerOnly  = "AuthorizedSellerOnly"
 	availableTo           = "AvailableTo"
@@ -421,7 +418,6 @@ const (
 	minPrice              = "MinPrice"
 	minQuantity           = "MinQuantity"
 	modTimeFrom           = "ModTimeFrom"
-	paymentMethod         = "PaymentMethod"
 	returnsAcceptedOnly   = "ReturnsAcceptedOnly"
 	seller                = "Seller"
 	sellerBusinessType    = "SellerBusinessType"
@@ -528,10 +524,6 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 	case modTimeFrom:
 		if !isValidDateTime(filter.values[0], false) {
 			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values[0])
-		}
-	case paymentMethod:
-		if !isValidPaymentMethod(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidPaymentMethod, filter.values[0])
 		}
 	case seller:
 		err := validateSellers(filter.values, itemFilters)
@@ -709,6 +701,8 @@ func isValidIntegerInRange(value string, min int) bool {
 	return num >= min
 }
 
+// Valid Global ID values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html
 var validGlobalIDs = []string{
 	"EBAY-AT",
 	"EBAY-AU",
@@ -744,6 +738,8 @@ func isValidGlobalID(value string) bool {
 	return false
 }
 
+// Valid Listing Type values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html#ListingType
 var validListingTypes = []string{"Auction", "AuctionWithBIN", "Classified", "FixedPrice", "StoreInventory", "All"}
 
 func validateListingTypes(values []string) error {
@@ -873,39 +869,6 @@ func parsePrice(filter *itemFilter) (float64, error) {
 	}
 
 	return price, nil
-}
-
-var supportedPaymentMethods = []string{
-	"AmEx",
-	"CashOnPickup",
-	"CCAccepted",
-	"COD",
-	"CreditCard",
-	"CustomCode",
-	"DirectDebit",
-	"Discover",
-	"ELV",
-	"LoanCheck",
-	"MOCC",
-	"MoneyXferAccepted",
-	"MoneyXferAcceptedInCheckout",
-	"None",
-	"Other",
-	"OtherOnlinePayments",
-	"PaymentSeeDescription",
-	"PayPal",
-	"PersonalCheck",
-	"VisaMC",
-}
-
-func isValidPaymentMethod(value string) bool {
-	for _, method := range supportedPaymentMethods {
-		if value == method {
-			return true
-		}
-	}
-
-	return false
 }
 
 func validateSellers(values []string, itemFilters []itemFilter) error {

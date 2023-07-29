@@ -3160,7 +3160,6 @@ func TestValidateParams(t *testing.T) {
 			},
 			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
 		},
-
 		{
 			Name: "can find items if params contains Seller itemFilter with seller ID 0",
 			Params: map[string]string{
@@ -3208,6 +3207,140 @@ func TestValidateParams(t *testing.T) {
 			Name:          "returns error if params contains Seller itemFilter with 101 seller IDs",
 			Params:        generateFilterParams("Seller", 101),
 			ExpectedError: ebay.ErrMaxSellers,
+		},
+		{
+			Name: "can find items if params contains SellerBusinessType itemFilter with Business type",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "SellerBusinessType",
+				"itemFilter.value": "Business",
+			},
+		},
+		{
+			Name: "can find items if params contains SellerBusinessType itemFilter with Private type",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "SellerBusinessType",
+				"itemFilter.value": "Private",
+			},
+		},
+		{
+			Name: "returns error if params contains SellerBusinessType itemFilter with NotBusiness type",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "SellerBusinessType",
+				"itemFilter.value": "NotBusiness",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidSellerBusinessType, "NotBusiness"),
+		},
+		{
+			Name: "returns error if params contains SellerBusinessType itemFilter with Business and Private types",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter.name":     "SellerBusinessType",
+				"itemFilter.value(0)": "Business",
+				"itemFilter.value(1)": "Private",
+			},
+			ExpectedError: ebay.ErrMultipleSellerBusinessTypes,
+		},
+		{
+			Name: "can find items if params contains SoldItemsOnly itemFilter.value=true",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "SoldItemsOnly",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains SoldItemsOnly itemFilter.value=false",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "SoldItemsOnly",
+				"itemFilter.value": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains SoldItemsOnly itemFilter with non-boolean value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "SoldItemsOnly",
+				"itemFilter.value": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contains StartTimeFrom itemFilter with future timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeFrom",
+				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+			},
+		},
+		{
+			Name: "returns error if params contains StartTimeFrom itemFilter with unparsable value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeFrom",
+				"itemFilter.value": "not a timestamp",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+		},
+		{
+			Name: "returns error if params contains StartTimeFrom itemFilter with non-UTC timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeFrom",
+				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+		},
+		{
+			Name: "returns error if params contains StartTimeFrom itemFilter with past timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeFrom",
+				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
+		},
+		{
+			Name: "can find items if params contains StartTimeTo itemFilter with future timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeTo",
+				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+			},
+		},
+		{
+			Name: "returns error if params contains StartTimeTo itemFilter with unparsable value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeTo",
+				"itemFilter.value": "not a timestamp",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+		},
+		{
+			Name: "returns error if params contains StartTimeTo itemFilter with non-UTC timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeTo",
+				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+		},
+		{
+			Name: "returns error if params contains StartTimeTo itemFilter with past timestamp",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "StartTimeTo",
+				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
+			},
+			ExpectedError: fmt.Errorf("%w: %s",
+				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 	}
 

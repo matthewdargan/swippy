@@ -147,12 +147,13 @@ var (
 	ErrSellerCannotBeUsedWithOtherSellers = errors.New(
 		"ebay: Seller item filter cannot be used together with either the ExcludeSeller or TopRatedSellerOnly item filters")
 
+	// ErrMultipleSellerBusinessTypes is returned when an item filter 'values' parameter
+	// contains multiple seller business types.
+	ErrMultipleSellerBusinessTypes = errors.New("ebay: multiple seller business types found")
+
 	// ErrInvalidSellerBusinessType is returned when an item filter 'values' parameter
 	// contains an invalid seller business type.
 	ErrInvalidSellerBusinessType = errors.New("ebay: invalid seller business type")
-
-	// ErrMultipleSellerBusinessType is returned when multiple item filters contain seller business types.
-	ErrMultipleSellerBusinessType = errors.New("ebay: multiple sellerBusinessType types found")
 
 	// ErrTopRatedSellerCannotBeUsedWithSellers is returned when there is an attempt to use
 	// the TopRatedSellerOnly item filter together with either the Seller or ExcludeSeller item filters.
@@ -429,7 +430,6 @@ const (
 	startTimeTo           = "StartTimeTo"
 	topRatedSellerOnly    = "TopRatedSellerOnly"
 	valueBoxInventory     = "ValueBoxInventory"
-	worldOfGoodOnly       = "WorldOfGoodOnly"
 
 	trueValue           = "true"
 	falseValue          = "false"
@@ -441,7 +441,7 @@ const (
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params map[string]string) error {
 	switch filter.name {
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, freeShippingOnly, hideDuplicateItems,
-		localPickupOnly, lotsOnly, returnsAcceptedOnly, soldItemsOnly, worldOfGoodOnly:
+		localPickupOnly, lotsOnly, returnsAcceptedOnly, soldItemsOnly:
 		if filter.values[0] != trueValue && filter.values[0] != falseValue {
 			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values[0])
 		}
@@ -539,7 +539,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return err
 		}
 	case sellerBusinessType:
-		err := validateSellerBusinessType(filter.values[0], itemFilters)
+		err := validateSellerBusinessType(filter.values)
 		if err != nil {
 			return err
 		}
@@ -922,20 +922,13 @@ func validateSellers(values []string, itemFilters []itemFilter) error {
 	return nil
 }
 
-func validateSellerBusinessType(value string, itemFilters []itemFilter) error {
-	if value != "Business" && value != "Private" {
-		return fmt.Errorf("%w: %s", ErrInvalidSellerBusinessType, value)
+func validateSellerBusinessType(values []string) error {
+	if len(values) > 1 {
+		return fmt.Errorf("%w", ErrMultipleSellerBusinessTypes)
 	}
 
-	cnt := 0
-	for _, flt := range itemFilters {
-		if flt.name == sellerBusinessType {
-			cnt++
-		}
-	}
-
-	if cnt > 1 {
-		return fmt.Errorf("%w: %s", ErrMultipleSellerBusinessType, sellerBusinessType)
+	if values[0] != "Business" && values[0] != "Private" {
+		return fmt.Errorf("%w: %s", ErrInvalidSellerBusinessType, values[0])
 	}
 
 	return nil

@@ -21,15 +21,11 @@ var (
 	// ErrKeywordsMissing is returned when the 'keywords' parameter is missing.
 	ErrKeywordsMissing = errors.New("ebay: keywords parameter is required")
 
-	// ErrIncompleteAspectFilter is returned when the aspect filter is missing
-	// either the 'aspectName' or 'aspectValueName' parameter.
-	ErrIncompleteAspectFilter = errors.New("ebay: incomplete aspect filter: aspectName and aspectValueName are required")
+	// ErrInvalidFilterSyntax is returned when both syntax types for filters are used in the params.
+	ErrInvalidFilterSyntax = errors.New("ebay: invalid filter syntax: both syntax types are present")
 
-	// ErrInvalidItemFilterSyntax is returned when both syntax types for item filters are used in the params.
-	ErrInvalidItemFilterSyntax = errors.New("ebay: invalid item filter syntax: both syntax types are present")
-
-	// ErrIncompleteItemFilterNameOnly is returned when an item filter is missing the 'values' parameter.
-	ErrIncompleteItemFilterNameOnly = errors.New("ebay: incomplete item filter: missing value")
+	// ErrIncompleteFilterNameOnly is returned when a filter is missing the 'value' parameter.
+	ErrIncompleteFilterNameOnly = errors.New("ebay: incomplete item filter: missing")
 
 	// ErrIncompleteItemFilterParam is returned when an item filter is missing
 	// either the 'paramName' or 'paramValue' parameter, as both 'paramName' and 'paramValue'
@@ -221,14 +217,14 @@ func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID st
 }
 
 type findingParams struct {
-	keywords     string
-	aspectFilter *aspectFilter
-	itemFilters  []itemFilter
+	keywords      string
+	aspectFilters []aspectFilter
+	itemFilters   []itemFilter
 }
 
 type aspectFilter struct {
-	aspectName      string
-	aspectValueName string
+	aspectName       string
+	aspectValueNames []string
 }
 
 type itemFilter struct {
@@ -248,17 +244,11 @@ func (svr *FindingServer) validateParams(params map[string]string) (*findingPara
 		keywords: keywords,
 	}
 
-	aspectName, anOk := params["aspectFilter.aspectName"]
-	aspectValueName, avnOk := params["aspectFilter.aspectValueName"]
-	if anOk != avnOk {
-		return nil, ErrIncompleteAspectFilter
+	aspectFilters, err := svr.processAspectFilters(params)
+	if err != nil {
+		return nil, err
 	}
-	if anOk && avnOk {
-		fParams.aspectFilter = &aspectFilter{
-			aspectName:      aspectName,
-			aspectValueName: aspectValueName,
-		}
-	}
+	fParams.aspectFilters = aspectFilters
 
 	itemFilters, err := svr.processItemFilters(params)
 	if err != nil {
@@ -269,12 +259,66 @@ func (svr *FindingServer) validateParams(params map[string]string) (*findingPara
 	return fParams, nil
 }
 
+func (svr *FindingServer) processAspectFilters(params map[string]string) ([]aspectFilter, error) {
+	// Check if both "aspectFilter.aspectName" and "aspectFilter(0).aspectName" syntax types occur in the params.
+	_, nonNumberedExists := params["aspectFilter.aspectName"]
+	_, numberedExists := params["aspectFilter(0).aspectName"]
+	if nonNumberedExists && numberedExists {
+		return nil, ErrInvalidFilterSyntax
+	}
+
+	if nonNumberedExists {
+		return processNonNumberedAspectFilter(params)
+	}
+
+	return processNumberedAspectFilters(params)
+}
+
+func processNonNumberedAspectFilter(params map[string]string) ([]aspectFilter, error) {
+	filterValues, err := parseFilterValues(params, "aspectFilter.aspectValueName")
+	if err != nil {
+		return nil, err
+	}
+
+	filter := aspectFilter{
+		// No need to check aspectFilter.aspectName exists due to how this function is invoked from processAspectFilters.
+		aspectName:       params["aspectFilter.aspectName"],
+		aspectValueNames: filterValues,
+	}
+
+	return []aspectFilter{filter}, nil
+}
+
+func processNumberedAspectFilters(params map[string]string) ([]aspectFilter, error) {
+	var aspectFilters []aspectFilter
+	for idx := 0; ; idx++ {
+		name, ok := params[fmt.Sprintf("aspectFilter(%d).aspectName", idx)]
+		if !ok {
+			break
+		}
+
+		filterValues, err := parseFilterValues(params, fmt.Sprintf("aspectFilter(%d).aspectValueName", idx))
+		if err != nil {
+			return nil, err
+		}
+
+		aspectFilter := aspectFilter{
+			aspectName:       name,
+			aspectValueNames: filterValues,
+		}
+
+		aspectFilters = append(aspectFilters, aspectFilter)
+	}
+
+	return aspectFilters, nil
+}
+
 func (svr *FindingServer) processItemFilters(params map[string]string) ([]itemFilter, error) {
 	// Check if both "itemFilter.name" and "itemFilter(0).name" syntax types occur in the params.
 	_, nonNumberedExists := params["itemFilter.name"]
 	_, numberedExists := params["itemFilter(0).name"]
 	if nonNumberedExists && numberedExists {
-		return nil, ErrInvalidItemFilterSyntax
+		return nil, ErrInvalidFilterSyntax
 	}
 
 	if nonNumberedExists {
@@ -285,7 +329,7 @@ func (svr *FindingServer) processItemFilters(params map[string]string) ([]itemFi
 }
 
 func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error) {
-	filterValues, err := parseItemFilterValues(params, "itemFilter")
+	filterValues, err := parseFilterValues(params, "itemFilter.value")
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +366,7 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 			break
 		}
 
-		filterValues, err := parseItemFilterValues(params, fmt.Sprintf("itemFilter(%d)", idx))
+		filterValues, err := parseFilterValues(params, fmt.Sprintf("itemFilter(%d).value", idx))
 		if err != nil {
 			return nil, err
 		}
@@ -355,10 +399,10 @@ func processNumberedItemFilters(params map[string]string) ([]itemFilter, error) 
 	return itemFilters, nil
 }
 
-func parseItemFilterValues(params map[string]string, prefix string) ([]string, error) {
+func parseFilterValues(params map[string]string, filterAttr string) ([]string, error) {
 	var filterValues []string
 	for i := 0; ; i++ {
-		key := fmt.Sprintf(prefix+".value(%d)", i)
+		key := fmt.Sprintf("%s(%d)", filterAttr, i)
 		if v, ok := params[key]; ok {
 			filterValues = append(filterValues, v)
 		} else {
@@ -366,19 +410,19 @@ func parseItemFilterValues(params map[string]string, prefix string) ([]string, e
 		}
 	}
 
-	if v, ok := params[prefix+".value"]; ok {
+	if v, ok := params[filterAttr]; ok {
 		filterValues = append(filterValues, v)
 	}
 
 	if len(filterValues) == 0 {
-		return nil, ErrIncompleteItemFilterNameOnly
+		return nil, fmt.Errorf("%w %q", ErrIncompleteFilterNameOnly, filterAttr)
 	}
 
-	// Check if both "itemFilter.value" and "itemFilter.value(0)" syntax types occur in the params.
-	_, nonNumberedExists := params[prefix+".value"]
-	_, numberedExists := params[prefix+".value(0)"]
+	// Check if both "filterAttr" and "filterAttr(0)" syntax types occur in the params.
+	_, nonNumberedExists := params[filterAttr]
+	_, numberedExists := params[filterAttr+"(0)"]
 	if nonNumberedExists && numberedExists {
-		return nil, ErrInvalidItemFilterSyntax
+		return nil, ErrInvalidFilterSyntax
 	}
 
 	return filterValues, nil
@@ -439,23 +483,23 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, freeShippingOnly, hideDuplicateItems,
 		localPickupOnly, lotsOnly, returnsAcceptedOnly, soldItemsOnly:
 		if filter.values[0] != trueValue && filter.values[0] != falseValue {
-			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidBooleanValue, filter.values[0])
 		}
 	case availableTo:
 		if !isValidCountryCode(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidCountryCode, filter.values[0])
 		}
 	case condition:
 		if !isValidCondition(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidCondition, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidCondition, filter.values[0])
 		}
 	case currency:
 		if !isValidCurrencyID(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidCurrencyID, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidCurrencyID, filter.values[0])
 		}
 	case endTimeFrom, endTimeTo, startTimeFrom, startTimeTo:
 		if !isValidDateTime(filter.values[0], true) {
-			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidDateTime, filter.values[0])
 		}
 	case excludeCategory:
 		err := validateExcludeCategories(filter.values)
@@ -469,7 +513,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 		}
 	case expeditedShippingType:
 		if filter.values[0] != "Expedited" && filter.values[0] != "OneDayShipping" {
-			return fmt.Errorf("%w: %s", ErrInvalidExpeditedShippingType, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidExpeditedShippingType, filter.values[0])
 		}
 	case feedbackScoreMax, feedbackScoreMin:
 		err := validateNumericFilter(filter, itemFilters, 0, feedbackScoreMax, feedbackScoreMin)
@@ -478,7 +522,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 		}
 	case listedIn:
 		if !isValidGlobalID(filter.values[0]) {
-			return fmt.Errorf("%w: %s", ErrInvalidGlobalID, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidGlobalID, filter.values[0])
 		}
 	case listingType:
 		err := validateListingTypes(filter.values)
@@ -523,7 +567,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 		}
 	case modTimeFrom:
 		if !isValidDateTime(filter.values[0], false) {
-			return fmt.Errorf("%w: %s", ErrInvalidDateTime, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidDateTime, filter.values[0])
 		}
 	case seller:
 		err := validateSellers(filter.values, itemFilters)
@@ -542,10 +586,10 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 		}
 	case valueBoxInventory:
 		if filter.values[0] != trueNum && filter.values[0] != falseNum {
-			return fmt.Errorf("%w: %s", ErrInvalidValueBoxInventory, filter.values[0])
+			return fmt.Errorf("%w: %q", ErrInvalidValueBoxInventory, filter.values[0])
 		}
 	default:
-		return fmt.Errorf("%w: %s", ErrUnsupportedItemFilterType, filter.name)
+		return fmt.Errorf("%w: %q", ErrUnsupportedItemFilterType, filter.name)
 	}
 
 	return nil
@@ -682,14 +726,14 @@ func validateNumericFilter(
 	}
 
 	if filterAValue != nil && filterBValue != nil && *filterBValue > *filterAValue {
-		return fmt.Errorf("%w: %s must be greater than or equal to %s", ErrInvalidNumericFilter, filterA, filterB)
+		return fmt.Errorf("%w: %q must be greater than or equal to %q", ErrInvalidNumericFilter, filterA, filterB)
 	}
 
 	return nil
 }
 
 func invalidIntegerError(value string, min int) error {
-	return fmt.Errorf("%w: %s (minimum value: %d)", ErrInvalidInteger, value, min)
+	return fmt.Errorf("%w: %q (minimum value: %d)", ErrInvalidInteger, value, min)
 }
 
 func isValidIntegerInRange(value string, min int) bool {
@@ -765,10 +809,10 @@ func validateListingTypes(values []string) error {
 		}
 
 		if !found {
-			return fmt.Errorf("%w: %s", ErrInvalidListingType, val)
+			return fmt.Errorf("%w: %q", ErrInvalidListingType, val)
 		}
 		if seenTypes[val] {
-			return fmt.Errorf("%w: %s", ErrDuplicateListingType, val)
+			return fmt.Errorf("%w: %q", ErrDuplicateListingType, val)
 		}
 		if hasAuction && hasAuctionWithBIN {
 			return ErrInvalidAuctionListingTypes
@@ -799,7 +843,7 @@ func validateLocalSearchOnly(values []string, itemFilters []itemFilter, params m
 	}
 
 	if values[0] != trueValue && values[0] != falseValue {
-		return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, values[0])
+		return fmt.Errorf("%w: %q", ErrInvalidBooleanValue, values[0])
 	}
 
 	return nil
@@ -812,7 +856,7 @@ func validateLocatedIns(values []string) error {
 
 	for _, v := range values {
 		if !isValidCountryCode(v) {
-			return fmt.Errorf("%w: %s", ErrInvalidCountryCode, v)
+			return fmt.Errorf("%w: %q", ErrInvalidCountryCode, v)
 		}
 	}
 
@@ -861,11 +905,11 @@ func parsePrice(filter *itemFilter) (float64, error) {
 	}
 
 	if filter.paramName != nil && *filter.paramName != currency {
-		return 0, fmt.Errorf("%w: %s", ErrInvalidPriceParamName, *filter.paramName)
+		return 0, fmt.Errorf("%w: %q", ErrInvalidPriceParamName, *filter.paramName)
 	}
 
 	if filter.paramValue != nil && !isValidCurrencyID(*filter.paramValue) {
-		return 0, fmt.Errorf("%w: %s", ErrInvalidCurrencyID, *filter.paramValue)
+		return 0, fmt.Errorf("%w: %q", ErrInvalidCurrencyID, *filter.paramValue)
 	}
 
 	return price, nil
@@ -891,7 +935,7 @@ func validateSellerBusinessType(values []string) error {
 	}
 
 	if values[0] != "Business" && values[0] != "Private" {
-		return fmt.Errorf("%w: %s", ErrInvalidSellerBusinessType, values[0])
+		return fmt.Errorf("%w: %q", ErrInvalidSellerBusinessType, values[0])
 	}
 
 	return nil
@@ -899,7 +943,7 @@ func validateSellerBusinessType(values []string) error {
 
 func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	if value != trueValue && value != falseValue {
-		return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, value)
+		return fmt.Errorf("%w: %q", ErrInvalidBooleanValue, value)
 	}
 
 	for _, flt := range itemFilters {
@@ -924,9 +968,11 @@ func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
 	qry.Add("keywords", fParams.keywords)
 
-	if fParams.aspectFilter != nil {
-		qry.Add("aspectFilter.aspectName", fParams.aspectFilter.aspectName)
-		qry.Add("aspectFilter.aspectValueName", fParams.aspectFilter.aspectValueName)
+	for idx, aspectFilter := range fParams.aspectFilters {
+		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
+		for j, v := range aspectFilter.aspectValueNames {
+			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
+		}
 	}
 
 	for idx, itemFilter := range fParams.itemFilters {

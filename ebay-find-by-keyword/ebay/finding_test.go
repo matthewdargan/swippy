@@ -287,39 +287,172 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
-			Name: "can find items by aspectFilter",
+			Name: "can find items by aspectFilter.aspectName, aspectValueName",
 			Params: map[string]string{
 				"keywords":                     "marshmallows",
-				"aspectFilter.aspectName":      "squish level",
-				"aspectFilter.aspectValueName": "very squishy",
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
 			},
 		},
 		{
-			Name: "returns error if params contains aspectFilter but not keywords",
+			Name: "can find items by aspectFilter.aspectName, aspectValueName(0), aspectValueName(1)",
 			Params: map[string]string{
-				"aspectFilter.aspectName":      "squish level",
-				"aspectFilter.aspectValueName": "very squishy",
+				"keywords":                        "marshmallows",
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName(0)": "10",
+				"aspectFilter.aspectValueName(1)": "11",
+			},
+		},
+		{
+			Name: "returns error if params contains non-numbered aspectFilter but not keywords",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
 			},
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
-			Name: "returns error if params contains aspectName but not aspectValueName",
+			Name: "returns error if params contains aspectFilter.aspectName but not aspectValueName",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
-				"aspectFilter.aspectName": "squish level",
+				"aspectFilter.aspectName": "Size",
 			},
-			ExpectedError: ebay.ErrIncompleteAspectFilter,
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
 		},
 		{
-			Name: "returns error if params contains aspectValueName but not aspectName",
+			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains aspectFilter.aspectName, aspectValueName(1)",
+			Params: map[string]string{
+				"keywords":                        "marshmallows",
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName(1)": "10",
+			},
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
+		},
+		{
+			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
+			// Therefore, only aspectFilter.aspectValueName is considered and this becomes a non-numbered aspectFilter.
+			Name: "can find items by aspectFilter.aspectName, aspectValueName, aspectValueName(1)",
+			Params: map[string]string{
+				"keywords":                        "marshmallows",
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName":    "10",
+				"aspectFilter.aspectValueName(1)": "11",
+			},
+		},
+		{
+			// The aspectFilter will be ignored if no aspectFilter.aspectName param is found before other aspectFilter params.
+			Name: "can find items if params contains aspectFilter.aspectValueName only",
 			Params: map[string]string{
 				"keywords":                     "marshmallows",
-				"aspectFilter.aspectValueName": "very squishy",
+				"aspectFilter.aspectValueName": "10",
 			},
-			ExpectedError: ebay.ErrIncompleteAspectFilter,
 		},
 		{
-			Name: "can find items by basic, non-numbered itemFilter with non-numbered value",
+			Name: "returns error if params contain numbered and non-numbered aspectFilter syntax types",
+			Params: map[string]string{
+				"keywords":                        "marshmallows",
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName":    "10",
+				"aspectFilter(0).aspectName":      "Running",
+				"aspectFilter(0).aspectValueName": "true",
+			},
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name: "returns error if params contain aspectFilter.aspectName, aspectValueName, aspectValueName(0)",
+			Params: map[string]string{
+				"keywords":                        "marshmallows",
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName":    "10",
+				"aspectFilter.aspectValueName(0)": "11",
+			},
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name: "returns error if params contain aspectFilter(0).aspectName, aspectValueName, aspectValueName(0)",
+			Params: map[string]string{
+				"keywords":                           "marshmallows",
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName":    "10",
+				"aspectFilter(0).aspectValueName(0)": "11",
+			},
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name: "can find items by aspectFilter(0).aspectName, aspectValueName",
+			Params: map[string]string{
+				"keywords":                        "marshmallows",
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+		},
+		{
+			Name: "can find items by aspectFilter(0).aspectName, aspectValueName(0), aspectValueName(1)",
+			Params: map[string]string{
+				"keywords":                           "marshmallows",
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName(0)": "10",
+				"aspectFilter(0).aspectValueName(1)": "11",
+			},
+		},
+		{
+			Name: "can find items by 2 numbered aspectFilters",
+			Params: map[string]string{
+				"keywords":                        "marshmallows",
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+				"aspectFilter(1).aspectName":      "Running",
+				"aspectFilter(1).aspectValueName": "true",
+			},
+		},
+		{
+			Name: "returns error if params contains numbered aspectFilter but not keywords",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
+			Params: map[string]string{
+				"keywords":                   "marshmallows",
+				"aspectFilter(0).aspectName": "Size",
+			},
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
+		},
+		{
+			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains aspectFilter(0).aspectName, aspectValueName(1)",
+			Params: map[string]string{
+				"keywords":                           "marshmallows",
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName(1)": "10",
+			},
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
+		},
+		{
+			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
+			// Therefore, only aspectFilter(0).aspectValueName is considered and this becomes a numbered aspectFilter.
+			Name: "can find items by aspectFilter(0).aspectName, aspectValueName aspectValueName(1)",
+			Params: map[string]string{
+				"keywords":                           "marshmallows",
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName":    "10",
+				"aspectFilter(0).aspectValueName(1)": "11",
+			},
+		},
+		{
+			// The aspectFilter will be ignored if no aspectFilter(0).aspectName param is found before other aspectFilter params.
+			Name: "can find items if params contains aspectFilter(0).aspectValueName only",
+			Params: map[string]string{
+				"keywords":                        "marshmallows",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+		},
+		{
+			Name: "can find items by itemFilter.name, value",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "BestOfferOnly",
@@ -327,7 +460,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by basic, non-numbered itemFilter with numbered values",
+			Name: "can find items by itemFilter.name, value(0), value(1)",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter.name":     "ExcludeCategory",
@@ -336,7 +469,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by non-numbered itemFilter with name, value, paramName, and paramValue",
+			Name: "can find items by itemFilter.name, value, paramName, paramValue",
 			Params: map[string]string{
 				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
@@ -354,27 +487,27 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
-			Name: "returns error if params contains non-numbered itemFilter name but not value",
+			Name: "returns error if params contains itemFilter.name but not value",
 			Params: map[string]string{
 				"keywords":        "marshmallows",
 				"itemFilter.name": "BestOfferOnly",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter.value"),
 		},
 		{
-			// The numbered itemFilter.value(1) will be ignored because indexing does not start at 0.
-			Name: "returns error if params contains non-numbered itemFilter name and numbered value greater than 0",
+			// itemFilter.value(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains itemFilter.name, value(1)",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter.name":     "BestOfferOnly",
 				"itemFilter.value(1)": "true",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter.value"),
 		},
 		{
-			// The numbered itemFilter.value(1) will be ignored because indexing does not start at 0.
-			// Therefore, only the itemFilter.value is considered and this becomes a basic, non-numbered itemFilter.
-			Name: "can find items by basic, non-numbered itemFilter with non-numbered value and numbered value greater than 0",
+			// itemFilter.value(1) will be ignored because indexing does not start at 0.
+			// Therefore, only itemFilter.value is considered and this becomes a non-numbered itemFilter.
+			Name: "can find items by itemFilter.name, value, value(1)",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter.name":     "BestOfferOnly",
@@ -384,7 +517,7 @@ func TestValidateParams(t *testing.T) {
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
-			Name: "can find items if params contains non-numbered itemFilter value only",
+			Name: "can find items if params contains itemFilter.value only",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.value": "true",
@@ -392,7 +525,7 @@ func TestValidateParams(t *testing.T) {
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
-			Name: "can find items if params contains non-numbered itemFilter paramName only",
+			Name: "can find items if params contains itemFilter.paramName only",
 			Params: map[string]string{
 				"keywords":             "marshmallows",
 				"itemFilter.paramName": "Currency",
@@ -400,14 +533,14 @@ func TestValidateParams(t *testing.T) {
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
-			Name: "can find items if params contains non-numbered itemFilter paramValue only",
+			Name: "can find items if params contains itemFilter.paramValue only",
 			Params: map[string]string{
 				"keywords":              "marshmallows",
 				"itemFilter.paramValue": "EUR",
 			},
 		},
 		{
-			Name: "returns error if params contains non-numbered itemFilter paramName but not paramValue",
+			Name: "returns error if params contains itemFilter.paramName but not paramValue",
 			Params: map[string]string{
 				"keywords":             "marshmallows",
 				"itemFilter.name":      "MaxPrice",
@@ -417,7 +550,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
-			Name: "returns error if params contains non-numbered itemFilter paramValue but not paramName",
+			Name: "returns error if params contains itemFilter.paramValue but not paramName",
 			Params: map[string]string{
 				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
@@ -435,30 +568,30 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "5.0",
 			},
-			ExpectedError: ebay.ErrInvalidItemFilterSyntax,
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
 		},
 		{
-			Name: "returns error if params contain non-numbered itemFilter with numbered and non-numbered value syntax types",
+			Name: "returns error if params contain itemFilter.name, value, value(0)",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter.name":     "ExcludeCategory",
 				"itemFilter.value":    "1",
 				"itemFilter.value(0)": "2",
 			},
-			ExpectedError: ebay.ErrInvalidItemFilterSyntax,
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
 		},
 		{
-			Name: "returns error if params contain numbered itemFilter with numbered and non-numbered value syntax types",
+			Name: "returns error if params contain itemFilter(0).name, value, value(0)",
 			Params: map[string]string{
 				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "ExcludeCategory",
 				"itemFilter(0).value":    "1",
 				"itemFilter(0).value(0)": "2",
 			},
-			ExpectedError: ebay.ErrInvalidItemFilterSyntax,
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
 		},
 		{
-			Name: "can find items by basic, numbered itemFilter with non-numbered value",
+			Name: "can find items by itemFilter(0).name, value",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "BestOfferOnly",
@@ -466,7 +599,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by basic, numbered itemFilter with numbered values",
+			Name: "can find items by itemFilter(0).name, value(0), value(1)",
 			Params: map[string]string{
 				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "ExcludeCategory",
@@ -475,7 +608,7 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items by numbered itemFilter with name, value, paramName, and paramValue",
+			Name: "can find items by itemFilter(0).name, value, paramName, and paramValue",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
@@ -541,27 +674,27 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
-			Name: "returns error if params contains numbered itemFilter name but not value",
+			Name: "returns error if params contains itemFilter(0).name but not value",
 			Params: map[string]string{
 				"keywords":           "marshmallows",
 				"itemFilter(0).name": "BestOfferOnly",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter(0).value"),
 		},
 		{
-			// The numbered itemFilter(0).value(1) will be ignored because indexing does not start at 0.
-			Name: "returns error if params contains numbered itemFilter name and numbered value greater than 0",
+			// itemFilter(0).value(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains itemFilter(0).name, value(1)",
 			Params: map[string]string{
 				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "BestOfferOnly",
 				"itemFilter(0).value(1)": "true",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterNameOnly,
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter(0).value"),
 		},
 		{
-			// The numbered itemFilter(0).value(1) will be ignored because indexing does not start at 0.
-			// Therefore, only the itemFilter(0).value is considered and this becomes a basic, numbered itemFilter.
-			Name: "can find items by basic, numbered itemFilter with non-numbered value and numbered value greater than 0",
+			// itemFilter(0).value(1) will be ignored because indexing does not start at 0.
+			// Therefore, only itemFilter(0).value is considered and this becomes a numbered itemFilter.
+			Name: "can find items by itemFilter(0).name, value, value(1)",
 			Params: map[string]string{
 				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "BestOfferOnly",
@@ -571,7 +704,7 @@ func TestValidateParams(t *testing.T) {
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
-			Name: "can find items if params contains numbered itemFilter value only",
+			Name: "can find items if params contains itemFilter(0).value only",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).value": "true",
@@ -579,7 +712,7 @@ func TestValidateParams(t *testing.T) {
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
-			Name: "can find items if params contains numbered itemFilter paramName only",
+			Name: "can find items if params contains itemFilter(0).paramName only",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
 				"itemFilter(0).paramName": "Currency",
@@ -587,14 +720,14 @@ func TestValidateParams(t *testing.T) {
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
-			Name: "can find items if params contains numbered itemFilter paramValue only",
+			Name: "can find items if params contains itemFilter(0).paramValue only",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).paramValue": "EUR",
 			},
 		},
 		{
-			Name: "returns error if params contains numbered itemFilter paramName but not paramValue",
+			Name: "returns error if params contains itemFilter(0).paramName but not paramValue",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
 				"itemFilter(0).name":      "MaxPrice",
@@ -604,7 +737,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
-			Name: "returns error if params contains numbered itemFilter paramValue but not paramName",
+			Name: "returns error if params contains itemFilter(0).paramValue but not paramName",
 			Params: map[string]string{
 				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
@@ -620,7 +753,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "UnsupportedFilter",
 				"itemFilter.value": "true",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
 			Name: "returns error if params contains numbered, unsupported itemFilter name",
@@ -629,7 +762,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(0).name":  "UnsupportedFilter",
 				"itemFilter(0).value": "true",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
 			Name: "returns error if params contains numbered supported and unsupported itemFilter names",
@@ -640,7 +773,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "UnsupportedFilter",
 				"itemFilter(1).value": "true",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
 			Name: "can find items if params contains AuthorizedSellerOnly itemFilter.value=true",
@@ -665,7 +798,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "AuthorizedSellerOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains valid AvailableTo itemFilter",
@@ -682,7 +815,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "us",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "us"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "us"),
 		},
 		{
 			Name: "returns error if params contains AvailableTo itemFilter with 1 uppercase character",
@@ -691,7 +824,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "U",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "U"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "U"),
 		},
 		{
 			Name: "returns error if params contains AvailableTo itemFilter with 3 uppercase character",
@@ -700,7 +833,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "USA",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "USA"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "USA"),
 		},
 		{
 			Name: "can find items if params contains BestOfferOnly itemFilter.value=true",
@@ -725,7 +858,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "BestOfferOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains CharityOnly itemFilter.value=true",
@@ -750,7 +883,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "CharityOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains Condition itemFilter with condition name",
@@ -879,7 +1012,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCondition, "1"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCondition, "1"),
 		},
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID AUD",
@@ -1000,7 +1133,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains EndTimeFrom itemFilter with future timestamp",
@@ -1017,7 +1150,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains EndTimeFrom itemFilter with non-UTC timestamp",
@@ -1026,7 +1159,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
 		},
 		{
@@ -1036,7 +1169,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -1054,7 +1187,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains EndTimeTo itemFilter with non-UTC timestamp",
@@ -1063,7 +1196,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
 		},
 		{
@@ -1073,7 +1206,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -1099,7 +1232,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ExcludeAutoPay",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains ExcludeCategory itemFilter with category ID 0",
@@ -1124,7 +1257,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "not a category ID",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "not a category ID", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a category ID", 0),
 		},
 		{
 			Name: "returns error if params contains ExcludeCategory itemFilter with category ID -1",
@@ -1133,7 +1266,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains ExcludeCategory itemFilter with category IDs 0 and 1",
@@ -1152,7 +1285,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.value(0)": "0",
 				"itemFilter.value(1)": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name:   "can find items if params contains ExcludeCategory itemFilter with 25 category IDs",
@@ -1234,7 +1367,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ExpeditedShippingType",
 				"itemFilter.value": "InvalidShippingType",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidExpeditedShippingType, "InvalidShippingType"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidExpeditedShippingType, "InvalidShippingType"),
 		},
 		{
 			Name: "can find items if params contains FeedbackScoreMax itemFilter with max 0",
@@ -1268,7 +1401,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains FeedbackScoreMin itemFilter with max 0",
@@ -1302,7 +1435,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 1 and min 0",
@@ -1395,7 +1528,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min -1 and max 0",
@@ -1406,7 +1539,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min 1",
@@ -1417,7 +1550,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1429,7 +1562,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1441,7 +1574,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "10",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1453,7 +1586,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1487,7 +1620,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and max -1",
@@ -1498,7 +1631,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1524,7 +1657,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "FreeShippingOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains HideDuplicateItems itemFilter.value=true",
@@ -1549,7 +1682,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "HideDuplicateItems",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-AT",
@@ -1734,7 +1867,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidGlobalID, "EBAY-ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidGlobalID, "EBAY-ZZZ"),
 		},
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type Auction",
@@ -1791,7 +1924,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "not a listing type",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidListingType, "not a listing type"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidListingType, "not a listing type"),
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with All and Auction listing types",
@@ -1821,7 +1954,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.value(0)": "Auction",
 				"itemFilter.value(1)": "Auction",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrDuplicateListingType, "Auction"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrDuplicateListingType, "Auction"),
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with 2 StoreInventory listing types",
@@ -1831,7 +1964,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.value(0)": "StoreInventory",
 				"itemFilter.value(1)": "StoreInventory",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrDuplicateListingType, "StoreInventory"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrDuplicateListingType, "StoreInventory"),
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with Auction and AuctionWithBIN listing types",
@@ -1876,7 +2009,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "LocalPickupOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains LocalSearchOnly itemFilter.value=true, buyerPostalCode, and MaxDistance",
@@ -1910,7 +2043,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxDistance",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "returns error if params contains LocalSearchOnly itemFilter but no buyerPostalCode",
@@ -1948,7 +2081,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "us",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "us"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "us"),
 		},
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with 1 uppercase character",
@@ -1957,7 +2090,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "U",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "U"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "U"),
 		},
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with 3 uppercase character",
@@ -1966,7 +2099,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "USA",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCountryCode, "USA"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "USA"),
 		},
 		{
 			Name: "can find items if params contains LocatedIn itemFilter with 25 country codes",
@@ -2057,7 +2190,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "LotsOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains MaxBids itemFilter with max 0",
@@ -2091,7 +2224,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains MinBids itemFilter with max 0",
@@ -2125,7 +2258,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with max 1 and min 0",
@@ -2218,7 +2351,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min -1 and max 0",
@@ -2229,7 +2362,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min 1",
@@ -2240,7 +2373,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2252,7 +2385,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2264,7 +2397,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "10",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2276,7 +2409,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2310,7 +2443,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and max -1",
@@ -2321,7 +2454,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2350,7 +2483,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 5),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 5),
 		},
 		{
 			Name: "returns error if params contains MaxDistance itemFilter with max 4 and buyerPostalCode",
@@ -2360,7 +2493,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "4",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "4", 5),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "4", 5),
 		},
 		{
 			Name: "returns error if params contains MaxDistance itemFilter with max 5 but no buyerPostalCode",
@@ -2394,7 +2527,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MaxHandlingTime itemFilter with unparsable max",
@@ -2403,7 +2536,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 1),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 1),
 		},
 		{
 			Name: "can find items if params contains MaxPrice itemFilter with max 0.0",
@@ -2458,7 +2591,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.paramName":  "NotCurrency",
 				"itemFilter.paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "NotCurrency"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "NotCurrency"),
 		},
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
@@ -2469,7 +2602,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.paramName":  "Currency",
 				"itemFilter.paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains MinPrice itemFilter with max 0.0",
@@ -2524,7 +2657,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.paramName":  "NotCurrency",
 				"itemFilter.paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "NotCurrency"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "NotCurrency"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
@@ -2535,7 +2668,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.paramName":  "Currency",
 				"itemFilter.paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max 1.0 and min 0.0",
@@ -2740,7 +2873,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).paramName":  "Invalid",
 				"itemFilter(1).paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0, paramName Invalid and max 10.0",
@@ -2753,7 +2886,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":       "MaxPrice",
 				"itemFilter(1).value":      "10.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 10.0 and min 5.0, paramValue ZZZ",
@@ -2766,7 +2899,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).paramName":  "Currency",
 				"itemFilter(1).paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with min 5.0, paramValue ZZZ and max 10.0",
@@ -2779,7 +2912,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":       "MaxPrice",
 				"itemFilter(1).value":      "10.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 10.0, paramName Invalid and min 5.0",
@@ -2792,7 +2925,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":       "MinPrice",
 				"itemFilter(1).value":      "5.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0 and max 10.0, paramName Invalid",
@@ -2805,7 +2938,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).paramName":  "Invalid",
 				"itemFilter(1).paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 10.0, paramValue ZZZ and min 5.0",
@@ -2818,7 +2951,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":       "MinPrice",
 				"itemFilter(1).value":      "5.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with min 5.0 and max 10.0, paramValue ZZZ",
@@ -2831,7 +2964,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).paramName":  "Currency",
 				"itemFilter(1).paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains MaxQuantity itemFilter with max 1",
@@ -2865,7 +2998,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "can find items if params contains MinQuantity itemFilter with max 1",
@@ -2899,7 +3032,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with max 2 and min 1",
@@ -2992,7 +3125,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 0 and max 1",
@@ -3003,7 +3136,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 1 and min 2",
@@ -3014,7 +3147,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "2",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -3026,7 +3159,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -3038,7 +3171,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "10",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -3050,7 +3183,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -3084,7 +3217,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 1 and max 0",
@@ -3095,7 +3228,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -3113,7 +3246,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains ModTimeFrom itemFilter with non-UTC timestamp",
@@ -3122,7 +3255,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
 		},
 		{
@@ -3132,7 +3265,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -3158,7 +3291,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ReturnsAcceptedOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains Seller itemFilter with seller ID 0",
@@ -3231,7 +3364,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "SellerBusinessType",
 				"itemFilter.value": "NotBusiness",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidSellerBusinessType, "NotBusiness"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidSellerBusinessType, "NotBusiness"),
 		},
 		{
 			Name: "returns error if params contains SellerBusinessType itemFilter with Business and Private types",
@@ -3266,7 +3399,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "SoldItemsOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains StartTimeFrom itemFilter with future timestamp",
@@ -3283,7 +3416,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains StartTimeFrom itemFilter with non-UTC timestamp",
@@ -3292,7 +3425,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
 		},
 		{
@@ -3302,7 +3435,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -3320,7 +3453,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidDateTime, "not a timestamp"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains StartTimeTo itemFilter with non-UTC timestamp",
@@ -3329,7 +3462,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
 		},
 		{
@@ -3339,7 +3472,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %s",
+			ExpectedError: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -3365,7 +3498,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "TopRatedSellerOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "returns error if params contains TopRatedSellerOnly and Seller itemFilters",
@@ -3412,7 +3545,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "ValueBoxInventory",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidValueBoxInventory, "123"),
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
 		},
 	}
 

@@ -420,7 +420,6 @@ const (
 	minPrice              = "MinPrice"
 	minQuantity           = "MinQuantity"
 	modTimeFrom           = "ModTimeFrom"
-	outletSellerOnly      = "OutletSellerOnly"
 	paymentMethod         = "PaymentMethod"
 	returnsAcceptedOnly   = "ReturnsAcceptedOnly"
 	seller                = "Seller"
@@ -442,7 +441,7 @@ const (
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params map[string]string) error {
 	switch filter.name {
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, freeShippingOnly, hideDuplicateItems,
-		localPickupOnly, lotsOnly, outletSellerOnly, returnsAcceptedOnly, soldItemsOnly, worldOfGoodOnly:
+		localPickupOnly, lotsOnly, returnsAcceptedOnly, soldItemsOnly, worldOfGoodOnly:
 		if filter.values[0] != trueValue && filter.values[0] != falseValue {
 			return fmt.Errorf("%w: %s", ErrInvalidBooleanValue, filter.values[0])
 		}

@@ -123,7 +123,7 @@ var (
 	ErrMaxLocatedIns = fmt.Errorf("ebay: maximum countries to locate items in is %d", maxLocatedIns)
 
 	// ErrInvalidPrice is returned when an item filter 'values' parameter contains an invalid price.
-	ErrInvalidPrice = errors.New("ebay: invalid maximum price")
+	ErrInvalidPrice = errors.New("ebay: invalid price")
 
 	// ErrInvalidPriceParamName is returned when an item filter 'paramName' parameter
 	// contains anything other than "Currency".
@@ -516,41 +516,10 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 		if !isValidIntegerInRange(filter.values[0], 1) {
 			return invalidIntegerError(filter.values[0], 1)
 		}
-	case maxPrice:
-		maxP, err := parsePrice(filter)
+	case maxPrice, minPrice:
+		err := validatePriceRange(filter, itemFilters)
 		if err != nil {
 			return err
-		}
-
-		for i := range itemFilters {
-			if itemFilters[i].name == minPrice {
-				minP, err := parsePrice(&itemFilters[i])
-				if err != nil {
-					return err
-				}
-
-				if minP > maxP {
-					return ErrInvalidMaxPrice
-				}
-			}
-		}
-	case minPrice:
-		minP, err := parsePrice(filter)
-		if err != nil {
-			return err
-		}
-
-		for i := range itemFilters {
-			if itemFilters[i].name == maxPrice {
-				maxP, err := parsePrice(&itemFilters[i])
-				if err != nil {
-					return err
-				}
-
-				if minP > maxP {
-					return ErrInvalidMaxPrice
-				}
-			}
 		}
 	case maxQuantity, minQuantity:
 		err := validateNumericFilter(filter, itemFilters, 1, maxQuantity, minQuantity)
@@ -698,7 +667,7 @@ func validateNumericFilter(
 ) error {
 	value, err := strconv.Atoi(filter.values[0])
 	if err != nil {
-		return fmt.Errorf("ebay: %w: %s", err, filter.values[0])
+		return fmt.Errorf("ebay: %w", err)
 	}
 	if minAllowedValue > value {
 		return invalidIntegerError(filter.values[0], minAllowedValue)
@@ -709,13 +678,13 @@ func validateNumericFilter(
 		if flt.name == filterA {
 			val, err := strconv.Atoi(flt.values[0])
 			if err != nil {
-				return fmt.Errorf("ebay: %w: %s", err, flt.values[0])
+				return fmt.Errorf("ebay: %w", err)
 			}
 			filterAValue = &val
 		} else if flt.name == filterB {
 			val, err := strconv.Atoi(flt.values[0])
 			if err != nil {
-				return fmt.Errorf("ebay: %w: %s", err, flt.values[0])
+				return fmt.Errorf("ebay: %w", err)
 			}
 			filterBValue = &val
 		}
@@ -855,10 +824,45 @@ func validateLocatedIns(values []string) error {
 	return nil
 }
 
+func validatePriceRange(filter *itemFilter, itemFilters []itemFilter) error {
+	price, err := parsePrice(filter)
+	if err != nil {
+		return err
+	}
+
+	var relatedFilterName string
+	if filter.name == maxPrice {
+		relatedFilterName = minPrice
+	} else if filter.name == minPrice {
+		relatedFilterName = maxPrice
+	}
+
+	for i := range itemFilters {
+		if itemFilters[i].name == relatedFilterName {
+			relatedPrice, err := parsePrice(&itemFilters[i])
+			if err != nil {
+				return err
+			}
+
+			if (filter.name == maxPrice && price < relatedPrice) ||
+				(filter.name == minPrice && price > relatedPrice) {
+				return ErrInvalidMaxPrice
+			}
+		}
+	}
+
+	return nil
+}
+
+const minAllowedPrice float64 = 0.0
+
 func parsePrice(filter *itemFilter) (float64, error) {
 	price, err := strconv.ParseFloat(filter.values[0], 64)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", ErrInvalidPrice, filter.values[0])
+		return 0, fmt.Errorf("ebay: %w", err)
+	}
+	if minAllowedPrice > price {
+		return 0, fmt.Errorf("%w: %f (minimum value: %f)", ErrInvalidPrice, price, minAllowedPrice)
 	}
 
 	if filter.paramName != nil && *filter.paramName != currency {

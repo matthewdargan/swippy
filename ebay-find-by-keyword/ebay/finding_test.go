@@ -1110,6 +1110,23 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
+			Name: "can find items if params contains ExcludeCategory itemFilter with category ID 5",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ExcludeCategory",
+				"itemFilter.value": "5",
+			},
+		},
+		{
+			Name: "returns error if params contains ExcludeCategory itemFilter with unparsable category ID",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ExcludeCategory",
+				"itemFilter.value": "not a category ID",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "not a category ID", 0),
+		},
+		{
 			Name: "returns error if params contains ExcludeCategory itemFilter with category ID -1",
 			Params: map[string]string{
 				"keywords":         "marshmallows",
@@ -1506,8 +1523,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w: %s",
-				`strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax, "not a maximum"),
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMax itemFilter with max -1",
@@ -1541,8 +1557,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w: %s",
-				`strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax, "not a minimum"),
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin itemFilter with max -1",
@@ -1554,7 +1569,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
-			Name: "can find items if params contains FeedbackScoreMax and FeedbackScoreMin itemFilters with max 1 and min 0",
+			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 1 and min 0",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
@@ -1574,7 +1589,27 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "can find items if params contains FeedbackScoreMax and FeedbackScoreMin itemFilters with max 10 and min 5",
+			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max and min 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "FeedbackScoreMax",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "FeedbackScoreMin",
+				"itemFilter(1).value": "0",
+			},
+		},
+		{
+			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min and max 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "FeedbackScoreMin",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "FeedbackScoreMax",
+				"itemFilter(1).value": "0",
+			},
+		},
+		{
+			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 10 and min 5",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
@@ -1602,8 +1637,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w: %s",
-				`strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax, "not a minimum"),
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with unparsable min and max 0",
@@ -1614,8 +1648,7 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w: %s",
-				`strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax, "not a minimum"),
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min -1",
@@ -1640,7 +1673,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
-			Name: "returns error if params contains FeedbackScoreMax and FeedbackScoreMin itemFilters with max 0 and min 1",
+			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min 1",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
@@ -1664,7 +1697,7 @@ func TestValidateParams(t *testing.T) {
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
-			Name: "returns error if params contains FeedbackScoreMax and FeedbackScoreMin itemFilters with max 5 and min 10",
+			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 5 and min 10",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
@@ -1688,6 +1721,28 @@ func TestValidateParams(t *testing.T) {
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
+			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with unparsable max and min 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "FeedbackScoreMax",
+				"itemFilter(0).value": "not a maximum",
+				"itemFilter(1).name":  "FeedbackScoreMin",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and unparsable max",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "FeedbackScoreMin",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "FeedbackScoreMax",
+				"itemFilter(1).value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max -1 and min 0",
 			Params: map[string]string{
 				"keywords":            "marshmallows",
@@ -1709,30 +1764,6 @@ func TestValidateParams(t *testing.T) {
 			},
 			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
-		},
-		{
-			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with unparsable max and min 0",
-			Params: map[string]string{
-				"keywords":            "marshmallows",
-				"itemFilter(0).name":  "FeedbackScoreMax",
-				"itemFilter(0).value": "not a maximum",
-				"itemFilter(1).name":  "FeedbackScoreMin",
-				"itemFilter(1).value": "0",
-			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w: %s",
-				`strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax, "not a maximum"),
-		},
-		{
-			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and unparsable max",
-			Params: map[string]string{
-				"keywords":            "marshmallows",
-				"itemFilter(0).name":  "FeedbackScoreMin",
-				"itemFilter(0).value": "0",
-				"itemFilter(1).name":  "FeedbackScoreMax",
-				"itemFilter(1).value": "not a maximum",
-			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w: %s",
-				`strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax, "not a maximum"),
 		},
 		{
 			Name: "can find items if params contains FreeShippingOnly itemFilter.value=true",
@@ -2291,6 +2322,780 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.value": "123",
 			},
 			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contains MaxBids itemFilter with max 0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxBids",
+				"itemFilter.value": "0",
+			},
+		},
+		{
+			Name: "can find items if params contains MaxBids itemFilter with max 5",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxBids",
+				"itemFilter.value": "5",
+			},
+		},
+		{
+			Name: "returns error if params contains MaxBids itemFilter with unparsable value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxBids",
+				"itemFilter.value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MaxBids itemFilter with max -1",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxBids",
+				"itemFilter.value": "-1",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+		},
+		{
+			Name: "can find items if params contains MinBids itemFilter with max 0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinBids",
+				"itemFilter.value": "0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinBids itemFilter with max 5",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinBids",
+				"itemFilter.value": "5",
+			},
+		},
+		{
+			Name: "returns error if params contains MinBids itemFilter with unparsable value",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinBids",
+				"itemFilter.value": "not a minimum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinBids itemFilter with max -1",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinBids",
+				"itemFilter.value": "-1",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+		},
+		{
+			Name: "can find items if params contains MinBids/MaxBids itemFilters with max 1 and min 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "1",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinBids/MaxBids itemFilters with min 0 and max 1",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "1",
+			},
+		},
+		{
+			Name: "can find items if params contains MinBids/MaxBids itemFilters with max and min 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinBids/MaxBids itemFilters with min and max 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinBids/MaxBids itemFilters with max 10 and min 5",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "10",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "5",
+			},
+		},
+		{
+			Name: "can find items if params contains MinBids/MaxBids itemFilters with min 5 and max 10",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "5",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "10",
+			},
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and unparsable min",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "not a minimum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with unparsable min and max 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "not a minimum",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min -1",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "-1",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with min -1 and max 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "-1",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min 1",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "1",
+			},
+			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 1 and max 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "1",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 5 and min 10",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "5",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "10",
+			},
+			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 10 and max 5",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "10",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "5",
+			},
+			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with unparsable max and min 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "not a maximum",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and unparsable max",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with max -1 and min 0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxBids",
+				"itemFilter(0).value": "-1",
+				"itemFilter(1).name":  "MinBids",
+				"itemFilter(1).value": "0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+		},
+		{
+			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and max -1",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinBids",
+				"itemFilter(0).value": "0",
+				"itemFilter(1).name":  "MaxBids",
+				"itemFilter(1).value": "-1",
+			},
+			ExpectedError: fmt.Errorf("%w: %s must be greater than or equal to %s",
+				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
+		},
+		{
+			Name: "can find items if params contains MaxDistance itemFilter with max 5 and buyerPostalCode",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"buyerPostalCode":  "123",
+				"itemFilter.name":  "MaxDistance",
+				"itemFilter.value": "5",
+			},
+		},
+		{
+			Name: "can find items if params contains MaxDistance itemFilter with max 6 and buyerPostalCode",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"buyerPostalCode":  "123",
+				"itemFilter.name":  "MaxDistance",
+				"itemFilter.value": "6",
+			},
+		},
+		{
+			Name: "returns error if params contains MaxDistance itemFilter with unparsable max",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"buyerPostalCode":  "123",
+				"itemFilter.name":  "MaxDistance",
+				"itemFilter.value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 5),
+		},
+		{
+			Name: "returns error if params contains MaxDistance itemFilter with max 4 and buyerPostalCode",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"buyerPostalCode":  "123",
+				"itemFilter.name":  "MaxDistance",
+				"itemFilter.value": "4",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "4", 5),
+		},
+		{
+			Name: "returns error if params contains MaxDistance itemFilter with max 5 but no buyerPostalCode",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxDistance",
+				"itemFilter.value": "5",
+			},
+			ExpectedError: ebay.ErrBuyerPostalCodeMissing,
+		},
+		{
+			Name: "can find items if params contains MaxHandlingTime itemFilter with max 1",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxHandlingTime",
+				"itemFilter.value": "1",
+			},
+		},
+		{
+			Name: "can find items if params contains MaxHandlingTime itemFilter with max 5",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxHandlingTime",
+				"itemFilter.value": "5",
+			},
+		},
+		{
+			Name: "returns error if params contains MaxHandlingTime itemFilter with max 0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxHandlingTime",
+				"itemFilter.value": "0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+		},
+		{
+			Name: "returns error if params contains MaxHandlingTime itemFilter with unparsable max",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxHandlingTime",
+				"itemFilter.value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("%w: %s (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 1),
+		},
+		{
+			Name: "can find items if params contains MaxPrice itemFilter with max 0.0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxPrice",
+				"itemFilter.value": "0.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MaxPrice itemFilter with max 5.0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxPrice",
+				"itemFilter.value": "5.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MaxPrice itemFilter with max 0.0, paramName Currency, and paramValue EUR",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "MaxPrice",
+				"itemFilter.value":      "0.0",
+				"itemFilter.paramName":  "Currency",
+				"itemFilter.paramValue": "EUR",
+			},
+		},
+		{
+			Name: "returns error if params contains MaxPrice itemFilter with unparsable max",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxPrice",
+				"itemFilter.value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MaxPrice itemFilter with max -1.0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MaxPrice",
+				"itemFilter.value": "-1.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+		},
+		{
+			Name: "returns error if params contains MaxPrice itemFilter with max 0.0, paramName NotCurrency, and paramValue EUR",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "MaxPrice",
+				"itemFilter.value":      "0.0",
+				"itemFilter.paramName":  "NotCurrency",
+				"itemFilter.paramValue": "EUR",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "NotCurrency"),
+		},
+		{
+			Name: "returns error if params contains MaxPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "MaxPrice",
+				"itemFilter.value":      "0.0",
+				"itemFilter.paramName":  "Currency",
+				"itemFilter.paramValue": "ZZZ",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+		},
+		{
+			Name: "can find items if params contains MinPrice itemFilter with max 0.0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinPrice",
+				"itemFilter.value": "0.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinPrice itemFilter with max 5.0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinPrice",
+				"itemFilter.value": "5.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinPrice itemFilter with max 0.0, paramName Currency, and paramValue EUR",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "MinPrice",
+				"itemFilter.value":      "0.0",
+				"itemFilter.paramName":  "Currency",
+				"itemFilter.paramValue": "EUR",
+			},
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with unparsable max",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinPrice",
+				"itemFilter.value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with max -1.0",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "MinPrice",
+				"itemFilter.value": "-1.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with max 0.0, paramName NotCurrency, and paramValue EUR",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "MinPrice",
+				"itemFilter.value":      "0.0",
+				"itemFilter.paramName":  "NotCurrency",
+				"itemFilter.paramValue": "EUR",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "NotCurrency"),
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
+			Params: map[string]string{
+				"keywords":              "marshmallows",
+				"itemFilter.name":       "MinPrice",
+				"itemFilter.value":      "0.0",
+				"itemFilter.paramName":  "Currency",
+				"itemFilter.paramValue": "ZZZ",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+		},
+		{
+			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max 1.0 and min 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "1.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "0.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with min 0.0 and max 1.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "1.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max and min 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "0.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with min and max 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "0.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max 10.0 and min 5.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "10.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "5.0",
+			},
+		},
+		{
+			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with min 5.0 and max 10.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "5.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "10.0",
+			},
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and unparsable min",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "not a minimum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with unparsable min and max 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "not a minimum",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "0.0",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and min -1.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "-1.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min -1.0 and max 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "-1.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "0.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and min 1.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "1.0",
+			},
+			ExpectedError: ebay.ErrInvalidMaxPrice,
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 1.0 and max 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "1.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "0.0",
+			},
+			ExpectedError: ebay.ErrInvalidMaxPrice,
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 5.0 and min 10.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "5.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "10.0",
+			},
+			ExpectedError: ebay.ErrInvalidMaxPrice,
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 10.0 and max 5.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "10.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "5.0",
+			},
+			ExpectedError: ebay.ErrInvalidMaxPrice,
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with unparsable max and min 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "not a maximum",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "0.0",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 0.0 and unparsable max",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "not a maximum",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max -1.0 and min 0.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MaxPrice",
+				"itemFilter(0).value": "-1.0",
+				"itemFilter(1).name":  "MinPrice",
+				"itemFilter(1).value": "0.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 0.0 and max -1.0",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"itemFilter(0).name":  "MinPrice",
+				"itemFilter(0).value": "0.0",
+				"itemFilter(1).name":  "MaxPrice",
+				"itemFilter(1).value": "-1.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 10.0 and min 5.0, paramName Invalid",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MaxPrice",
+				"itemFilter(0).value":      "10.0",
+				"itemFilter(1).name":       "MinPrice",
+				"itemFilter(1).value":      "5.0",
+				"itemFilter(1).paramName":  "Invalid",
+				"itemFilter(1).paramValue": "EUR",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0, paramName Invalid and max 10.0",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MinPrice",
+				"itemFilter(0).value":      "5.0",
+				"itemFilter(0).paramName":  "Invalid",
+				"itemFilter(0).paramValue": "EUR",
+				"itemFilter(1).name":       "MaxPrice",
+				"itemFilter(1).value":      "10.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with max 10.0 and min 5.0, paramValue ZZZ",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MaxPrice",
+				"itemFilter(0).value":      "10.0",
+				"itemFilter(1).name":       "MinPrice",
+				"itemFilter(1).value":      "5.0",
+				"itemFilter(1).paramName":  "Currency",
+				"itemFilter(1).paramValue": "ZZZ",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with min 5.0, paramValue ZZZ and max 10.0",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MinPrice",
+				"itemFilter(0).value":      "5.0",
+				"itemFilter(0).paramName":  "Currency",
+				"itemFilter(0).paramValue": "ZZZ",
+				"itemFilter(1).name":       "MaxPrice",
+				"itemFilter(1).value":      "10.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 10.0, paramName Invalid and min 5.0",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MaxPrice",
+				"itemFilter(0).value":      "10.0",
+				"itemFilter(0).paramName":  "Invalid",
+				"itemFilter(0).paramValue": "EUR",
+				"itemFilter(1).name":       "MinPrice",
+				"itemFilter(1).value":      "5.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+		},
+		{
+			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0 and max 10.0, paramName Invalid",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MinPrice",
+				"itemFilter(0).value":      "5.0",
+				"itemFilter(1).name":       "MaxPrice",
+				"itemFilter(1).value":      "10.0",
+				"itemFilter(1).paramName":  "Invalid",
+				"itemFilter(1).paramValue": "EUR",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidPriceParamName, "Invalid"),
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with max 10.0, paramValue ZZZ and min 5.0",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MaxPrice",
+				"itemFilter(0).value":      "10.0",
+				"itemFilter(0).paramName":  "Currency",
+				"itemFilter(0).paramValue": "ZZZ",
+				"itemFilter(1).name":       "MinPrice",
+				"itemFilter(1).value":      "5.0",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
+		},
+		{
+			Name: "returns error if params contains MinPrice itemFilter with min 5.0 and max 10.0, paramValue ZZZ",
+			Params: map[string]string{
+				"keywords":                 "marshmallows",
+				"itemFilter(0).name":       "MinPrice",
+				"itemFilter(0).value":      "5.0",
+				"itemFilter(1).name":       "MaxPrice",
+				"itemFilter(1).value":      "10.0",
+				"itemFilter(1).paramName":  "Currency",
+				"itemFilter(1).paramValue": "ZZZ",
+			},
+			ExpectedError: fmt.Errorf("%w: %s", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 	}
 

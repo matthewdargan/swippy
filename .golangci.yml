@@ -20,9 +20,17 @@ linters:
     - wsl
 issues:
   exclude-rules:
+    - path: ebay-find-by-keyword/ebay/finding.go
+      text: "handleItemFilterType"
+    - path: ebay-find-by-keyword/ebay/finding.go
+      text: "calculated cyclomatic complexity for function validateNumericFilter"
+    - path: ebay-find-by-keyword/ebay/finding.go
+      text: "calculated cyclomatic complexity for function validateListingTypes"
+    - path: ebay-find-by-keyword/ebay/finding.go
+      text: "calculated cyclomatic complexity for function validatePriceRange"
     - path: ebay-find-by-keyword/ebay/finding_test.go
       text: "Function 'TestFindItemsByKeywords' is too long"
     - path: ebay-find-by-keyword/ebay/finding_test.go
-      text: "calculated cyclomatic complexity for function TestFindItemsByKeywords is"
+      text: "Function 'TestValidateParams' is too long"
     - path: ebay-find-by-keyword/ebay/finding_test.go
-      text: "Function name: TestFindItemsByKeywords, Cyclomatic Complexity:"
+      text: "Function name: TestValidateParams, Cyclomatic Complexity"

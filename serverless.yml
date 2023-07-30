@@ -12,7 +12,7 @@ functions:
     handler: bin/ebay-find-by-keyword
     events:
       - httpApi:
-          path: /ebay-find-by-keyword/{keywords}
+          path: /ebay-find-by-keyword
           method: get
     environment:
       STAGE: ${self:provider.stage}

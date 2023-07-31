@@ -281,6 +281,10 @@ type findItemsTestCase struct {
 
 func TestValidateParams(t *testing.T) {
 	t.Parallel()
+	localTimeZone, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatalf("failed to load local timezone: %v", err)
+	}
 	testCases := []findItemsTestCase{
 		{
 			Name:          "returns error if params does not contain keywords",
@@ -1373,10 +1377,10 @@ func TestValidateParams(t *testing.T) {
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeFrom",
-				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(1 * time.Second).In(localTimeZone).Format(time.RFC3339),
 			},
 			ExpectedError: fmt.Errorf("%w: %q",
-				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(localTimeZone).Format(time.RFC3339)),
 		},
 		{
 			Name: "returns error if params contains EndTimeFrom itemFilter with past timestamp",
@@ -1410,10 +1414,10 @@ func TestValidateParams(t *testing.T) {
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeTo",
-				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(1 * time.Second).In(localTimeZone).Format(time.RFC3339),
 			},
 			ExpectedError: fmt.Errorf("%w: %q",
-				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(localTimeZone).Format(time.RFC3339)),
 		},
 		{
 			Name: "returns error if params contains EndTimeTo itemFilter with past timestamp",
@@ -3469,10 +3473,10 @@ func TestValidateParams(t *testing.T) {
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "ModTimeFrom",
-				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(1 * time.Second).In(localTimeZone).Format(time.RFC3339),
 			},
 			ExpectedError: fmt.Errorf("%w: %q",
-				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(localTimeZone).Format(time.RFC3339)),
 		},
 		{
 			Name: "returns error if params contains ModTimeFrom itemFilter with future timestamp",
@@ -3639,10 +3643,10 @@ func TestValidateParams(t *testing.T) {
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeFrom",
-				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(1 * time.Second).In(localTimeZone).Format(time.RFC3339),
 			},
 			ExpectedError: fmt.Errorf("%w: %q",
-				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(localTimeZone).Format(time.RFC3339)),
 		},
 		{
 			Name: "returns error if params contains StartTimeFrom itemFilter with past timestamp",
@@ -3676,10 +3680,10 @@ func TestValidateParams(t *testing.T) {
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeTo",
-				"itemFilter.value": time.Now().Add(1 * time.Second).Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(1 * time.Second).In(localTimeZone).Format(time.RFC3339),
 			},
 			ExpectedError: fmt.Errorf("%w: %q",
-				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).Format(time.RFC3339)),
+				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(localTimeZone).Format(time.RFC3339)),
 		},
 		{
 			Name: "returns error if params contains StartTimeTo itemFilter with past timestamp",

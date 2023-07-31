@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 )
@@ -20,6 +21,19 @@ const (
 var (
 	// ErrKeywordsMissing is returned when the 'keywords' parameter is missing.
 	ErrKeywordsMissing = errors.New("ebay: keywords parameter is required")
+
+	minKeywordsLen, maxKeywordsLen = 2, 350
+
+	// ErrInvalidKeywordsLength is returned when the 'keywords' parameter as a whole
+	// exceeds the maximum length of 350 characters or has a length less than 2 characters.
+	ErrInvalidKeywordsLength = fmt.Errorf(
+		"ebay: invalid keywords length: must be between %d and %d characters", minKeywordsLen, maxKeywordsLen)
+
+	maxKeywordLen = 98
+
+	// ErrInvalidKeywordLength is returned when an individual keyword in the 'keywords' parameter
+	// exceeds the maximum length of 98 characters.
+	ErrInvalidKeywordLength = fmt.Errorf("ebay: invalid keyword length: must be no more than %d characters", maxKeywordLen)
 
 	// ErrInvalidFilterSyntax is returned when both syntax types for filters are used in the params.
 	ErrInvalidFilterSyntax = errors.New("ebay: invalid filter syntax: both syntax types are present")
@@ -235,9 +249,9 @@ type itemFilter struct {
 }
 
 func (svr *FindingServer) validateParams(params map[string]string) (*findingParams, error) {
-	keywords, ok := params["keywords"]
-	if !ok {
-		return nil, ErrKeywordsMissing
+	keywords, err := svr.processKeywords(params)
+	if err != nil {
+		return nil, err
 	}
 
 	fParams := &findingParams{
@@ -257,6 +271,37 @@ func (svr *FindingServer) validateParams(params map[string]string) (*findingPara
 	fParams.itemFilters = itemFilters
 
 	return fParams, nil
+}
+
+func (svr *FindingServer) processKeywords(params map[string]string) (string, error) {
+	keywords, ok := params["keywords"]
+	if !ok {
+		return "", ErrKeywordsMissing
+	}
+
+	if len(keywords) < minKeywordsLen || len(keywords) > maxKeywordsLen {
+		return "", ErrInvalidKeywordsLength
+	}
+
+	individualKeywords := splitKeywords(keywords)
+	for _, keyword := range individualKeywords {
+		if len(keyword) > maxKeywordLen {
+			return "", ErrInvalidKeywordLength
+		}
+	}
+
+	return keywords, nil
+}
+
+// Split keywords based on special characters acting as search operators.
+// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
+func splitKeywords(keywords string) []string {
+	isSpecial := func(r rune) bool {
+		return r == ' ' || r == ',' || r == '(' || r == ')' || r == '"' || r == '-' || r == '*' || r == '@' || r == '+'
+	}
+	individualKeywords := strings.FieldsFunc(keywords, isSpecial)
+
+	return individualKeywords
 }
 
 func (svr *FindingServer) processAspectFilters(params map[string]string) ([]aspectFilter, error) {

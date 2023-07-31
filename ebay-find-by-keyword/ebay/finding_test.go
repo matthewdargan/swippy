@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -285,6 +286,221 @@ func TestValidateParams(t *testing.T) {
 			Name:          "returns error if params does not contain keywords",
 			Params:        map[string]string{},
 			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name:   "can find items if params contains keywords of length 2",
+			Params: map[string]string{"keywords": generateStringWithLen(2, true)},
+		},
+		{
+			Name:   "can find items if params contains keywords of length 12",
+			Params: map[string]string{"keywords": generateStringWithLen(12, true)},
+		},
+		{
+			Name:   "can find items if params contains keywords of length 350",
+			Params: map[string]string{"keywords": generateStringWithLen(350, true)},
+		},
+		{
+			Name:          "returns error if params contains empty keywords",
+			Params:        map[string]string{"keywords": ""},
+			ExpectedError: ebay.ErrInvalidKeywordsLength,
+		},
+		{
+			Name:          "returns error if params contains keywords of length 1",
+			Params:        map[string]string{"keywords": generateStringWithLen(1, true)},
+			ExpectedError: ebay.ErrInvalidKeywordsLength,
+		},
+		{
+			Name:          "returns error if params contains keywords of length 351",
+			Params:        map[string]string{"keywords": generateStringWithLen(351, true)},
+			ExpectedError: ebay.ErrInvalidKeywordsLength,
+		},
+		{
+			Name:   "can find items if params contains 1 keyword of length 2",
+			Params: map[string]string{"keywords": generateStringWithLen(2, false)},
+		},
+		{
+			Name:   "can find items if params contains 1 keyword of length 98",
+			Params: map[string]string{"keywords": generateStringWithLen(98, false)},
+		},
+		{
+			Name:          "returns error if params contains 1 keyword of length 99",
+			Params:        map[string]string{"keywords": generateStringWithLen(99, false)},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains 2 keywords of length 1",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(1, false) + "," + generateStringWithLen(1, false),
+			},
+		},
+		{
+			Name: "can find items if params contains 2 keywords of length 98",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(98, false) + "," + generateStringWithLen(98, false),
+			},
+		},
+		{
+			Name: "can find items if params contains keywords of length 1 and 98",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(1, false) + "," + generateStringWithLen(98, false),
+			},
+		},
+		{
+			Name: "can find items if params contains keywords of length 98 and 1",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(98, false) + "," + generateStringWithLen(1, false),
+			},
+		},
+		{
+			Name: "returns error if params contains 2 keywords of length 99",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(99, false) + "," + generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "returns error if params contains keywords of length 1 and 99",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(1, false) + "," + generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "returns error if params contains keywords of length 99 and 1",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(99, false) + "," + generateStringWithLen(1, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=baseball card",
+			Params: map[string]string{
+				"keywords": "baseball card",
+			},
+		},
+		{
+			Name: "returns error if params contains space-separated keywords, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "baseball " + generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=baseball,card",
+			Params: map[string]string{
+				"keywords": "baseball,card",
+			},
+		},
+		{
+			Name: "returns error if params contains comma-separated keywords, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "baseball," + generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=(baseball,card)",
+			Params: map[string]string{
+				"keywords": "(baseball,card)",
+			},
+		},
+		{
+			Name: "returns error if params contains comma-separated, parenthesis keywords, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "(baseball," + generateStringWithLen(99, false) + ")",
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: `can find items if params contains keywords="baseball card"`,
+			Params: map[string]string{
+				"keywords": `"baseball card"`,
+			},
+		},
+		{
+			Name: "returns error if params contains double-quoted keywords, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": `"baseball ` + generateStringWithLen(99, false) + `"`,
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=baseball -autograph",
+			Params: map[string]string{
+				"keywords": "baseball -autograph",
+			},
+		},
+		{
+			Name: "returns error if params contains 1 keyword with minus sign before it, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "baseball -" + generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=baseball -(autograph,card,star)",
+			Params: map[string]string{
+				"keywords": "baseball -(autograph,card,star)",
+			},
+		},
+		{
+			Name: "returns error if params contains minus sign before group of keywords, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "baseball -(autograph,card," + generateStringWithLen(99, false) + ")",
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=baseball*",
+			Params: map[string]string{
+				"keywords": "baseball*",
+			},
+		},
+		{
+			Name: "returns error if params contains keyword of length 99 and asterisk",
+			Params: map[string]string{
+				"keywords": generateStringWithLen(99, false) + "*",
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=@1 baseball autograph card",
+			Params: map[string]string{
+				"keywords": "@1 baseball autograph card",
+			},
+		},
+		{
+			Name: "returns error if params contains @ with group of keywords, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "@1 baseball autograph " + generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=@1 baseball autograph card +star",
+			Params: map[string]string{
+				"keywords": "@1 baseball autograph card +star",
+			},
+		},
+		{
+			Name: "returns error if params contains @ with group of keywords, plus sign, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "@1 baseball autograph card +" + generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains keywords=ap* ip*",
+			Params: map[string]string{
+				"keywords": "ap* ip*",
+			},
+		},
+		{
+			Name: "returns error if params contains 2 asterisk keyword groups, 1 keyword of length 99",
+			Params: map[string]string{
+				"keywords": "ap* " + generateStringWithLen(99, false) + "*",
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items by aspectFilter.aspectName, aspectValueName",
@@ -3615,6 +3831,22 @@ func assertSearchResponse(tb testing.TB, got, expected *ebay.SearchResponse) {
 	if !reflect.DeepEqual(*got, *expected) {
 		tb.Errorf("got %v, expected %v", got, expected)
 	}
+}
+
+func generateStringWithLen(length int, includeSpaces bool) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
+	var sbuilder strings.Builder
+
+	charSet := letters
+	if !includeSpaces {
+		charSet = letters[:len(letters)-1] // Exclude the space character
+	}
+
+	for i := 0; i < length; i++ {
+		sbuilder.WriteByte(charSet[i%len(charSet)])
+	}
+
+	return sbuilder.String()
 }
 
 func generateFilterParams(filterName string, count int) map[string]string {

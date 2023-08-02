@@ -19,8 +19,15 @@ const (
 )
 
 var (
+	// ErrCategoryIDKeywordsMissing is returned when the 'categoryId' and 'keywords' parameters
+	// are missing in a findItemsAdvanced request.
+	ErrCategoryIDKeywordsMissing = errors.New("ebay: both categoryID and keywords parameters are missing")
+
+	// ErrCategoryIDMissing is returned when the 'categoryId' parameter is missing.
+	ErrCategoryIDMissing = errors.New("ebay: categoryID parameter is missing")
+
 	// ErrKeywordsMissing is returned when the 'keywords' parameter is missing.
-	ErrKeywordsMissing = errors.New("ebay: keywords parameter is required")
+	ErrKeywordsMissing = errors.New("ebay: keywords parameter is missing")
 
 	minKeywordsLen, maxKeywordsLen = 2, 350
 
@@ -198,14 +205,15 @@ func (e *APIError) Error() string {
 	return e.Err
 }
 
-// FindItemsByKeywords searches the eBay Finding API using the provided parameters and a valid eBay application ID.
+// FindItemsByKeywords searches the eBay Finding API using the provided keywords, additional parameters,
+// and a valid eBay application ID.
 func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) (*SearchResponse, error) {
-	fParams, err := svr.validateParams(params)
+	fParams, err := svr.validateFindItemsByKeywordsParams(params)
 	if err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
 	}
 
-	req, err := svr.createRequest(fParams, appID)
+	req, err := svr.createFindItemsByKeywordsRequest(fParams, appID)
 	if err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
 	}
@@ -230,8 +238,48 @@ func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID st
 	return searchResp, nil
 }
 
-type findingParams struct {
+// FindItemsAdvanced searches the eBay Finding API using the provided category and/or keywords, additional parameters,
+// and a valid eBay application ID.
+func (svr *FindingServer) FindItemsAdvanced(params map[string]string, appID string) (*SearchResponse, error) {
+	fParams, err := svr.validateFindItemsAdvancedParams(params)
+	if err != nil {
+		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
+	}
+
+	req, err := svr.createFindItemsAdvancedRequest(fParams, appID)
+	if err != nil {
+		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	resp, err := svr.client.Do(req)
+	if err != nil {
+		return nil, &APIError{Err: ErrFailedRequest.Error() + ": " + err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, &APIError{
+			Err:        ErrInvalidStatus.Error() + ": " + strconv.Itoa(resp.StatusCode),
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+
+	searchResp, err := svr.parseResponse(resp)
+	if err != nil {
+		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	return searchResp, nil
+}
+
+type findItemsByKeywordsParams struct {
 	keywords      string
+	aspectFilters []aspectFilter
+	itemFilters   []itemFilter
+}
+
+type findItemsAdvancedParams struct {
+	categoryIDs   []string
+	keywords      *string
 	aspectFilters []aspectFilter
 	itemFilters   []itemFilter
 }
@@ -248,13 +296,15 @@ type itemFilter struct {
 	paramValue *string
 }
 
-func (svr *FindingServer) validateParams(params map[string]string) (*findingParams, error) {
+func (svr *FindingServer) validateFindItemsByKeywordsParams(
+	params map[string]string,
+) (*findItemsByKeywordsParams, error) {
 	keywords, err := svr.processKeywords(params)
 	if err != nil {
 		return nil, err
 	}
 
-	fParams := &findingParams{
+	fParams := &findItemsByKeywordsParams{
 		keywords: keywords,
 	}
 
@@ -271,6 +321,58 @@ func (svr *FindingServer) validateParams(params map[string]string) (*findingPara
 	fParams.itemFilters = itemFilters
 
 	return fParams, nil
+}
+
+func (svr *FindingServer) validateFindItemsAdvancedParams(params map[string]string) (*findItemsAdvancedParams, error) {
+	_, categoryIDExist := params["categoryId"]
+	_, keywordsExist := params["keywords"]
+	if !categoryIDExist && !keywordsExist {
+		return nil, ErrCategoryIDKeywordsMissing
+	}
+
+	var fParams *findItemsAdvancedParams
+	if categoryIDExist {
+		categoryIDs, err := svr.processCategoryIDs(params)
+		if err != nil {
+			return nil, err
+		}
+		fParams.categoryIDs = categoryIDs
+	}
+	if keywordsExist {
+		keywords, err := svr.processKeywords(params)
+		if err != nil {
+			return nil, err
+		}
+		fParams.keywords = &keywords
+	}
+
+	aspectFilters, err := svr.processAspectFilters(params)
+	if err != nil {
+		return nil, err
+	}
+	fParams.aspectFilters = aspectFilters
+
+	itemFilters, err := svr.processItemFilters(params)
+	if err != nil {
+		return nil, err
+	}
+	fParams.itemFilters = itemFilters
+
+	return fParams, nil
+}
+
+func (svr *FindingServer) processCategoryIDs(params map[string]string) ([]string, error) {
+	categoryIDStr, ok := params["categoryId"]
+	if !ok {
+		return nil, ErrCategoryIDMissing
+	}
+
+	categoryIDs := strings.Split(categoryIDStr, ",")
+	for i := range categoryIDs {
+		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
+	}
+
+	return categoryIDs, nil
 }
 
 func (svr *FindingServer) processKeywords(params map[string]string) (string, error) {
@@ -1000,7 +1102,9 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	return nil
 }
 
-func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*http.Request, error) {
+func (svr *FindingServer) createFindItemsByKeywordsRequest(
+	fParams *findItemsByKeywordsParams, appID string,
+) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
@@ -1012,6 +1116,52 @@ func (svr *FindingServer) createRequest(fParams *findingParams, appID string) (*
 	qry.Add("SECURITY-APPNAME", appID)
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
 	qry.Add("keywords", fParams.keywords)
+
+	for idx, aspectFilter := range fParams.aspectFilters {
+		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
+		for j, v := range aspectFilter.aspectValueNames {
+			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
+		}
+	}
+
+	for idx, itemFilter := range fParams.itemFilters {
+		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
+		for j, v := range itemFilter.values {
+			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", idx, j), v)
+		}
+
+		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
+		}
+	}
+
+	req.URL.RawQuery = qry.Encode()
+
+	return req, nil
+}
+
+func (svr *FindingServer) createFindItemsAdvancedRequest(
+	fParams *findItemsAdvancedParams, appID string,
+) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ebay: %w", err)
+	}
+
+	qry := req.URL.Query()
+	qry.Add("OPERATION-NAME", findingByKeywordsOperationName)
+	qry.Add("SERVICE-VERSION", findingServiceVersion)
+	qry.Add("SECURITY-APPNAME", appID)
+	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
+
+	if fParams.categoryIDs != nil {
+		categoryIDs := strings.Join(fParams.categoryIDs, ",")
+		qry.Add("keywords", categoryIDs)
+	}
+	if fParams.keywords != nil {
+		qry.Add("keywords", *fParams.keywords)
+	}
 
 	for idx, aspectFilter := range fParams.aspectFilters {
 		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)

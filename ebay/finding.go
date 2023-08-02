@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	findingURL                     = "https://svcs.ebay.com/services/search/FindingService/v1?REST-PAYLOAD"
-	findingByKeywordsOperationName = "findItemsByKeywords"
-	findingServiceVersion          = "1.0.0"
-	findingResponseDataFormat      = "JSON"
+	findingURL                       = "https://svcs.ebay.com/services/search/FindingService/v1?REST-PAYLOAD"
+	findItemsByKeywordsOperationName = "findItemsByKeywords"
+	findItemsAdvancedOperationName   = "findItemsAdvanced"
+	findingServiceVersion            = "1.0.0"
+	findingResponseDataFormat        = "JSON"
 )
 
 var (
@@ -208,45 +209,23 @@ func (e *APIError) Error() string {
 // FindItemsByKeywords searches the eBay Finding API using the provided keywords, additional parameters,
 // and a valid eBay application ID.
 func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) (*SearchResponse, error) {
-	fParams, err := svr.validateFindItemsByKeywordsParams(params)
-	if err != nil {
-		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
-	}
-
-	req, err := svr.createFindItemsByKeywordsRequest(fParams, appID)
-	if err != nil {
-		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
-	}
-
-	resp, err := svr.client.Do(req)
-	if err != nil {
-		return nil, &APIError{Err: ErrFailedRequest.Error() + ": " + err.Error(), StatusCode: http.StatusInternalServerError}
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, &APIError{
-			Err:        ErrInvalidStatus.Error() + ": " + strconv.Itoa(resp.StatusCode),
-			StatusCode: http.StatusInternalServerError,
-		}
-	}
-
-	searchResp, err := svr.parseResponse(resp)
-	if err != nil {
-		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
-	}
-
-	return searchResp, nil
+	return svr.findItems(params, &findItemsByKeywordsParams{}, appID)
 }
 
 // FindItemsAdvanced searches the eBay Finding API using the provided category and/or keywords, additional parameters,
 // and a valid eBay application ID.
 func (svr *FindingServer) FindItemsAdvanced(params map[string]string, appID string) (*SearchResponse, error) {
-	fParams, err := svr.validateFindItemsAdvancedParams(params)
-	if err != nil {
+	return svr.findItems(params, &findItemsAdvancedParams{}, appID)
+}
+
+func (svr *FindingServer) findItems(
+	params map[string]string, fParams findItemsParams, appID string,
+) (*SearchResponse, error) {
+	if err := fParams.validateParams(params); err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
 	}
 
-	req, err := svr.createFindItemsAdvancedRequest(fParams, appID)
+	req, err := fParams.createRequest(appID)
 	if err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
 	}
@@ -271,15 +250,13 @@ func (svr *FindingServer) FindItemsAdvanced(params map[string]string, appID stri
 	return searchResp, nil
 }
 
-type findItemsByKeywordsParams struct {
-	keywords      string
-	aspectFilters []aspectFilter
-	itemFilters   []itemFilter
+type findItemsParams interface {
+	validateParams(params map[string]string) error
+	createRequest(appID string) (*http.Request, error)
 }
 
-type findItemsAdvancedParams struct {
-	categoryIDs   []string
-	keywords      *string
+type findItemsByKeywordsParams struct {
+	keywords      string
 	aspectFilters []aspectFilter
 	itemFilters   []itemFilter
 }
@@ -296,86 +273,154 @@ type itemFilter struct {
 	paramValue *string
 }
 
-func (svr *FindingServer) validateFindItemsByKeywordsParams(
-	params map[string]string,
-) (*findItemsByKeywordsParams, error) {
-	keywords, err := svr.processKeywords(params)
+func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) error {
+	keywords, err := processKeywords(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	fp.keywords = keywords
 
-	fParams := &findItemsByKeywordsParams{
-		keywords: keywords,
-	}
-
-	aspectFilters, err := svr.processAspectFilters(params)
+	aspectFilters, err := processAspectFilters(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fParams.aspectFilters = aspectFilters
+	fp.aspectFilters = aspectFilters
 
-	itemFilters, err := svr.processItemFilters(params)
+	itemFilters, err := processItemFilters(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fParams.itemFilters = itemFilters
+	fp.itemFilters = itemFilters
 
-	return fParams, nil
+	return nil
 }
 
-func (svr *FindingServer) validateFindItemsAdvancedParams(params map[string]string) (*findItemsAdvancedParams, error) {
+func (fp *findItemsByKeywordsParams) createRequest(appID string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ebay: %w", err)
+	}
+
+	qry := req.URL.Query()
+	qry.Add("OPERATION-NAME", findItemsByKeywordsOperationName)
+	qry.Add("SERVICE-VERSION", findingServiceVersion)
+	qry.Add("SECURITY-APPNAME", appID)
+	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
+	qry.Add("keywords", fp.keywords)
+
+	for idx, aspectFilter := range fp.aspectFilters {
+		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
+		for j, v := range aspectFilter.aspectValueNames {
+			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
+		}
+	}
+
+	for idx, itemFilter := range fp.itemFilters {
+		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
+		for j, v := range itemFilter.values {
+			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", idx, j), v)
+		}
+
+		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
+		}
+	}
+
+	req.URL.RawQuery = qry.Encode()
+
+	return req, nil
+}
+
+type findItemsAdvancedParams struct {
+	categoryIDs   []string
+	keywords      *string
+	aspectFilters []aspectFilter
+	itemFilters   []itemFilter
+}
+
+func (fp *findItemsAdvancedParams) validateParams(params map[string]string) error {
 	_, categoryIDExist := params["categoryId"]
 	_, keywordsExist := params["keywords"]
 	if !categoryIDExist && !keywordsExist {
-		return nil, ErrCategoryIDKeywordsMissing
+		return ErrCategoryIDKeywordsMissing
 	}
 
-	var fParams *findItemsAdvancedParams
 	if categoryIDExist {
-		categoryIDs, err := svr.processCategoryIDs(params)
+		categoryIDs, err := processCategoryIDs(params)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		fParams.categoryIDs = categoryIDs
+		fp.categoryIDs = categoryIDs
 	}
 	if keywordsExist {
-		keywords, err := svr.processKeywords(params)
+		keywords, err := processKeywords(params)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		fParams.keywords = &keywords
+		fp.keywords = &keywords
 	}
 
-	aspectFilters, err := svr.processAspectFilters(params)
+	aspectFilters, err := processAspectFilters(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fParams.aspectFilters = aspectFilters
+	fp.aspectFilters = aspectFilters
 
-	itemFilters, err := svr.processItemFilters(params)
+	itemFilters, err := processItemFilters(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fParams.itemFilters = itemFilters
+	fp.itemFilters = itemFilters
 
-	return fParams, nil
+	return nil
 }
 
-func (svr *FindingServer) processCategoryIDs(params map[string]string) ([]string, error) {
-	categoryIDStr, ok := params["categoryId"]
-	if !ok {
-		return nil, ErrCategoryIDMissing
+func (fp *findItemsAdvancedParams) createRequest(appID string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ebay: %w", err)
 	}
 
-	categoryIDs := strings.Split(categoryIDStr, ",")
-	for i := range categoryIDs {
-		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
+	qry := req.URL.Query()
+	qry.Add("OPERATION-NAME", findItemsAdvancedOperationName)
+	qry.Add("SERVICE-VERSION", findingServiceVersion)
+	qry.Add("SECURITY-APPNAME", appID)
+	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
+
+	if fp.categoryIDs != nil {
+		categoryIDs := strings.Join(fp.categoryIDs, ",")
+		qry.Add("categoryId", categoryIDs)
+	}
+	if fp.keywords != nil {
+		qry.Add("keywords", *fp.keywords)
 	}
 
-	return categoryIDs, nil
+	for idx, aspectFilter := range fp.aspectFilters {
+		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
+		for j, v := range aspectFilter.aspectValueNames {
+			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
+		}
+	}
+
+	for idx, itemFilter := range fp.itemFilters {
+		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
+		for j, v := range itemFilter.values {
+			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", idx, j), v)
+		}
+
+		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
+		}
+	}
+
+	req.URL.RawQuery = qry.Encode()
+
+	return req, nil
 }
 
-func (svr *FindingServer) processKeywords(params map[string]string) (string, error) {
+func processKeywords(params map[string]string) (string, error) {
 	keywords, ok := params["keywords"]
 	if !ok {
 		return "", ErrKeywordsMissing
@@ -406,7 +451,22 @@ func splitKeywords(keywords string) []string {
 	return individualKeywords
 }
 
-func (svr *FindingServer) processAspectFilters(params map[string]string) ([]aspectFilter, error) {
+func processCategoryIDs(params map[string]string) ([]string, error) {
+	categoryIDStr, ok := params["categoryId"]
+	if !ok {
+		return nil, ErrCategoryIDMissing
+	}
+
+	// TODO: Add extra parts of verification mentioned in the documentation: https://developer.ebay.com/devzone/finding/callref/finditemsadvanced.html#Request.categoryId
+	categoryIDs := strings.Split(categoryIDStr, ",")
+	for i := range categoryIDs {
+		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
+	}
+
+	return categoryIDs, nil
+}
+
+func processAspectFilters(params map[string]string) ([]aspectFilter, error) {
 	// Check if both "aspectFilter.aspectName" and "aspectFilter(0).aspectName" syntax types occur in the params.
 	_, nonNumberedExists := params["aspectFilter.aspectName"]
 	_, numberedExists := params["aspectFilter(0).aspectName"]
@@ -460,7 +520,7 @@ func processNumberedAspectFilters(params map[string]string) ([]aspectFilter, err
 	return aspectFilters, nil
 }
 
-func (svr *FindingServer) processItemFilters(params map[string]string) ([]itemFilter, error) {
+func processItemFilters(params map[string]string) ([]itemFilter, error) {
 	// Check if both "itemFilter.name" and "itemFilter(0).name" syntax types occur in the params.
 	_, nonNumberedExists := params["itemFilter.name"]
 	_, numberedExists := params["itemFilter(0).name"]
@@ -1100,91 +1160,6 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	}
 
 	return nil
-}
-
-func (svr *FindingServer) createFindItemsByKeywordsRequest(
-	fParams *findItemsByKeywordsParams, appID string,
-) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
-	}
-
-	qry := req.URL.Query()
-	qry.Add("OPERATION-NAME", findingByKeywordsOperationName)
-	qry.Add("SERVICE-VERSION", findingServiceVersion)
-	qry.Add("SECURITY-APPNAME", appID)
-	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
-	qry.Add("keywords", fParams.keywords)
-
-	for idx, aspectFilter := range fParams.aspectFilters {
-		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
-		for j, v := range aspectFilter.aspectValueNames {
-			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
-		}
-	}
-
-	for idx, itemFilter := range fParams.itemFilters {
-		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
-		for j, v := range itemFilter.values {
-			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", idx, j), v)
-		}
-
-		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
-			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
-			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
-		}
-	}
-
-	req.URL.RawQuery = qry.Encode()
-
-	return req, nil
-}
-
-func (svr *FindingServer) createFindItemsAdvancedRequest(
-	fParams *findItemsAdvancedParams, appID string,
-) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
-	}
-
-	qry := req.URL.Query()
-	qry.Add("OPERATION-NAME", findingByKeywordsOperationName)
-	qry.Add("SERVICE-VERSION", findingServiceVersion)
-	qry.Add("SECURITY-APPNAME", appID)
-	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
-
-	if fParams.categoryIDs != nil {
-		categoryIDs := strings.Join(fParams.categoryIDs, ",")
-		qry.Add("keywords", categoryIDs)
-	}
-	if fParams.keywords != nil {
-		qry.Add("keywords", *fParams.keywords)
-	}
-
-	for idx, aspectFilter := range fParams.aspectFilters {
-		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
-		for j, v := range aspectFilter.aspectValueNames {
-			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
-		}
-	}
-
-	for idx, itemFilter := range fParams.itemFilters {
-		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
-		for j, v := range itemFilter.values {
-			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", idx, j), v)
-		}
-
-		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
-			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
-			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
-		}
-	}
-
-	req.URL.RawQuery = qry.Encode()
-
-	return req, nil
 }
 
 func (svr *FindingServer) parseResponse(resp *http.Response) (*SearchResponse, error) {

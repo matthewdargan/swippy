@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/matthewdargan/swippy-api/ebay-find-by-keyword/ebay"
+	"github.com/matthewdargan/swippy-api/ebay"
 )
 
 const findingHTTPTimeout = 5

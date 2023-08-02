@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/matthewdargan/swippy-api/ebay-find-by-keyword/ebay"
+	"github.com/matthewdargan/swippy-api/ebay"
 )
 
 var (

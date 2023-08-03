@@ -19,8 +19,8 @@ import (
 var (
 	ErrClientFailure = errors.New("http: client failed")
 	appID            = "super secret ID"
-	searchResp       = ebay.SearchResponse{
-		FindItemsByKeywordsResponse: []ebay.FindItemsByKeywordsResponse{
+	findItemsResps   = ebay.FindItemsResponses{
+		FindItemsByKeywordsResponse: []ebay.FindItemsResponse{
 			{
 				Ack:       []string{"Success"},
 				Version:   []string{"1.0"},
@@ -154,7 +154,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 		t.Parallel()
 		client := &MockFindingClient{
 			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(searchResp)
+				body, err := json.Marshal(findItemsResps)
 				assertNoError(t, err)
 
 				return &http.Response{
@@ -166,7 +166,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 		svr := ebay.NewFindingServer(client)
 		resp, err := svr.FindItemsByKeywords(params, appID)
 		assertNoError(t, err)
-		assertSearchResponse(t, resp, &searchResp)
+		assertFindItemsResponse(t, resp, findItemsResps.FindItemsByKeywordsResponse)
 	})
 
 	t.Run("returns error if the client returns an error", func(t *testing.T) {
@@ -248,7 +248,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error if the response cannot be parsed into SearchResponse", func(t *testing.T) {
+	t.Run("returns error if the response cannot be parsed into FindItemsResponses", func(t *testing.T) {
 		t.Parallel()
 		badData := `[123.1, 234.2]`
 		client := &MockFindingClient{
@@ -266,7 +266,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 		assertError(t, err)
 
 		expected := fmt.Sprintf("%v: %v", ebay.ErrDecodeAPIResponse,
-			"json: cannot unmarshal array into Go value of type ebay.SearchResponse")
+			"json: cannot unmarshal array into Go value of type ebay.FindItemsResponses")
 		got := err.Error()
 		assertErrorEquals(t, got, expected)
 		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
@@ -3775,7 +3775,7 @@ func TestValidateParams(t *testing.T) {
 			t.Parallel()
 			client := &MockFindingClient{
 				DoFunc: func(req *http.Request) (*http.Response, error) {
-					body, err := json.Marshal(searchResp)
+					body, err := json.Marshal(findItemsResps)
 					assertNoError(t, err)
 
 					return &http.Response{
@@ -3793,7 +3793,7 @@ func TestValidateParams(t *testing.T) {
 				assertStatusCodeEquals(t, err, http.StatusBadRequest)
 			} else {
 				assertNoError(t, err)
-				assertSearchResponse(t, resp, &searchResp)
+				assertFindItemsResponse(t, resp, findItemsResps.FindItemsByKeywordsResponse)
 			}
 		})
 	}
@@ -3830,9 +3830,9 @@ func assertStatusCodeEquals(tb testing.TB, err error, expectedStatusCode int) {
 	}
 }
 
-func assertSearchResponse(tb testing.TB, got, expected *ebay.SearchResponse) {
+func assertFindItemsResponse(tb testing.TB, got, expected []ebay.FindItemsResponse) {
 	tb.Helper()
-	if !reflect.DeepEqual(*got, *expected) {
+	if !reflect.DeepEqual(got, expected) {
 		tb.Errorf("got %v, expected %v", got, expected)
 	}
 }

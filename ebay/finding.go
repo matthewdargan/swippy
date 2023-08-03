@@ -76,6 +76,9 @@ var (
 	// ErrDecodeAPIResponse is returned when there is an error decoding the eBay Finding API response body.
 	ErrDecodeAPIResponse = errors.New("ebay: failed to decode eBay Finding API response body")
 
+	// ErrUnexpectedResponseFormat is returned when the eBay Finding API response does not match the expected format.
+	ErrUnexpectedResponseFormat = errors.New("ebay: unexpected response format")
+
 	// ErrInvalidBooleanValue is returned when an item filter has an invalid boolean 'values' parameter.
 	ErrInvalidBooleanValue = errors.New("ebay: invalid boolean item filter value, allowed values are true and false")
 
@@ -220,19 +223,19 @@ func (e *APIError) Error() string {
 
 // FindItemsByKeywords searches the eBay Finding API using the provided keywords, additional parameters,
 // and a valid eBay application ID.
-func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) (*SearchResponse, error) {
+func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) ([]FindItemsResponse, error) {
 	return svr.findItems(params, &findItemsByKeywordsParams{}, appID)
 }
 
 // FindItemsAdvanced searches the eBay Finding API using the provided category and/or keywords, additional parameters,
 // and a valid eBay application ID.
-func (svr *FindingServer) FindItemsAdvanced(params map[string]string, appID string) (*SearchResponse, error) {
+func (svr *FindingServer) FindItemsAdvanced(params map[string]string, appID string) ([]FindItemsResponse, error) {
 	return svr.findItems(params, &findItemsAdvancedParams{}, appID)
 }
 
 func (svr *FindingServer) findItems(
 	params map[string]string, fParams findItemsParams, appID string,
-) (*SearchResponse, error) {
+) ([]FindItemsResponse, error) {
 	if err := fParams.validateParams(params); err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
 	}
@@ -254,12 +257,12 @@ func (svr *FindingServer) findItems(
 		}
 	}
 
-	searchResp, err := svr.parseResponse(resp)
+	itemsResp, err := svr.parseResponse(resp)
 	if err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
 	}
 
-	return searchResp, nil
+	return itemsResp, nil
 }
 
 type findItemsParams interface {
@@ -1180,14 +1183,20 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	return nil
 }
 
-func (svr *FindingServer) parseResponse(resp *http.Response) (*SearchResponse, error) {
+func (svr *FindingServer) parseResponse(resp *http.Response) ([]FindItemsResponse, error) {
 	defer resp.Body.Close()
 
-	var items SearchResponse
-	err := json.NewDecoder(resp.Body).Decode(&items)
+	var resps FindItemsResponses
+	err := json.NewDecoder(resp.Body).Decode(&resps)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
 	}
 
-	return &items, nil
+	if len(resps.FindItemsByKeywordsResponse) > 0 {
+		return resps.FindItemsByKeywordsResponse, nil
+	} else if len(resps.FindItemsAdvancedResponse) > 0 {
+		return resps.FindItemsAdvancedResponse, nil
+	}
+
+	return nil, ErrUnexpectedResponseFormat
 }

@@ -24,9 +24,6 @@ var (
 	// are missing in a findItemsAdvanced request.
 	ErrCategoryIDKeywordsMissing = errors.New("ebay: both categoryID and keywords parameters are missing")
 
-	// ErrCategoryIDMissing is returned when the 'categoryId' parameter is missing.
-	ErrCategoryIDMissing = errors.New("ebay: categoryID parameter is missing")
-
 	// ErrKeywordsMissing is returned when the 'keywords' parameter is missing.
 	ErrKeywordsMissing = errors.New("ebay: keywords parameter is missing")
 
@@ -42,6 +39,21 @@ var (
 	// ErrInvalidKeywordLength is returned when an individual keyword in the 'keywords' parameter
 	// exceeds the maximum length of 98 characters.
 	ErrInvalidKeywordLength = fmt.Errorf("ebay: invalid keyword length: must be no more than %d characters", maxKeywordLen)
+
+	// ErrCategoryIDMissing is returned when the 'categoryId' parameter is missing.
+	ErrCategoryIDMissing = errors.New("ebay: categoryID parameter is missing")
+
+	maxCategoryIDs = 3
+
+	// ErrMaxCategoryIDs is returned when the 'categoryId' parameter contains more category IDs than the maximum allowed.
+	ErrMaxCategoryIDs = fmt.Errorf("ebay: maximum category IDs to specify is %d", maxCategoryIDs)
+
+	maxCategoryIDLen = 10
+
+	// ErrInvalidCategoryIDLength is returned when an individual category ID in the 'categoryId' parameter
+	// exceed the maximum length of 10 characters.
+	ErrInvalidCategoryIDLength = fmt.Errorf(
+		"ebay: invalid category ID length: must be no more than %d characters", maxCategoryIDLen)
 
 	// ErrInvalidFilterSyntax is returned when both syntax types for filters are used in the params.
 	ErrInvalidFilterSyntax = errors.New("ebay: invalid filter syntax: both syntax types are present")
@@ -457,10 +469,16 @@ func processCategoryIDs(params map[string]string) ([]string, error) {
 		return nil, ErrCategoryIDMissing
 	}
 
-	// TODO: Add extra parts of verification mentioned in the documentation: https://developer.ebay.com/devzone/finding/callref/finditemsadvanced.html#Request.categoryId
 	categoryIDs := strings.Split(categoryIDStr, ",")
+	if len(categoryIDs) > maxCategoryIDs {
+		return nil, ErrMaxCategoryIDs
+	}
+
 	for i := range categoryIDs {
 		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
+		if len(categoryIDs[i]) > maxCategoryIDLen {
+			return nil, ErrInvalidCategoryIDLength
+		}
 	}
 
 	return categoryIDs, nil

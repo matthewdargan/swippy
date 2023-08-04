@@ -51,9 +51,9 @@ var (
 	maxCategoryIDLen = 10
 
 	// ErrInvalidCategoryIDLength is returned when an individual category ID in the 'categoryId' parameter
-	// exceed the maximum length of 10 characters.
+	// exceed the maximum length of 10 characters or is empty.
 	ErrInvalidCategoryIDLength = fmt.Errorf(
-		"ebay: invalid category ID length: must be no more than %d characters", maxCategoryIDLen)
+		"ebay: invalid category ID length: must be between 1 and %d characters", maxCategoryIDLen)
 
 	// ErrInvalidFilterSyntax is returned when both syntax types for filters are used in the params.
 	ErrInvalidFilterSyntax = errors.New("ebay: invalid filter syntax: both syntax types are present")
@@ -470,6 +470,10 @@ func processCategoryIDs(params map[string]string) ([]string, error) {
 	categoryIDStr, ok := params["categoryId"]
 	if !ok {
 		return nil, ErrCategoryIDMissing
+	}
+
+	if categoryIDStr == "" {
+		return nil, ErrInvalidCategoryIDLength
 	}
 
 	categoryIDs := strings.Split(categoryIDStr, ",")

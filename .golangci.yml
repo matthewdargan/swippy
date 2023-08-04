@@ -31,6 +31,8 @@ issues:
     - path: ebay/finding_test.go
       text: "Function 'TestFindItemsByKeywords' is too long"
     - path: ebay/finding_test.go
+      text: "Function 'TestFindItemsAdvanced' is too long"
+    - path: ebay/finding_test.go
       text: "Function 'testFindItems' is too long"
     - path: ebay/finding_test.go
       text: "calculated cyclomatic complexity for function testFindItems"

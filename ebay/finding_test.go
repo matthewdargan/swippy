@@ -164,6 +164,32 @@ func TestFindItemsByKeywords(t *testing.T) {
 	}
 	testFindItems(t, params, findItemsByKeywords, findItemsByKeywordsResp)
 
+	t.Run("returns error if the findItemsByKeywordsResponse is empty", func(t *testing.T) {
+		t.Parallel()
+		emptyItemsResp := ebay.FindItemsResponses{
+			FindItemsByKeywordsResponse: []ebay.FindItemsResponse{},
+		}
+		client := &MockFindingClient{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
+				body, err := json.Marshal(emptyItemsResp)
+				assertNoError(t, err)
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBuffer(body)),
+				}, nil
+			},
+		}
+		svr := ebay.NewFindingServer(client)
+		_, err := svr.FindItemsByKeywords(params, appID)
+		assertError(t, err)
+
+		expected := ebay.ErrUnexpectedResponseFormat.Error()
+		got := err.Error()
+		assertErrorEquals(t, got, expected)
+		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
+	})
+
 	testCases := []findItemsTestCase{
 		{
 			Name:          "returns error if params does not contain keywords",
@@ -239,6 +265,137 @@ func TestFindItemsAdvanced(t *testing.T) {
 		"categoryId": "12345",
 	}
 	testFindItems(t, params, findItemsAdvanced, findItemsAdvancedResp)
+
+	t.Run("returns error if the findItemsAdvancedResponse is empty", func(t *testing.T) {
+		t.Parallel()
+		emptyItemsResp := ebay.FindItemsResponses{
+			FindItemsAdvancedResponse: []ebay.FindItemsResponse{},
+		}
+		client := &MockFindingClient{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
+				body, err := json.Marshal(emptyItemsResp)
+				assertNoError(t, err)
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBuffer(body)),
+				}, nil
+			},
+		}
+		svr := ebay.NewFindingServer(client)
+		_, err := svr.FindItemsAdvanced(params, appID)
+		assertError(t, err)
+
+		expected := ebay.ErrUnexpectedResponseFormat.Error()
+		got := err.Error()
+		assertErrorEquals(t, got, expected)
+		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
+	})
+
+	testCases := []findItemsTestCase{
+		{
+			Name:          "returns error if params does not contain categoryId or keywords",
+			Params:        map[string]string{},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 1",
+			Params: map[string]string{"categoryId": "1"},
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 5",
+			Params: map[string]string{"categoryId": "1234567890"},
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 10",
+			Params: map[string]string{"categoryId": "1234567890"},
+		},
+		{
+			Name:          "returns error if params contains empty categoryId",
+			Params:        map[string]string{"categoryId": ""},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains categoryId of length 11",
+			Params:        map[string]string{"categoryId": "12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:   "can find items if params contains 2 categoryIds of length 1",
+			Params: map[string]string{"categoryId": "1,2"},
+		},
+		{
+			Name:   "can find items if params contains 2 categoryIds of length 10",
+			Params: map[string]string{"categoryId": "1234567890,9876543210"},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
+			Params:        map[string]string{"categoryId": "12345678901,1"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:   "can find items if params contains 3 categoryIds of length 1",
+			Params: map[string]string{"categoryId": "1,2,3"},
+		},
+		{
+			Name:   "can find items if params contains 3 categoryIds of length 10",
+			Params: map[string]string{"categoryId": "1234567890,9876543210,8976543210"},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
+			Params:        map[string]string{"categoryId": "12345678901,1,2"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,12345678901,2"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,2,12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 4 categoryIds",
+			Params:        map[string]string{"categoryId": "1,2,3,4"},
+			ExpectedError: ebay.ErrMaxCategoryIDs,
+		},
+		// TODO: Add test cases for categoryId and keywords present
+	}
+	for _, tc := range testCases {
+		testCase := tc
+		t.Run(testCase.Name, func(t *testing.T) {
+			t.Parallel()
+			client := &MockFindingClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					body, err := json.Marshal(findItemsAdvancedResp)
+					assertNoError(t, err)
+
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewBuffer(body)),
+					}, nil
+				},
+			}
+			svr := ebay.NewFindingServer(client)
+			resp, err := svr.FindItemsAdvanced(testCase.Params, appID)
+
+			if testCase.ExpectedError != nil {
+				assertError(t, err)
+				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
+				assertStatusCodeEquals(t, err, http.StatusBadRequest)
+			} else {
+				assertNoError(t, err)
+				assertFindItemsResponse(t, resp, findItemsAdvancedResp.FindItemsAdvancedResponse)
+			}
+		})
+	}
 }
 
 func testFindItems(t *testing.T, params map[string]string, findMethod string, expectedResp ebay.FindItemsResponses) {

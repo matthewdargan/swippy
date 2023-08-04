@@ -229,34 +229,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 	}
-	for _, tc := range testCases {
-		testCase := tc
-		t.Run(testCase.Name, func(t *testing.T) {
-			t.Parallel()
-			client := &MockFindingClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					body, err := json.Marshal(findItemsByKeywordsResp)
-					assertNoError(t, err)
-
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       io.NopCloser(bytes.NewBuffer(body)),
-					}, nil
-				},
-			}
-			svr := ebay.NewFindingServer(client)
-			resp, err := svr.FindItemsByKeywords(testCase.Params, appID)
-
-			if testCase.ExpectedError != nil {
-				assertError(t, err)
-				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
-				assertStatusCodeEquals(t, err, http.StatusBadRequest)
-			} else {
-				assertNoError(t, err)
-				assertFindItemsResponse(t, resp, findItemsByKeywordsResp.FindItemsByKeywordsResponse)
-			}
-		})
-	}
+	testFindItemsWithParams(t, findItemsByKeywords, findItemsByKeywordsResp, testCases)
 }
 
 func TestFindItemsAdvanced(t *testing.T) {
@@ -368,34 +341,7 @@ func TestFindItemsAdvanced(t *testing.T) {
 		},
 		// TODO: Add test cases for categoryId and keywords present
 	}
-	for _, tc := range testCases {
-		testCase := tc
-		t.Run(testCase.Name, func(t *testing.T) {
-			t.Parallel()
-			client := &MockFindingClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					body, err := json.Marshal(findItemsAdvancedResp)
-					assertNoError(t, err)
-
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       io.NopCloser(bytes.NewBuffer(body)),
-					}, nil
-				},
-			}
-			svr := ebay.NewFindingServer(client)
-			resp, err := svr.FindItemsAdvanced(testCase.Params, appID)
-
-			if testCase.ExpectedError != nil {
-				assertError(t, err)
-				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
-				assertStatusCodeEquals(t, err, http.StatusBadRequest)
-			} else {
-				assertNoError(t, err)
-				assertFindItemsResponse(t, resp, findItemsAdvancedResp.FindItemsAdvancedResponse)
-			}
-		})
-	}
+	testFindItemsWithParams(t, findItemsAdvanced, findItemsAdvancedResp, testCases)
 }
 
 func testFindItems(t *testing.T, params map[string]string, findMethod string, expectedResp ebay.FindItemsResponses) {
@@ -4015,7 +3961,51 @@ func testFindItems(t *testing.T, params map[string]string, findMethod string, ex
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
 		},
 	}
+	testFindItemsWithParams(t, findMethod, expectedResp, testCases)
+}
 
+func assertError(tb testing.TB, err error) {
+	tb.Helper()
+	if err == nil {
+		tb.Fatal("expected an error but did not get one")
+	}
+}
+
+func assertNoError(tb testing.TB, err error) {
+	tb.Helper()
+	if err != nil {
+		tb.Fatalf("did not expect error but got one, %v", err)
+	}
+}
+
+func assertErrorEquals(tb testing.TB, got, expected string) {
+	tb.Helper()
+	if got != expected {
+		tb.Errorf("got %v, expected %v", got, expected)
+	}
+}
+
+func assertStatusCodeEquals(tb testing.TB, err error, expectedStatusCode int) {
+	tb.Helper()
+	var apiError *ebay.APIError
+	if !errors.As(err, &apiError) {
+		tb.Error("expected APIError")
+	} else if apiError.StatusCode != expectedStatusCode {
+		tb.Errorf("got status code %d, expected %d", apiError.StatusCode, expectedStatusCode)
+	}
+}
+
+func assertFindItemsResponse(tb testing.TB, got, expected []ebay.FindItemsResponse) {
+	tb.Helper()
+	if !reflect.DeepEqual(got, expected) {
+		tb.Errorf("got %v, expected %v", got, expected)
+	}
+}
+
+func testFindItemsWithParams(
+	t *testing.T, findMethod string, expectedResp ebay.FindItemsResponses, testCases []findItemsTestCase,
+) {
+	t.Helper()
 	for _, tc := range testCases {
 		testCase := tc
 		t.Run(testCase.Name, func(t *testing.T) {
@@ -4058,44 +4048,6 @@ func testFindItems(t *testing.T, params map[string]string, findMethod string, ex
 				}
 			}
 		})
-	}
-}
-
-func assertError(tb testing.TB, err error) {
-	tb.Helper()
-	if err == nil {
-		tb.Fatal("expected an error but did not get one")
-	}
-}
-
-func assertNoError(tb testing.TB, err error) {
-	tb.Helper()
-	if err != nil {
-		tb.Fatalf("did not expect error but got one, %v", err)
-	}
-}
-
-func assertErrorEquals(tb testing.TB, got, expected string) {
-	tb.Helper()
-	if got != expected {
-		tb.Errorf("got %v, expected %v", got, expected)
-	}
-}
-
-func assertStatusCodeEquals(tb testing.TB, err error, expectedStatusCode int) {
-	tb.Helper()
-	var apiError *ebay.APIError
-	if !errors.As(err, &apiError) {
-		tb.Error("expected APIError")
-	} else if apiError.StatusCode != expectedStatusCode {
-		tb.Errorf("got status code %d, expected %d", apiError.StatusCode, expectedStatusCode)
-	}
-}
-
-func assertFindItemsResponse(tb testing.TB, got, expected []ebay.FindItemsResponse) {
-	tb.Helper()
-	if !reflect.DeepEqual(got, expected) {
-		tb.Errorf("got %v, expected %v", got, expected)
 	}
 }
 

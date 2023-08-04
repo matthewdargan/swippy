@@ -339,7 +339,56 @@ func TestFindItemsAdvanced(t *testing.T) {
 			Params:        map[string]string{"categoryId": "1,2,3,4"},
 			ExpectedError: ebay.ErrMaxCategoryIDs,
 		},
-		// TODO: Add test cases for categoryId and keywords present
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(2, true),
+			},
+		},
+		{
+			Name: "can find items if params contains 2 categoryIds of length 1, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1,2",
+				"keywords":   generateStringWithLen(2, true),
+			},
+		},
+		{
+			Name: "returns error if params contains empty categoryId, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "",
+				"keywords":   generateStringWithLen(2, true),
+			},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name: "returns error if params contains 4 categoryIds, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1,2,3,4",
+				"keywords":   generateStringWithLen(2, true),
+			},
+			ExpectedError: ebay.ErrMaxCategoryIDs,
+		},
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, 2 keywords of length 1",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(1, false) + "," + generateStringWithLen(1, false),
+			},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 1, empty keywords",
+			Params:        map[string]string{"categoryId": "1", "keywords": ""},
+			ExpectedError: ebay.ErrInvalidKeywordsLength,
+		},
+		{
+			Name: "returns error if params contains 1 categoryId of length 1, 1 keyword of length 99",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
 	}
 	testFindItemsWithParams(t, findItemsAdvanced, findItemsAdvancedResp, testCases)
 }

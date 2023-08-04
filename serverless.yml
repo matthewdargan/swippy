@@ -16,14 +16,24 @@ functions:
           method: get
     environment:
       STAGE: ${self:provider.stage}
-    role: ebayFindKeywordRole
+    role: ebayFindFunctionRole
+
+  ebay-find-advanced:
+    handler: bin/ebay-find-advanced
+    events:
+      - httpApi:
+          path: /ebay-find-advanced
+          method: get
+    environment:
+      STAGE: ${self:provider.stage}
+    role: ebayFindFunctionRole
 
 resources:
   Resources:
-    ebayFindKeywordRole:
+    ebayFindFunctionRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: "swippy-api-${self:provider.stage}-${self:provider.region}-ebay-find-by-keyword-role"
+        RoleName: "swippy-api-${self:provider.stage}-${self:provider.region}-ebay-find-function-role"
         AssumeRolePolicyDocument:
           Version: "2012-10-17"
           Statement:
@@ -33,7 +43,7 @@ resources:
                   - lambda.amazonaws.com
               Action: sts:AssumeRole
         Policies:
-          - PolicyName: "swippy-api-${self:provider.stage}-ebay-find-by-keyword-policy"
+          - PolicyName: "swippy-api-${self:provider.stage}-ebay-find-function-policy"
             PolicyDocument:
               Version: "2012-10-17"
               Statement:

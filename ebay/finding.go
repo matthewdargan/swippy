@@ -79,8 +79,8 @@ var (
 	// ErrUnexpectedResponseFormat is returned when the eBay Finding API response does not match the expected format.
 	ErrUnexpectedResponseFormat = errors.New("ebay: unexpected response format")
 
-	// ErrInvalidBooleanValue is returned when an item filter has an invalid boolean 'values' parameter.
-	ErrInvalidBooleanValue = errors.New("ebay: invalid boolean item filter value, allowed values are true and false")
+	// ErrInvalidBooleanValue is returned when a parameter has an invalid boolean value.
+	ErrInvalidBooleanValue = errors.New("ebay: invalid boolean value, allowed values are true and false")
 
 	// ErrUnsupportedItemFilterType is returned when an item filter 'name' parameter has an unsupported type.
 	ErrUnsupportedItemFilterType = errors.New("ebay: unsupported item filter type")
@@ -354,25 +354,26 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 }
 
 type findItemsAdvancedParams struct {
-	categoryIDs   []string
-	keywords      *string
-	aspectFilters []aspectFilter
-	itemFilters   []itemFilter
+	categoryIDs       *string
+	keywords          *string
+	descriptionSearch *string
+	aspectFilters     []aspectFilter
+	itemFilters       []itemFilter
 }
 
 func (fp *findItemsAdvancedParams) validateParams(params map[string]string) error {
-	_, categoryIDExist := params["categoryId"]
+	categoryID, categoryIDExist := params["categoryId"]
 	_, keywordsExist := params["keywords"]
 	if !categoryIDExist && !keywordsExist {
 		return ErrCategoryIDKeywordsMissing
 	}
 
 	if categoryIDExist {
-		categoryIDs, err := processCategoryIDs(params)
+		categoryIDs, err := processCategoryIDs(categoryID)
 		if err != nil {
 			return err
 		}
-		fp.categoryIDs = categoryIDs
+		fp.categoryIDs = &categoryIDs
 	}
 	if keywordsExist {
 		keywords, err := processKeywords(params)
@@ -380,6 +381,15 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 			return err
 		}
 		fp.keywords = &keywords
+	}
+
+	descriptionSearch, ok := params["descriptionSearch"]
+	if ok {
+		descriptionSearch, err := processDescriptionSearch(descriptionSearch)
+		if err != nil {
+			return err
+		}
+		fp.descriptionSearch = &descriptionSearch
 	}
 
 	aspectFilters, err := processAspectFilters(params)
@@ -410,11 +420,13 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
 
 	if fp.categoryIDs != nil {
-		categoryIDs := strings.Join(fp.categoryIDs, ",")
-		qry.Add("categoryId", categoryIDs)
+		qry.Add("categoryId", *fp.categoryIDs)
 	}
 	if fp.keywords != nil {
 		qry.Add("keywords", *fp.keywords)
+	}
+	if fp.descriptionSearch != nil {
+		qry.Add("descriptionSearch", *fp.descriptionSearch)
 	}
 
 	for idx, aspectFilter := range fp.aspectFilters {
@@ -478,29 +490,37 @@ func splitKeywords(keywords string) []string {
 	return individualKeywords
 }
 
-func processCategoryIDs(params map[string]string) ([]string, error) {
-	categoryIDStr, ok := params["categoryId"]
-	if !ok {
-		return nil, ErrCategoryIDMissing
+func processCategoryIDs(categoryID string) (string, error) {
+	if categoryID == "" {
+		return "", ErrInvalidCategoryIDLength
 	}
 
-	if categoryIDStr == "" {
-		return nil, ErrInvalidCategoryIDLength
-	}
-
-	categoryIDs := strings.Split(categoryIDStr, ",")
+	categoryIDs := strings.Split(categoryID, ",")
 	if len(categoryIDs) > maxCategoryIDs {
-		return nil, ErrMaxCategoryIDs
+		return "", ErrMaxCategoryIDs
 	}
 
 	for i := range categoryIDs {
 		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
 		if len(categoryIDs[i]) > maxCategoryIDLen {
-			return nil, ErrInvalidCategoryIDLength
+			return "", ErrInvalidCategoryIDLength
 		}
 	}
 
-	return categoryIDs, nil
+	return categoryID, nil
+}
+
+const (
+	trueValue  = "true"
+	falseValue = "false"
+)
+
+func processDescriptionSearch(descriptionSearch string) (string, error) {
+	if descriptionSearch != trueValue && descriptionSearch != falseValue {
+		return "", fmt.Errorf("%w: %q", ErrInvalidBooleanValue, descriptionSearch)
+	}
+
+	return descriptionSearch, nil
 }
 
 func processAspectFilters(params map[string]string) ([]aspectFilter, error) {
@@ -715,8 +735,6 @@ const (
 	topRatedSellerOnly    = "TopRatedSellerOnly"
 	valueBoxInventory     = "ValueBoxInventory"
 
-	trueValue           = "true"
-	falseValue          = "false"
 	trueNum             = "1"
 	falseNum            = "0"
 	smallestMaxDistance = 5

@@ -421,6 +421,28 @@ func TestFindItemsAdvanced(t *testing.T) {
 			},
 			ExpectedError: ebay.ErrInvalidKeywordLength,
 		},
+		{
+			Name: "can find items if params contains descriptionSearch=true",
+			Params: map[string]string{
+				"categoryId":        "1",
+				"descriptionSearch": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains descriptionSearch=false",
+			Params: map[string]string{
+				"categoryId":        "1",
+				"descriptionSearch": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains descriptionSearch with non-boolean value",
+			Params: map[string]string{
+				"categoryId":        "1",
+				"descriptionSearch": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+		},
 	}
 	testFindItemsWithParams(t, findItemsAdvanced, findItemsAdvancedResp, testCases)
 }

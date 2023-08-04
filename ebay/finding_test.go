@@ -272,6 +272,38 @@ func TestFindItemsAdvanced(t *testing.T) {
 			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
 		},
 		{
+			Name: "returns error if params contains non-numbered aspectFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains numbered aspectFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "true",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains numbered itemFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"itemFilter(0).name":  "BestOfferOnly",
+				"itemFilter(0).value": "true",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
 			Name:   "can find items if params contains categoryId of length 1",
 			Params: map[string]string{"categoryId": "1"},
 		},

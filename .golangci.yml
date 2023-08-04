@@ -21,6 +21,8 @@ linters:
 issues:
   exclude-rules:
     - path: ebay/finding.go
+      text: "calculated cyclomatic complexity for function createRequest"
+    - path: ebay/finding.go
       text: "handleItemFilterType"
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function validateNumericFilter"

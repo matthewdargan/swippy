@@ -240,7 +240,7 @@ func (svr *FindingServer) findItems(
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
 	}
 
-	req, err := fParams.createRequest(appID)
+	req, err := fParams.createRequest(params, appID)
 	if err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
 	}
@@ -267,7 +267,7 @@ func (svr *FindingServer) findItems(
 
 type findItemsParams interface {
 	validateParams(params map[string]string) error
-	createRequest(appID string) (*http.Request, error)
+	createRequest(params map[string]string, appID string) (*http.Request, error)
 }
 
 type findItemsByKeywordsParams struct {
@@ -310,7 +310,7 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 	return nil
 }
 
-func (fp *findItemsByKeywordsParams) createRequest(appID string) (*http.Request, error) {
+func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, appID string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
@@ -339,6 +339,12 @@ func (fp *findItemsByKeywordsParams) createRequest(appID string) (*http.Request,
 		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
+		}
+	}
+
+	for k, v := range params {
+		if _, ok := qry[k]; !ok {
+			qry.Add(k, v)
 		}
 	}
 
@@ -391,7 +397,7 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	return nil
 }
 
-func (fp *findItemsAdvancedParams) createRequest(appID string) (*http.Request, error) {
+func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
@@ -427,6 +433,12 @@ func (fp *findItemsAdvancedParams) createRequest(appID string) (*http.Request, e
 		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
+		}
+	}
+
+	for k, v := range params {
+		if _, ok := qry[k]; !ok {
+			qry.Add(k, v)
 		}
 	}
 

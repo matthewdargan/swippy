@@ -40,9 +40,6 @@ var (
 	// exceeds the maximum length of 98 characters.
 	ErrInvalidKeywordLength = fmt.Errorf("ebay: invalid keyword length: must be no more than %d characters", maxKeywordLen)
 
-	// ErrCategoryIDMissing is returned when the 'categoryId' parameter is missing.
-	ErrCategoryIDMissing = errors.New("ebay: categoryID parameter is missing")
-
 	maxCategoryIDs = 3
 
 	// ErrMaxCategoryIDs is returned when the 'categoryId' parameter contains more category IDs than the maximum allowed.
@@ -75,9 +72,6 @@ var (
 
 	// ErrDecodeAPIResponse is returned when there is an error decoding the eBay Finding API response body.
 	ErrDecodeAPIResponse = errors.New("ebay: failed to decode eBay Finding API response body")
-
-	// ErrUnexpectedResponseFormat is returned when the eBay Finding API response does not match the expected format.
-	ErrUnexpectedResponseFormat = errors.New("ebay: unexpected response format")
 
 	// ErrInvalidBooleanValue is returned when a parameter has an invalid boolean value.
 	ErrInvalidBooleanValue = errors.New("ebay: invalid boolean value, allowed values are true and false")
@@ -223,20 +217,45 @@ func (e *APIError) Error() string {
 
 // FindItemsByKeywords searches the eBay Finding API using the provided keywords, additional parameters,
 // and a valid eBay application ID.
-func (svr *FindingServer) FindItemsByKeywords(params map[string]string, appID string) ([]FindItemsResponse, error) {
-	return svr.findItems(params, &findItemsByKeywordsParams{}, appID)
+func (svr *FindingServer) FindItemsByKeywords(
+	params map[string]string, appID string,
+) (FindItemsByKeywordsResponse, error) {
+	resp, err := svr.requestItems(params, &findItemsByKeywordsParams{}, appID)
+	if err != nil {
+		return FindItemsByKeywordsResponse{}, err
+	}
+
+	itemsResp, err := svr.parseFindItemsByKeywordsResponse(resp)
+	if err != nil {
+		return FindItemsByKeywordsResponse{}, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	return itemsResp, nil
 }
 
 // FindItemsAdvanced searches the eBay Finding API using the provided category and/or keywords, additional parameters,
 // and a valid eBay application ID.
-func (svr *FindingServer) FindItemsAdvanced(params map[string]string, appID string) ([]FindItemsResponse, error) {
-	return svr.findItems(params, &findItemsAdvancedParams{}, appID)
+func (svr *FindingServer) FindItemsAdvanced(
+	params map[string]string, appID string,
+) (FindItemsAdvancedResponse, error) {
+	resp, err := svr.requestItems(params, &findItemsAdvancedParams{}, appID)
+	if err != nil {
+		return FindItemsAdvancedResponse{}, err
+	}
+
+	itemsResp, err := svr.parseFindItemsAdvancedResponse(resp)
+	if err != nil {
+		return FindItemsAdvancedResponse{}, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	return itemsResp, nil
 }
 
-func (svr *FindingServer) findItems(
+func (svr *FindingServer) requestItems(
 	params map[string]string, fParams findItemsParams, appID string,
-) ([]FindItemsResponse, error) {
-	if err := fParams.validateParams(params); err != nil {
+) (*http.Response, error) {
+	err := fParams.validateParams(params)
+	if err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
 	}
 
@@ -257,12 +276,7 @@ func (svr *FindingServer) findItems(
 		}
 	}
 
-	itemsResp, err := svr.parseResponse(resp)
-	if err != nil {
-		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
-	}
-
-	return itemsResp, nil
+	return resp, nil
 }
 
 type findItemsParams interface {
@@ -1217,20 +1231,26 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	return nil
 }
 
-func (svr *FindingServer) parseResponse(resp *http.Response) ([]FindItemsResponse, error) {
+func (svr *FindingServer) parseFindItemsByKeywordsResponse(resp *http.Response) (FindItemsByKeywordsResponse, error) {
 	defer resp.Body.Close()
 
-	var resps FindItemsResponses
-	err := json.NewDecoder(resp.Body).Decode(&resps)
+	var itemsResp FindItemsByKeywordsResponse
+	err := json.NewDecoder(resp.Body).Decode(&itemsResp)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
+		return FindItemsByKeywordsResponse{}, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
 	}
 
-	if len(resps.FindItemsByKeywordsResponse) > 0 {
-		return resps.FindItemsByKeywordsResponse, nil
-	} else if len(resps.FindItemsAdvancedResponse) > 0 {
-		return resps.FindItemsAdvancedResponse, nil
+	return itemsResp, nil
+}
+
+func (svr *FindingServer) parseFindItemsAdvancedResponse(resp *http.Response) (FindItemsAdvancedResponse, error) {
+	defer resp.Body.Close()
+
+	var itemsResp FindItemsAdvancedResponse
+	err := json.NewDecoder(resp.Body).Decode(&itemsResp)
+	if err != nil {
+		return FindItemsAdvancedResponse{}, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
 	}
 
-	return nil, ErrUnexpectedResponseFormat
+	return itemsResp, nil
 }

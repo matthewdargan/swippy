@@ -13,127 +13,134 @@ import (
 	"testing"
 	"time"
 
-	"github.com/matthewdargan/swippy-api/ebay-find-by-keyword/ebay"
+	"github.com/matthewdargan/swippy-api/ebay"
 )
 
 var (
 	ErrClientFailure = errors.New("http: client failed")
 	appID            = "super secret ID"
-	searchResp       = ebay.SearchResponse{
-		FindItemsByKeywordsResponse: []ebay.FindItemsByKeywordsResponse{
-			{
-				Ack:       []string{"Success"},
-				Version:   []string{"1.0"},
-				Timestamp: []time.Time{time.Date(2023, 6, 24, 0, 0, 0, 0, time.UTC)},
-				SearchResult: []ebay.SearchResult{
-					{
-						Count: "1",
-						Item: []ebay.Item{
-							{
-								ItemID:   []string{"1234567890"},
-								Title:    []string{"Sample Item"},
-								GlobalID: []string{"global-id-123"},
-								Subtitle: []string{"Sample Item Subtitle"},
-								PrimaryCategory: []ebay.PrimaryCategory{
-									{
-										CategoryID:   []string{"category-id-123"},
-										CategoryName: []string{"Sample Category"},
-									},
+	itemsResp        = []ebay.FindItemsResponse{
+		{
+			Ack:       []string{"Success"},
+			Version:   []string{"1.0"},
+			Timestamp: []time.Time{time.Date(2023, 6, 24, 0, 0, 0, 0, time.UTC)},
+			SearchResult: []ebay.SearchResult{
+				{
+					Count: "1",
+					Item: []ebay.Item{
+						{
+							ItemID:   []string{"1234567890"},
+							Title:    []string{"Sample Item"},
+							GlobalID: []string{"global-id-123"},
+							Subtitle: []string{"Sample Item Subtitle"},
+							PrimaryCategory: []ebay.PrimaryCategory{
+								{
+									CategoryID:   []string{"category-id-123"},
+									CategoryName: []string{"Sample Category"},
 								},
-								GalleryURL:  []string{"https://example.com/sample-item.jpg"},
-								ViewItemURL: []string{"https://example.com/sample-item"},
-								ProductID: []ebay.ProductID{
-									{
-										Type:  "product-type-123",
-										Value: "product-value-123",
-									},
+							},
+							GalleryURL:  []string{"https://example.com/sample-item.jpg"},
+							ViewItemURL: []string{"https://example.com/sample-item"},
+							ProductID: []ebay.ProductID{
+								{
+									Type:  "product-type-123",
+									Value: "product-value-123",
 								},
-								AutoPay:    []string{"true"},
-								PostalCode: []string{"12345"},
-								Location:   []string{"Sample Location"},
-								Country:    []string{"Sample Country"},
-								ShippingInfo: []ebay.ShippingInfo{
-									{
-										ShippingServiceCost: []ebay.Price{
-											{
-												CurrencyID: "USD",
-												Value:      "5.99",
-											},
+							},
+							AutoPay:    []string{"true"},
+							PostalCode: []string{"12345"},
+							Location:   []string{"Sample Location"},
+							Country:    []string{"Sample Country"},
+							ShippingInfo: []ebay.ShippingInfo{
+								{
+									ShippingServiceCost: []ebay.Price{
+										{
+											CurrencyID: "USD",
+											Value:      "5.99",
 										},
-										ShippingType:            []string{"Standard"},
-										ShipToLocations:         []string{"US"},
-										ExpeditedShipping:       []string{"false"},
-										OneDayShippingAvailable: []string{"false"},
-										HandlingTime:            []string{"1"},
 									},
+									ShippingType:            []string{"Standard"},
+									ShipToLocations:         []string{"US"},
+									ExpeditedShipping:       []string{"false"},
+									OneDayShippingAvailable: []string{"false"},
+									HandlingTime:            []string{"1"},
 								},
-								SellingStatus: []ebay.SellingStatus{
-									{
-										CurrentPrice: []ebay.Price{
-											{
-												CurrencyID: "USD",
-												Value:      "19.99",
-											},
+							},
+							SellingStatus: []ebay.SellingStatus{
+								{
+									CurrentPrice: []ebay.Price{
+										{
+											CurrencyID: "USD",
+											Value:      "19.99",
 										},
-										ConvertedCurrentPrice: []ebay.Price{
-											{
-												CurrencyID: "USD",
-												Value:      "19.99",
-											},
+									},
+									ConvertedCurrentPrice: []ebay.Price{
+										{
+											CurrencyID: "USD",
+											Value:      "19.99",
 										},
-										SellingState: []string{"Active"},
-										TimeLeft:     []string{"P1D"},
 									},
+									SellingState: []string{"Active"},
+									TimeLeft:     []string{"P1D"},
 								},
-								ListingInfo: []ebay.ListingInfo{
-									{
-										BestOfferEnabled:  []string{"true"},
-										BuyItNowAvailable: []string{"false"},
-										StartTime:         []time.Time{time.Date(2023, 6, 24, 0, 0, 0, 0, time.UTC)},
-										EndTime:           []time.Time{time.Date(2023, 7, 24, 0, 0, 0, 0, time.UTC).AddDate(0, 1, 0)},
-										ListingType:       []string{"Auction"},
-										Gift:              []string{"false"},
-										WatchCount:        []string{"10"},
-									},
+							},
+							ListingInfo: []ebay.ListingInfo{
+								{
+									BestOfferEnabled:  []string{"true"},
+									BuyItNowAvailable: []string{"false"},
+									StartTime:         []time.Time{time.Date(2023, 6, 24, 0, 0, 0, 0, time.UTC)},
+									EndTime:           []time.Time{time.Date(2023, 7, 24, 0, 0, 0, 0, time.UTC).AddDate(0, 1, 0)},
+									ListingType:       []string{"Auction"},
+									Gift:              []string{"false"},
+									WatchCount:        []string{"10"},
 								},
-								ReturnsAccepted: []string{"true"},
-								Condition: []ebay.Condition{
-									{
-										ConditionID:          []string{"1000"},
-										ConditionDisplayName: []string{"New"},
-									},
+							},
+							ReturnsAccepted: []string{"true"},
+							Condition: []ebay.Condition{
+								{
+									ConditionID:          []string{"1000"},
+									ConditionDisplayName: []string{"New"},
 								},
-								IsMultiVariationListing: []string{"false"},
-								TopRatedListing:         []string{"true"},
-								DiscountPriceInfo: []ebay.DiscountPriceInfo{
-									{
-										OriginalRetailPrice: []ebay.Price{
-											{
-												CurrencyID: "USD",
-												Value:      "29.99",
-											},
+							},
+							IsMultiVariationListing: []string{"false"},
+							TopRatedListing:         []string{"true"},
+							DiscountPriceInfo: []ebay.DiscountPriceInfo{
+								{
+									OriginalRetailPrice: []ebay.Price{
+										{
+											CurrencyID: "USD",
+											Value:      "29.99",
 										},
-										PricingTreatment: []string{"STP"},
-										SoldOnEbay:       []string{"true"},
-										SoldOffEbay:      []string{"false"},
 									},
+									PricingTreatment: []string{"STP"},
+									SoldOnEbay:       []string{"true"},
+									SoldOffEbay:      []string{"false"},
 								},
 							},
 						},
 					},
 				},
-				PaginationOutput: []ebay.Pagination{
-					{
-						PageNumber:     []string{"1"},
-						EntriesPerPage: []string{"10"},
-						TotalPages:     []string{"1"},
-						TotalEntries:   []string{"1"},
-					},
-				},
-				ItemSearchURL: []string{"https://example.com/search?q=sample"},
 			},
+			PaginationOutput: []ebay.Pagination{
+				{
+					PageNumber:     []string{"1"},
+					EntriesPerPage: []string{"10"},
+					TotalPages:     []string{"1"},
+					TotalEntries:   []string{"1"},
+				},
+			},
+			ItemSearchURL: []string{"https://example.com/search?q=sample"},
 		},
 	}
+	findItemsByKeywordsResp = ebay.FindItemsResponses{
+		FindItemsByKeywordsResponse: itemsResp,
+	}
+	findItemsAdvancedResp = ebay.FindItemsResponses{
+		FindItemsAdvancedResponse: itemsResp,
+	}
+
+	findItemsByKeywords = "FindItemsByKeywords"
+	findItemsAdvanced   = "FindItemsAdvanced"
 )
 
 type MockFindingClient struct {
@@ -144,17 +151,27 @@ func (m *MockFindingClient) Do(req *http.Request) (*http.Response, error) {
 	return m.DoFunc(req)
 }
 
+type findItemsTestCase struct {
+	Name          string
+	Params        map[string]string
+	ExpectedError error
+}
+
 func TestFindItemsByKeywords(t *testing.T) {
 	t.Parallel()
 	params := map[string]string{
 		"keywords": "marshmallows",
 	}
+	testFindItems(t, params, findItemsByKeywords, findItemsByKeywordsResp)
 
-	t.Run("can find items by keywords", func(t *testing.T) {
+	t.Run("returns error if the findItemsByKeywordsResponse is empty", func(t *testing.T) {
 		t.Parallel()
+		emptyItemsResp := ebay.FindItemsResponses{
+			FindItemsByKeywordsResponse: []ebay.FindItemsResponse{},
+		}
 		client := &MockFindingClient{
 			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(searchResp)
+				body, err := json.Marshal(emptyItemsResp)
 				assertNoError(t, err)
 
 				return &http.Response{
@@ -164,9 +181,307 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		resp, err := svr.FindItemsByKeywords(params, appID)
+		_, err := svr.FindItemsByKeywords(params, appID)
+		assertError(t, err)
+
+		expected := ebay.ErrUnexpectedResponseFormat.Error()
+		got := err.Error()
+		assertErrorEquals(t, got, expected)
+		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
+	})
+
+	testCases := []findItemsTestCase{
+		{
+			Name:          "returns error if params does not contain keywords",
+			Params:        map[string]string{},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered aspectFilter but not keywords",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains numbered aspectFilter but not keywords",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter but not keywords",
+			Params: map[string]string{
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "true",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains numbered itemFilter but not keywords",
+			Params: map[string]string{
+				"itemFilter(0).name":  "BestOfferOnly",
+				"itemFilter(0).value": "true",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+	}
+	testFindItemsWithParams(t, findItemsByKeywords, findItemsByKeywordsResp, testCases)
+}
+
+func TestFindItemsAdvanced(t *testing.T) {
+	t.Parallel()
+	params := map[string]string{
+		"categoryId": "12345",
+	}
+	testFindItems(t, params, findItemsAdvanced, findItemsAdvancedResp)
+
+	t.Run("returns error if the findItemsAdvancedResponse is empty", func(t *testing.T) {
+		t.Parallel()
+		emptyItemsResp := ebay.FindItemsResponses{
+			FindItemsAdvancedResponse: []ebay.FindItemsResponse{},
+		}
+		client := &MockFindingClient{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
+				body, err := json.Marshal(emptyItemsResp)
+				assertNoError(t, err)
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBuffer(body)),
+				}, nil
+			},
+		}
+		svr := ebay.NewFindingServer(client)
+		_, err := svr.FindItemsAdvanced(params, appID)
+		assertError(t, err)
+
+		expected := ebay.ErrUnexpectedResponseFormat.Error()
+		got := err.Error()
+		assertErrorEquals(t, got, expected)
+		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
+	})
+
+	testCases := []findItemsTestCase{
+		{
+			Name:          "returns error if params does not contain categoryId or keywords",
+			Params:        map[string]string{},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered aspectFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains numbered aspectFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "true",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains numbered itemFilter but not categoryId or keywords",
+			Params: map[string]string{
+				"itemFilter(0).name":  "BestOfferOnly",
+				"itemFilter(0).value": "true",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 1",
+			Params: map[string]string{"categoryId": "1"},
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 5",
+			Params: map[string]string{"categoryId": "1234567890"},
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 10",
+			Params: map[string]string{"categoryId": "1234567890"},
+		},
+		{
+			Name:          "returns error if params contains empty categoryId",
+			Params:        map[string]string{"categoryId": ""},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains categoryId of length 11",
+			Params:        map[string]string{"categoryId": "12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:   "can find items if params contains 2 categoryIds of length 1",
+			Params: map[string]string{"categoryId": "1,2"},
+		},
+		{
+			Name:   "can find items if params contains 2 categoryIds of length 10",
+			Params: map[string]string{"categoryId": "1234567890,9876543210"},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
+			Params:        map[string]string{"categoryId": "12345678901,1"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:   "can find items if params contains 3 categoryIds of length 1",
+			Params: map[string]string{"categoryId": "1,2,3"},
+		},
+		{
+			Name:   "can find items if params contains 3 categoryIds of length 10",
+			Params: map[string]string{"categoryId": "1234567890,9876543210,8976543210"},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
+			Params:        map[string]string{"categoryId": "12345678901,1,2"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,12345678901,2"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,2,12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 4 categoryIds",
+			Params:        map[string]string{"categoryId": "1,2,3,4"},
+			ExpectedError: ebay.ErrMaxCategoryIDs,
+		},
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(2, true),
+			},
+		},
+		{
+			Name: "can find items if params contains 2 categoryIds of length 1, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1,2",
+				"keywords":   generateStringWithLen(2, true),
+			},
+		},
+		{
+			Name: "returns error if params contains empty categoryId, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "",
+				"keywords":   generateStringWithLen(2, true),
+			},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name: "returns error if params contains 4 categoryIds, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1,2,3,4",
+				"keywords":   generateStringWithLen(2, true),
+			},
+			ExpectedError: ebay.ErrMaxCategoryIDs,
+		},
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, 2 keywords of length 1",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(1, false) + "," + generateStringWithLen(1, false),
+			},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 1, empty keywords",
+			Params:        map[string]string{"categoryId": "1", "keywords": ""},
+			ExpectedError: ebay.ErrInvalidKeywordsLength,
+		},
+		{
+			Name: "returns error if params contains 1 categoryId of length 1, 1 keyword of length 99",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(99, false),
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains descriptionSearch=true",
+			Params: map[string]string{
+				"categoryId":        "1",
+				"descriptionSearch": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains descriptionSearch=false",
+			Params: map[string]string{
+				"categoryId":        "1",
+				"descriptionSearch": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains descriptionSearch with non-boolean value",
+			Params: map[string]string{
+				"categoryId":        "1",
+				"descriptionSearch": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+		},
+	}
+	testFindItemsWithParams(t, findItemsAdvanced, findItemsAdvancedResp, testCases)
+}
+
+func testFindItems(t *testing.T, params map[string]string, findMethod string, expectedResp ebay.FindItemsResponses) {
+	t.Helper()
+	t.Run(fmt.Sprintf("can find items using %s", findMethod), func(t *testing.T) {
+		t.Parallel()
+		client := &MockFindingClient{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
+				body, err := json.Marshal(expectedResp)
+				assertNoError(t, err)
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBuffer(body)),
+				}, nil
+			},
+		}
+		svr := ebay.NewFindingServer(client)
+		var resp []ebay.FindItemsResponse
+		var err error
+
+		switch findMethod {
+		case findItemsByKeywords:
+			resp, err = svr.FindItemsByKeywords(params, appID)
+		case findItemsAdvanced:
+			resp, err = svr.FindItemsAdvanced(params, appID)
+		default:
+			t.Errorf("Unsupported findMethod: %s", findMethod)
+		}
+
 		assertNoError(t, err)
-		assertSearchResponse(t, resp, &searchResp)
+		switch findMethod {
+		case findItemsByKeywords:
+			assertFindItemsResponse(t, resp, expectedResp.FindItemsByKeywordsResponse)
+		case findItemsAdvanced:
+			assertFindItemsResponse(t, resp, expectedResp.FindItemsAdvancedResponse)
+		}
 	})
 
 	t.Run("returns error if the client returns an error", func(t *testing.T) {
@@ -177,7 +492,16 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		_, err := svr.FindItemsByKeywords(params, appID)
+		var err error
+
+		switch findMethod {
+		case findItemsByKeywords:
+			_, err = svr.FindItemsByKeywords(params, appID)
+		case findItemsAdvanced:
+			_, err = svr.FindItemsAdvanced(params, appID)
+		default:
+			t.Errorf("Unsupported findMethod: %s", findMethod)
+		}
 		assertError(t, err)
 
 		expected := fmt.Sprintf("%v: %v", ebay.ErrFailedRequest, ErrClientFailure)
@@ -238,7 +562,16 @@ func TestFindItemsByKeywords(t *testing.T) {
 				},
 			}
 			svr := ebay.NewFindingServer(client)
-			_, err := svr.FindItemsByKeywords(params, appID)
+			var err error
+
+			switch findMethod {
+			case findItemsByKeywords:
+				_, err = svr.FindItemsByKeywords(params, appID)
+			case findItemsAdvanced:
+				_, err = svr.FindItemsAdvanced(params, appID)
+			default:
+				t.Errorf("Unsupported findMethod: %s", findMethod)
+			}
 			assertError(t, err)
 
 			expected := fmt.Sprintf("%v: %d", ebay.ErrInvalidStatus, statusCode)
@@ -248,7 +581,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 		}
 	})
 
-	t.Run("returns error if the response cannot be parsed into SearchResponse", func(t *testing.T) {
+	t.Run("returns error if the response cannot be parsed into FindItemsResponses", func(t *testing.T) {
 		t.Parallel()
 		badData := `[123.1, 234.2]`
 		client := &MockFindingClient{
@@ -262,35 +595,30 @@ func TestFindItemsByKeywords(t *testing.T) {
 			},
 		}
 		svr := ebay.NewFindingServer(client)
-		_, err := svr.FindItemsByKeywords(params, appID)
+		var err error
+
+		switch findMethod {
+		case findItemsByKeywords:
+			_, err = svr.FindItemsByKeywords(params, appID)
+		case findItemsAdvanced:
+			_, err = svr.FindItemsAdvanced(params, appID)
+		default:
+			t.Errorf("Unsupported findMethod: %s", findMethod)
+		}
 		assertError(t, err)
 
 		expected := fmt.Sprintf("%v: %v", ebay.ErrDecodeAPIResponse,
-			"json: cannot unmarshal array into Go value of type ebay.SearchResponse")
+			"json: cannot unmarshal array into Go value of type ebay.FindItemsResponses")
 		got := err.Error()
 		assertErrorEquals(t, got, expected)
 		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
 	})
-}
 
-type findItemsTestCase struct {
-	Name          string
-	Params        map[string]string
-	ExpectedError error
-}
-
-func TestValidateParams(t *testing.T) {
-	t.Parallel()
 	localTimeZone, err := time.LoadLocation("America/New_York")
 	if err != nil {
 		t.Fatalf("failed to load local timezone: %v", err)
 	}
 	testCases := []findItemsTestCase{
-		{
-			Name:          "returns error if params does not contain keywords",
-			Params:        map[string]string{},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
 		{
 			Name:   "can find items if params contains keywords of length 2",
 			Params: map[string]string{"keywords": generateStringWithLen(2, true)},
@@ -524,14 +852,6 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "returns error if params contains non-numbered aspectFilter but not keywords",
-			Params: map[string]string{
-				"aspectFilter.aspectName":      "Size",
-				"aspectFilter.aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
 			Name: "returns error if params contains aspectFilter.aspectName but not aspectValueName",
 			Params: map[string]string{
 				"keywords":                "marshmallows",
@@ -627,14 +947,6 @@ func TestValidateParams(t *testing.T) {
 			},
 		},
 		{
-			Name: "returns error if params contains numbered aspectFilter but not keywords",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":      "Size",
-				"aspectFilter(0).aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
 			Name: "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
 			Params: map[string]string{
 				"keywords":                   "marshmallows",
@@ -697,14 +1009,6 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter.paramName":  "Currency",
 				"itemFilter.paramValue": "EUR",
 			},
-		},
-		{
-			Name: "returns error if params contains non-numbered itemFilter but not keywords",
-			Params: map[string]string{
-				"itemFilter.name":  "BestOfferOnly",
-				"itemFilter.value": "true",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
 			Name: "returns error if params contains itemFilter.name but not value",
@@ -884,14 +1188,6 @@ func TestValidateParams(t *testing.T) {
 				"itemFilter(1).paramName":  "Currency",
 				"itemFilter(1).paramValue": "EUR",
 			},
-		},
-		{
-			Name: "returns error if params contains numbered itemFilter but not keywords",
-			Params: map[string]string{
-				"itemFilter(0).name":  "BestOfferOnly",
-				"itemFilter(0).value": "true",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
 			Name: "returns error if params contains itemFilter(0).name but not value",
@@ -3768,35 +4064,7 @@ func TestValidateParams(t *testing.T) {
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
 		},
 	}
-
-	for _, tc := range testCases {
-		testCase := tc
-		t.Run(testCase.Name, func(t *testing.T) {
-			t.Parallel()
-			client := &MockFindingClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					body, err := json.Marshal(searchResp)
-					assertNoError(t, err)
-
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       io.NopCloser(bytes.NewBuffer(body)),
-					}, nil
-				},
-			}
-			svr := ebay.NewFindingServer(client)
-			resp, err := svr.FindItemsByKeywords(testCase.Params, appID)
-
-			if testCase.ExpectedError != nil {
-				assertError(t, err)
-				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
-				assertStatusCodeEquals(t, err, http.StatusBadRequest)
-			} else {
-				assertNoError(t, err)
-				assertSearchResponse(t, resp, &searchResp)
-			}
-		})
-	}
+	testFindItemsWithParams(t, findMethod, expectedResp, testCases)
 }
 
 func assertError(tb testing.TB, err error) {
@@ -3830,10 +4098,59 @@ func assertStatusCodeEquals(tb testing.TB, err error, expectedStatusCode int) {
 	}
 }
 
-func assertSearchResponse(tb testing.TB, got, expected *ebay.SearchResponse) {
+func assertFindItemsResponse(tb testing.TB, got, expected []ebay.FindItemsResponse) {
 	tb.Helper()
-	if !reflect.DeepEqual(*got, *expected) {
+	if !reflect.DeepEqual(got, expected) {
 		tb.Errorf("got %v, expected %v", got, expected)
+	}
+}
+
+func testFindItemsWithParams(
+	t *testing.T, findMethod string, expectedResp ebay.FindItemsResponses, testCases []findItemsTestCase,
+) {
+	t.Helper()
+	for _, tc := range testCases {
+		testCase := tc
+		t.Run(testCase.Name, func(t *testing.T) {
+			t.Parallel()
+			client := &MockFindingClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					body, err := json.Marshal(expectedResp)
+					assertNoError(t, err)
+
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewBuffer(body)),
+					}, nil
+				},
+			}
+			svr := ebay.NewFindingServer(client)
+			var resp []ebay.FindItemsResponse
+			var err error
+
+			switch findMethod {
+			case findItemsByKeywords:
+				resp, err = svr.FindItemsByKeywords(testCase.Params, appID)
+			case findItemsAdvanced:
+				resp, err = svr.FindItemsAdvanced(testCase.Params, appID)
+			default:
+				t.Errorf("Unsupported findMethod: %s", findMethod)
+			}
+
+			if testCase.ExpectedError != nil {
+				assertError(t, err)
+				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
+				assertStatusCodeEquals(t, err, http.StatusBadRequest)
+			} else {
+				assertNoError(t, err)
+				switch findMethod {
+				case findItemsByKeywords:
+					assertFindItemsResponse(t, resp, expectedResp.FindItemsByKeywordsResponse)
+				case findItemsAdvanced:
+					assertFindItemsResponse(t, resp, expectedResp.FindItemsAdvancedResponse)
+				}
+			}
+		})
 	}
 }
 

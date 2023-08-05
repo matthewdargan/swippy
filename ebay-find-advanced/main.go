@@ -40,7 +40,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	findingSvr := ebay.NewFindingServer(findingClient)
-	items, err := findingSvr.FindItemsByKeywords(request.QueryStringParameters, appID)
+	items, err := findingSvr.FindItemsAdvanced(request.QueryStringParameters, appID)
 	if err != nil {
 		var ebayErr *ebay.APIError
 		if errors.As(err, &ebayErr) {

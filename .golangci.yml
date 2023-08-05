@@ -32,6 +32,8 @@ issues:
       text: "calculated cyclomatic complexity for function validateListingTypes"
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function validatePriceRange"
+    - path: ebay/finding.go
+      text: "calculated cyclomatic complexity for function processPaginationInput"
     - path: ebay/finding_test.go
       text: "Function 'TestFindItemsByKeywords' is too long"
     - path: ebay/finding_test.go

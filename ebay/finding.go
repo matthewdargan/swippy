@@ -187,6 +187,18 @@ var (
 	// ErrInvalidValueBoxInventory is returned when an item filter 'values' parameter
 	// contains an invalid value box inventory.
 	ErrInvalidValueBoxInventory = errors.New("ebay: invalid value box inventory")
+
+	minPaginationValue, maxPaginationValue = 1, 100
+
+	// ErrInvalidEntriesPerPage is returned when the 'paginationInput.entriesPerPage' parameter
+	// is outside the valid range of 1 to 100.
+	ErrInvalidEntriesPerPage = fmt.Errorf("ebay: invalid paginationInput.entriesPerPage, must be between %d and %d",
+		minPaginationValue, maxPaginationValue)
+
+	// ErrInvalidPageNumber is returned when the 'paginationInput.pageNumber' parameter
+	// is outside the valid range of 1 to 100.
+	ErrInvalidPageNumber = fmt.Errorf("ebay: invalid paginationInput.pageNumber, must be between %d and %d",
+		minPaginationValue, maxPaginationValue)
 )
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -285,9 +297,10 @@ type findItemsParams interface {
 }
 
 type findItemsByKeywordsParams struct {
-	keywords      string
-	aspectFilters []aspectFilter
-	itemFilters   []itemFilter
+	keywords        string
+	aspectFilters   []aspectFilter
+	itemFilters     []itemFilter
+	paginationInput *paginationInput
 }
 
 type aspectFilter struct {
@@ -300,6 +313,11 @@ type itemFilter struct {
 	values     []string
 	paramName  *string
 	paramValue *string
+}
+
+type paginationInput struct {
+	entriesPerPage *string
+	pageNumber     *string
 }
 
 func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) error {
@@ -320,6 +338,12 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 		return err
 	}
 	fp.itemFilters = itemFilters
+
+	paginationInput, err := processPaginationInput(params)
+	if err != nil {
+		return err
+	}
+	fp.paginationInput = paginationInput
 
 	return nil
 }
@@ -356,6 +380,15 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 		}
 	}
 
+	if fp.paginationInput != nil {
+		if fp.paginationInput.entriesPerPage != nil {
+			qry.Add("paginationInput.entriesPerPage", *fp.paginationInput.entriesPerPage)
+		}
+		if fp.paginationInput.pageNumber != nil {
+			qry.Add("paginationInput.pageNumber", *fp.paginationInput.pageNumber)
+		}
+	}
+
 	for k, v := range params {
 		if _, ok := qry[k]; !ok {
 			qry.Add(k, v)
@@ -373,6 +406,7 @@ type findItemsAdvancedParams struct {
 	descriptionSearch *string
 	aspectFilters     []aspectFilter
 	itemFilters       []itemFilter
+	paginationInput   *paginationInput
 }
 
 func (fp *findItemsAdvancedParams) validateParams(params map[string]string) error {
@@ -418,6 +452,12 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	}
 	fp.itemFilters = itemFilters
 
+	paginationInput, err := processPaginationInput(params)
+	if err != nil {
+		return err
+	}
+	fp.paginationInput = paginationInput
+
 	return nil
 }
 
@@ -459,6 +499,15 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
+		}
+	}
+
+	if fp.paginationInput != nil {
+		if fp.paginationInput.entriesPerPage != nil {
+			qry.Add("paginationInput.entriesPerPage", *fp.paginationInput.entriesPerPage)
+		}
+		if fp.paginationInput.pageNumber != nil {
+			qry.Add("paginationInput.pageNumber", *fp.paginationInput.pageNumber)
 		}
 	}
 
@@ -1229,6 +1278,40 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	}
 
 	return nil
+}
+
+func processPaginationInput(params map[string]string) (*paginationInput, error) {
+	entriesPerPage, eOk := params["paginationInput.entriesPerPage"]
+	pageNumber, pOk := params["paginationInput.pageNumber"]
+	if !eOk && !pOk {
+		return &paginationInput{}, nil
+	}
+
+	var pInput paginationInput
+	if eOk {
+		val, err := strconv.Atoi(entriesPerPage)
+		if err != nil {
+			return nil, fmt.Errorf("ebay: %w", err)
+		}
+
+		if val < minPaginationValue || val > maxPaginationValue {
+			return nil, ErrInvalidEntriesPerPage
+		}
+		pInput.entriesPerPage = &entriesPerPage
+	}
+	if pOk {
+		val, err := strconv.Atoi(pageNumber)
+		if err != nil {
+			return nil, fmt.Errorf("ebay: %w", err)
+		}
+
+		if val < minPaginationValue || val > maxPaginationValue {
+			return nil, ErrInvalidPageNumber
+		}
+		pInput.pageNumber = &pageNumber
+	}
+
+	return &pInput, nil
 }
 
 func (svr *FindingServer) parseFindItemsByKeywordsResponse(resp *http.Response) (FindItemsByKeywordsResponse, error) {

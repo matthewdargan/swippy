@@ -135,8 +135,8 @@ var (
 	// contains both 'Auction' and 'AuctionWithBIN' listing types.
 	ErrInvalidAuctionListingTypes = errors.New("ebay: 'Auction' and 'AuctionWithBIN' listing types cannot be combined")
 
-	// ErrBuyerPostalCodeMissing is returned when the LocalSearchOnly or MaxDistance item filter is used,
-	// but the buyerPostalCode parameter is missing in the request.
+	// ErrBuyerPostalCodeMissing is returned when the LocalSearchOnly, MaxDistance item filter,
+	// or DistanceNearest sortOrder is used, but the buyerPostalCode parameter is missing in the request.
 	ErrBuyerPostalCodeMissing = errors.New("ebay: buyerPostalCode is missing")
 
 	// ErrMaxDistanceMissing is returned when the LocalSearchOnly item filter is used,
@@ -195,13 +195,20 @@ var (
 
 	// ErrInvalidEntriesPerPage is returned when the 'paginationInput.entriesPerPage' parameter
 	// is outside the valid range of 1 to 100.
-	ErrInvalidEntriesPerPage = fmt.Errorf("ebay: invalid paginationInput.entriesPerPage, must be between %d and %d",
+	ErrInvalidEntriesPerPage = fmt.Errorf("ebay: invalid pagination entries per page, must be between %d and %d",
 		minPaginationValue, maxPaginationValue)
 
 	// ErrInvalidPageNumber is returned when the 'paginationInput.pageNumber' parameter
 	// is outside the valid range of 1 to 100.
-	ErrInvalidPageNumber = fmt.Errorf("ebay: invalid paginationInput.pageNumber, must be between %d and %d",
+	ErrInvalidPageNumber = fmt.Errorf("ebay: invalid pagination page number, must be between %d and %d",
 		minPaginationValue, maxPaginationValue)
+
+	// ErrAuctionListingMissing is returned when the 'sortOrder' parameter BidCountFewest or BidCountMost,
+	// but a 'Auction' listing type is not specified in the item filters.
+	ErrAuctionListingMissing = errors.New("ebay: 'Auction' listing type required for sorting by bid count")
+
+	// ErrUnsupportedSortOrderType is returned when the 'sortOrder' parameter has an unsupported type.
+	ErrUnsupportedSortOrderType = errors.New("ebay: invalid sort order type")
 )
 
 // FindingClient is the interface that represents a client for performing requests to the eBay Finding API.
@@ -305,6 +312,7 @@ type findItemsByKeywordsParams struct {
 	itemFilters     []itemFilter
 	buyerPostalCode *string
 	paginationInput *paginationInput
+	sortOrder       *string
 }
 
 type aspectFilter struct {
@@ -343,8 +351,8 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 	}
 	fp.itemFilters = itemFilters
 
-	buyerPostalCode, ok := params["buyerPostalCode"]
-	if ok {
+	buyerPostalCode, bpcOk := params["buyerPostalCode"]
+	if bpcOk {
 		if !isValidPostalCode(buyerPostalCode) {
 			return ErrInvalidPostalCode
 		}
@@ -356,6 +364,15 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 		return err
 	}
 	fp.paginationInput = paginationInput
+
+	sortOrder, ok := params["sortOrder"]
+	if ok {
+		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
+		if err != nil {
+			return err
+		}
+		fp.sortOrder = &sortOrder
+	}
 
 	return nil
 }
@@ -405,6 +422,10 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 		}
 	}
 
+	if fp.sortOrder != nil {
+		qry.Add("sortOrder", *fp.sortOrder)
+	}
+
 	for k, v := range params {
 		if _, ok := qry[k]; !ok {
 			qry.Add(k, v)
@@ -424,6 +445,7 @@ type findItemsAdvancedParams struct {
 	itemFilters       []itemFilter
 	buyerPostalCode   *string
 	paginationInput   *paginationInput
+	sortOrder         *string
 }
 
 func (fp *findItemsAdvancedParams) validateParams(params map[string]string) error {
@@ -482,6 +504,15 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	}
 	fp.paginationInput = paginationInput
 
+	sortOrder, ok := params["sortOrder"]
+	if ok {
+		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
+		if err != nil {
+			return err
+		}
+		fp.sortOrder = &sortOrder
+	}
+
 	return nil
 }
 
@@ -537,6 +568,10 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 		if fp.paginationInput.pageNumber != nil {
 			qry.Add("paginationInput.pageNumber", *fp.paginationInput.pageNumber)
 		}
+	}
+
+	if fp.sortOrder != nil {
+		qry.Add("sortOrder", *fp.sortOrder)
 	}
 
 	for k, v := range params {
@@ -1346,6 +1381,52 @@ func processPaginationInput(params map[string]string) (*paginationInput, error) 
 	}
 
 	return &pInput, nil
+}
+
+const (
+	// SortOrderType enumeration values from the eBay documentation.
+	// See https://developer.ebay.com/devzone/finding/CallRef/types/SortOrderType.html
+	bestMatch                = "BestMatch"
+	bidCountFewest           = "BidCountFewest"
+	bidCountMost             = "BidCountMost"
+	countryAscending         = "CountryAscending"
+	countryDescending        = "CountryDescending"
+	currentPriceHighest      = "CurrentPriceHighest"
+	distanceNearest          = "DistanceNearest"
+	endTimeSoonest           = "EndTimeSoonest"
+	pricePlusShippingHighest = "PricePlusShippingHighest"
+	pricePlusShippingLowest  = "PricePlusShippingLowest"
+	startTimeNewest          = "StartTimeNewest"
+	watchCountDecreaseSort   = "WatchCountDecreaseSort"
+)
+
+func validateSortOrder(sortOrder string, itemFilters []itemFilter, hasBuyerPostalCode bool) error {
+	switch sortOrder {
+	case bestMatch, countryAscending, countryDescending, currentPriceHighest, endTimeSoonest,
+		pricePlusShippingHighest, pricePlusShippingLowest, startTimeNewest, watchCountDecreaseSort:
+		return nil
+	case bidCountFewest, bidCountMost:
+		hasAuctionListing := false
+		for _, f := range itemFilters {
+			for _, v := range f.values {
+				if f.name == listingType && v == "Auction" {
+					hasAuctionListing = true
+				}
+			}
+		}
+
+		if !hasAuctionListing {
+			return ErrAuctionListingMissing
+		}
+	case distanceNearest:
+		if !hasBuyerPostalCode {
+			return ErrBuyerPostalCodeMissing
+		}
+	default:
+		return ErrUnsupportedSortOrderType
+	}
+
+	return nil
 }
 
 func (svr *FindingServer) parseFindItemsByKeywordsResponse(resp *http.Response) (FindItemsByKeywordsResponse, error) {

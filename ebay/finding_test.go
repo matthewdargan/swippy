@@ -3589,6 +3589,35 @@ var (
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
 		},
 		{
+			Name: "can find items if params contains buyerPostalCode=111",
+			Params: map[string]string{
+				"keywords":        "marshmallows",
+				"buyerPostalCode": "111",
+			},
+		},
+		{
+			Name: "can find items if params contains buyerPostalCode=aaaaa",
+			Params: map[string]string{
+				"keywords":        "marshmallows",
+				"buyerPostalCode": "aaaaa",
+			},
+		},
+		{
+			Name: "can find items if params contains buyerPostalCode=Postal Code Here",
+			Params: map[string]string{
+				"keywords":        "marshmallows",
+				"buyerPostalCode": "Postal Code Here",
+			},
+		},
+		{
+			Name: "returns error if params contains buyerPostalCode=11",
+			Params: map[string]string{
+				"keywords":        "marshmallows",
+				"buyerPostalCode": "11",
+			},
+			ExpectedError: ebay.ErrInvalidPostalCode,
+		},
+		{
 			Name: "can find items if params contains paginationInput.entriesPerPage=1",
 			Params: map[string]string{
 				"keywords":                       "marshmallows",
@@ -3751,9 +3780,7 @@ type findItemsTestCase struct {
 
 func TestFindItemsByKeywords(t *testing.T) {
 	t.Parallel()
-	params := map[string]string{
-		"keywords": "marshmallows",
-	}
+	params := map[string]string{"keywords": "marshmallows"}
 	testFindItems(t, params, findItemsByKeywords)
 
 	t.Run("can find items by keywords", func(t *testing.T) {
@@ -3816,6 +3843,11 @@ func TestFindItemsByKeywords(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
+			Name:          "returns error if params contains buyerPostalCode but not keywords",
+			Params:        map[string]string{"buyerPostalCode": "111"},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
 			Name: "returns error if params contains paginationInput but not keywords",
 			Params: map[string]string{
 				"paginationInput.entriesPerPage": "1",
@@ -3831,9 +3863,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 
 func TestFindItemsAdvanced(t *testing.T) {
 	t.Parallel()
-	params := map[string]string{
-		"categoryId": "12345",
-	}
+	params := map[string]string{"categoryId": "12345"}
 	testFindItems(t, params, findItemsAdvanced)
 
 	t.Run("can find items with advanced search", func(t *testing.T) {
@@ -4034,6 +4064,16 @@ func TestFindItemsAdvanced(t *testing.T) {
 				"descriptionSearch": "123",
 			},
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name:          "returns error if params contains descriptionSearch but not categoryId or keywords",
+			Params:        map[string]string{"descriptionSearch": "true"},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name:          "returns error if params contains buyerPostalCode but not categoryId or keywords",
+			Params:        map[string]string{"buyerPostalCode": "111"},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
 		},
 		{
 			Name: "returns error if params contains paginationInput but not categoryId or keywords",

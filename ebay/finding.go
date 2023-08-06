@@ -188,6 +188,9 @@ var (
 	// contains an invalid value box inventory.
 	ErrInvalidValueBoxInventory = errors.New("ebay: invalid value box inventory")
 
+	// ErrInvalidEntriesPerPage is returned when the 'buyerPostalCode' parameter contains an invalid postal code.
+	ErrInvalidPostalCode = errors.New("ebay: invalid postal code")
+
 	minPaginationValue, maxPaginationValue = 1, 100
 
 	// ErrInvalidEntriesPerPage is returned when the 'paginationInput.entriesPerPage' parameter
@@ -300,6 +303,7 @@ type findItemsByKeywordsParams struct {
 	keywords        string
 	aspectFilters   []aspectFilter
 	itemFilters     []itemFilter
+	buyerPostalCode *string
 	paginationInput *paginationInput
 }
 
@@ -338,6 +342,14 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 		return err
 	}
 	fp.itemFilters = itemFilters
+
+	buyerPostalCode, ok := params["buyerPostalCode"]
+	if ok {
+		if !isValidPostalCode(buyerPostalCode) {
+			return ErrInvalidPostalCode
+		}
+		fp.buyerPostalCode = &buyerPostalCode
+	}
 
 	paginationInput, err := processPaginationInput(params)
 	if err != nil {
@@ -380,6 +392,10 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 		}
 	}
 
+	if fp.buyerPostalCode != nil {
+		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
+	}
+
 	if fp.paginationInput != nil {
 		if fp.paginationInput.entriesPerPage != nil {
 			qry.Add("paginationInput.entriesPerPage", *fp.paginationInput.entriesPerPage)
@@ -406,6 +422,7 @@ type findItemsAdvancedParams struct {
 	descriptionSearch *string
 	aspectFilters     []aspectFilter
 	itemFilters       []itemFilter
+	buyerPostalCode   *string
 	paginationInput   *paginationInput
 }
 
@@ -417,11 +434,11 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	}
 
 	if categoryIDExist {
-		categoryIDs, err := processCategoryIDs(categoryID)
+		err := processCategoryIDs(categoryID)
 		if err != nil {
 			return err
 		}
-		fp.categoryIDs = &categoryIDs
+		fp.categoryIDs = &categoryID
 	}
 	if keywordsExist {
 		keywords, err := processKeywords(params)
@@ -431,11 +448,10 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		fp.keywords = &keywords
 	}
 
-	descriptionSearch, ok := params["descriptionSearch"]
-	if ok {
-		descriptionSearch, err := processDescriptionSearch(descriptionSearch)
-		if err != nil {
-			return err
+	descriptionSearch, dsOk := params["descriptionSearch"]
+	if dsOk {
+		if !isValidDescriptionSearch(descriptionSearch) {
+			return fmt.Errorf("%w: %q", ErrInvalidBooleanValue, descriptionSearch)
 		}
 		fp.descriptionSearch = &descriptionSearch
 	}
@@ -451,6 +467,14 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		return err
 	}
 	fp.itemFilters = itemFilters
+
+	buyerPostalCode, bpcOk := params["buyerPostalCode"]
+	if bpcOk {
+		if !isValidPostalCode(buyerPostalCode) {
+			return ErrInvalidPostalCode
+		}
+		fp.buyerPostalCode = &buyerPostalCode
+	}
 
 	paginationInput, err := processPaginationInput(params)
 	if err != nil {
@@ -500,6 +524,10 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
 			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
 		}
+	}
+
+	if fp.buyerPostalCode != nil {
+		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
 	}
 
 	if fp.paginationInput != nil {
@@ -553,24 +581,24 @@ func splitKeywords(keywords string) []string {
 	return individualKeywords
 }
 
-func processCategoryIDs(categoryID string) (string, error) {
+func processCategoryIDs(categoryID string) error {
 	if categoryID == "" {
-		return "", ErrInvalidCategoryIDLength
+		return ErrInvalidCategoryIDLength
 	}
 
 	categoryIDs := strings.Split(categoryID, ",")
 	if len(categoryIDs) > maxCategoryIDs {
-		return "", ErrMaxCategoryIDs
+		return ErrMaxCategoryIDs
 	}
 
 	for i := range categoryIDs {
 		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
 		if len(categoryIDs[i]) > maxCategoryIDLen {
-			return "", ErrInvalidCategoryIDLength
+			return ErrInvalidCategoryIDLength
 		}
 	}
 
-	return categoryID, nil
+	return nil
 }
 
 const (
@@ -578,12 +606,12 @@ const (
 	falseValue = "false"
 )
 
-func processDescriptionSearch(descriptionSearch string) (string, error) {
+func isValidDescriptionSearch(descriptionSearch string) bool {
 	if descriptionSearch != trueValue && descriptionSearch != falseValue {
-		return "", fmt.Errorf("%w: %q", ErrInvalidBooleanValue, descriptionSearch)
+		return false
 	}
 
-	return descriptionSearch, nil
+	return true
 }
 
 func processAspectFilters(params map[string]string) ([]aspectFilter, error) {
@@ -920,10 +948,10 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 	return nil
 }
 
-const countryCodeLength = 2
+const countryCodeLen = 2
 
 func isValidCountryCode(value string) bool {
-	if len(value) != countryCodeLength {
+	if len(value) != countryCodeLen {
 		return false
 	}
 
@@ -1278,6 +1306,12 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	}
 
 	return nil
+}
+
+const minPostalCodeLen = 3
+
+func isValidPostalCode(postalCode string) bool {
+	return len(postalCode) >= minPostalCodeLen
 }
 
 func processPaginationInput(params map[string]string) (*paginationInput, error) {

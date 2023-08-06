@@ -3588,6 +3588,150 @@ var (
 			},
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
 		},
+		{
+			Name: "can find items if params contains paginationInput.entriesPerPage=1",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "1",
+			},
+		},
+		{
+			Name: "can find items if params contains paginationInput.entriesPerPage=50",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "50",
+			},
+		},
+		{
+			Name: "can find items if params contains paginationInput.entriesPerPage=100",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "100",
+			},
+		},
+		{
+			Name: "returns error if params contains paginationInput.entriesPerPage=0",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "0",
+			},
+			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+		},
+		{
+			Name: "returns error if params contains paginationInput.entriesPerPage=101",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "101",
+			},
+			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+		},
+		{
+			Name: "can find items if params contains paginationInput.pageNumber=1",
+			Params: map[string]string{
+				"keywords":                   "marshmallows",
+				"paginationInput.pageNumber": "1",
+			},
+		},
+		{
+			Name: "can find items if params contains paginationInput.pageNumber=50",
+			Params: map[string]string{
+				"keywords":                   "marshmallows",
+				"paginationInput.pageNumber": "50",
+			},
+		},
+		{
+			Name: "can find items if params contains paginationInput.pageNumber=100",
+			Params: map[string]string{
+				"keywords":                   "marshmallows",
+				"paginationInput.pageNumber": "100",
+			},
+		},
+		{
+			Name: "returns error if params contains paginationInput.pageNumber=0",
+			Params: map[string]string{
+				"keywords":                   "marshmallows",
+				"paginationInput.pageNumber": "0",
+			},
+			ExpectedError: ebay.ErrInvalidPageNumber,
+		},
+		{
+			Name: "returns error if params contains paginationInput.pageNumber=101",
+			Params: map[string]string{
+				"keywords":                   "marshmallows",
+				"paginationInput.pageNumber": "101",
+			},
+			ExpectedError: ebay.ErrInvalidPageNumber,
+		},
+		{
+			Name: "can find items if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=1",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "1",
+				"paginationInput.pageNumber":     "1",
+			},
+		},
+		{
+			Name: "can find items if params contains paginationInput.entriesPerPage=100, paginationInput.pageNumber=100",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "100",
+				"paginationInput.pageNumber":     "100",
+			},
+		},
+		{
+			Name: "returns if params contains paginationInput.entriesPerPage=0, paginationInput.pageNumber=1",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "0",
+				"paginationInput.pageNumber":     "1",
+			},
+			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+		},
+		{
+			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=1",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "101",
+				"paginationInput.pageNumber":     "1",
+			},
+			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+		},
+		{
+			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=0",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "1",
+				"paginationInput.pageNumber":     "0",
+			},
+			ExpectedError: ebay.ErrInvalidPageNumber,
+		},
+		{
+			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=101",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "1",
+				"paginationInput.pageNumber":     "101",
+			},
+			ExpectedError: ebay.ErrInvalidPageNumber,
+		},
+		{
+			Name: "returns if params contains paginationInput.entriesPerPage=0, paginationInput.pageNumber=0",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "0",
+				"paginationInput.pageNumber":     "0",
+			},
+			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+		},
+		{
+			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=101",
+			Params: map[string]string{
+				"keywords":                       "marshmallows",
+				"paginationInput.entriesPerPage": "101",
+				"paginationInput.pageNumber":     "101",
+			},
+			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+		},
 	}
 )
 
@@ -3668,6 +3812,14 @@ func TestFindItemsByKeywords(t *testing.T) {
 			Params: map[string]string{
 				"itemFilter(0).name":  "BestOfferOnly",
 				"itemFilter(0).value": "true",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains paginationInput but not keywords",
+			Params: map[string]string{
+				"paginationInput.entriesPerPage": "1",
+				"paginationInput.pageNumber":     "1",
 			},
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
@@ -3882,6 +4034,14 @@ func TestFindItemsAdvanced(t *testing.T) {
 				"descriptionSearch": "123",
 			},
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "returns error if params contains paginationInput but not categoryId or keywords",
+			Params: map[string]string{
+				"paginationInput.entriesPerPage": "1",
+				"paginationInput.pageNumber":     "1",
+			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
 		},
 	}
 

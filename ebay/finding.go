@@ -307,9 +307,9 @@ type findItemsParams interface {
 }
 
 type findItemsByKeywordsParams struct {
-	keywords        string
 	aspectFilters   []aspectFilter
 	itemFilters     []itemFilter
+	keywords        string
 	buyerPostalCode *string
 	paginationInput *paginationInput
 	sortOrder       *string
@@ -388,7 +388,6 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", appID)
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
-	qry.Add("keywords", fp.keywords)
 
 	for idx, aspectFilter := range fp.aspectFilters {
 		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
@@ -409,10 +408,10 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 		}
 	}
 
+	qry.Add("keywords", fp.keywords)
 	if fp.buyerPostalCode != nil {
 		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
 	}
-
 	if fp.paginationInput != nil {
 		if fp.paginationInput.entriesPerPage != nil {
 			qry.Add("paginationInput.entriesPerPage", *fp.paginationInput.entriesPerPage)
@@ -421,7 +420,6 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 			qry.Add("paginationInput.pageNumber", *fp.paginationInput.pageNumber)
 		}
 	}
-
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
@@ -438,11 +436,11 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 }
 
 type findItemsAdvancedParams struct {
-	categoryIDs       *string
-	keywords          *string
-	descriptionSearch *string
 	aspectFilters     []aspectFilter
+	categoryIDs       *string
+	descriptionSearch *string
 	itemFilters       []itemFilter
+	keywords          *string
 	buyerPostalCode   *string
 	paginationInput   *paginationInput
 	sortOrder         *string
@@ -470,6 +468,12 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		fp.keywords = &keywords
 	}
 
+	aspectFilters, err := processAspectFilters(params)
+	if err != nil {
+		return err
+	}
+	fp.aspectFilters = aspectFilters
+
 	descriptionSearch, dsOk := params["descriptionSearch"]
 	if dsOk {
 		if !isValidDescriptionSearch(descriptionSearch) {
@@ -477,12 +481,6 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		}
 		fp.descriptionSearch = &descriptionSearch
 	}
-
-	aspectFilters, err := processAspectFilters(params)
-	if err != nil {
-		return err
-	}
-	fp.aspectFilters = aspectFilters
 
 	itemFilters, err := processItemFilters(params)
 	if err != nil {
@@ -528,21 +526,18 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 	qry.Add("SECURITY-APPNAME", appID)
 	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
 
-	if fp.categoryIDs != nil {
-		qry.Add("categoryId", *fp.categoryIDs)
-	}
-	if fp.keywords != nil {
-		qry.Add("keywords", *fp.keywords)
-	}
-	if fp.descriptionSearch != nil {
-		qry.Add("descriptionSearch", *fp.descriptionSearch)
-	}
-
 	for idx, aspectFilter := range fp.aspectFilters {
 		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
 		for j, v := range aspectFilter.aspectValueNames {
 			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
 		}
+	}
+
+	if fp.categoryIDs != nil {
+		qry.Add("categoryId", *fp.categoryIDs)
+	}
+	if fp.descriptionSearch != nil {
+		qry.Add("descriptionSearch", *fp.descriptionSearch)
 	}
 
 	for idx, itemFilter := range fp.itemFilters {
@@ -557,10 +552,12 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 		}
 	}
 
+	if fp.keywords != nil {
+		qry.Add("keywords", *fp.keywords)
+	}
 	if fp.buyerPostalCode != nil {
 		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
 	}
-
 	if fp.paginationInput != nil {
 		if fp.paginationInput.entriesPerPage != nil {
 			qry.Add("paginationInput.entriesPerPage", *fp.paginationInput.entriesPerPage)
@@ -569,7 +566,6 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 			qry.Add("paginationInput.pageNumber", *fp.paginationInput.pageNumber)
 		}
 	}
-
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
@@ -634,19 +630,6 @@ func processCategoryIDs(categoryID string) error {
 	}
 
 	return nil
-}
-
-const (
-	trueValue  = "true"
-	falseValue = "false"
-)
-
-func isValidDescriptionSearch(descriptionSearch string) bool {
-	if descriptionSearch != trueValue && descriptionSearch != falseValue {
-		return false
-	}
-
-	return true
 }
 
 func processAspectFilters(params map[string]string) ([]aspectFilter, error) {
@@ -861,6 +844,8 @@ const (
 	topRatedSellerOnly    = "TopRatedSellerOnly"
 	valueBoxInventory     = "ValueBoxInventory"
 
+	trueValue           = "true"
+	falseValue          = "false"
 	trueNum             = "1"
 	falseNum            = "0"
 	smallestMaxDistance = 5
@@ -1341,6 +1326,14 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	}
 
 	return nil
+}
+
+func isValidDescriptionSearch(descriptionSearch string) bool {
+	if descriptionSearch != trueValue && descriptionSearch != falseValue {
+		return false
+	}
+
+	return true
 }
 
 const minPostalCodeLen = 3

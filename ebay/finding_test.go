@@ -3761,6 +3761,127 @@ var (
 			},
 			ExpectedError: ebay.ErrInvalidEntriesPerPage,
 		},
+		{
+			Name: "can find items if params contains BestMatch sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "BestMatch",
+			},
+		},
+		{
+			Name: "can find items if params contains BidCountFewest sortOrder and Auction listing type",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "Auction",
+				"sortOrder":        "BidCountFewest",
+			},
+		},
+		{
+			Name: "returns error if params contains BidCountFewest sortOrder but no Auction listing type",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "BidCountFewest",
+			},
+			ExpectedError: ebay.ErrAuctionListingMissing,
+		},
+		{
+			Name: "can find items if params contains BidCountMost sortOrder and Auction listing type",
+			Params: map[string]string{
+				"keywords":         "marshmallows",
+				"itemFilter.name":  "ListingType",
+				"itemFilter.value": "Auction",
+				"sortOrder":        "BidCountMost",
+			},
+		},
+		{
+			Name: "returns error if params contains BidCountMost sortOrder but no Auction listing type",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "BidCountMost",
+			},
+			ExpectedError: ebay.ErrAuctionListingMissing,
+		},
+		{
+			Name: "can find items if params contains CountryAscending sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "CountryAscending",
+			},
+		},
+		{
+			Name: "can find items if params contains CountryDescending sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "CountryDescending",
+			},
+		},
+		{
+			Name: "can find items if params contains CurrentPriceHighest sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "CurrentPriceHighest",
+			},
+		},
+		{
+			Name: "can find items if params contains DistanceNearest sortOrder and buyerPostalCode",
+			Params: map[string]string{
+				"keywords":        "marshmallows",
+				"buyerPostalCode": "111",
+				"sortOrder":       "DistanceNearest",
+			},
+		},
+		{
+			Name: "returns error if params contains DistanceNearest sortOrder but no buyerPostalCode",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "DistanceNearest",
+			},
+			ExpectedError: ebay.ErrBuyerPostalCodeMissing,
+		},
+		{
+			Name: "can find items if params contains EndTimeSoonest sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "EndTimeSoonest",
+			},
+		},
+		{
+			Name: "can find items if params contains PricePlusShippingHighest sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "PricePlusShippingHighest",
+			},
+		},
+		{
+			Name: "can find items if params contains PricePlusShippingLowest sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "PricePlusShippingLowest",
+			},
+		},
+		{
+			Name: "can find items if params contains StartTimeNewest sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "StartTimeNewest",
+			},
+		},
+		{
+			Name: "can find items if params contains WatchCountDecreaseSort sortOrder",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "WatchCountDecreaseSort",
+			},
+		},
+		{
+			Name: "returns error if params contains unsupported sortOrder name",
+			Params: map[string]string{
+				"keywords":  "marshmallows",
+				"sortOrder": "UnsupportedSortOrder",
+			},
+			ExpectedError: ebay.ErrUnsupportedSortOrderType,
+		},
 	}
 )
 
@@ -3853,6 +3974,11 @@ func TestFindItemsByKeywords(t *testing.T) {
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "1",
 			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
+			Name:          "returns error if params contains sortOrder but not keywords",
+			Params:        map[string]string{"sortOrder": "BestMatch"},
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 	}
@@ -4081,6 +4207,11 @@ func TestFindItemsAdvanced(t *testing.T) {
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "1",
 			},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name:          "returns error if params contains sortOrder but not categoryId or keywords",
+			Params:        map[string]string{"sortOrder": "BestMatch"},
 			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
 		},
 	}

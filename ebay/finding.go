@@ -188,6 +188,9 @@ var (
 	// contains an invalid value box inventory.
 	ErrInvalidValueBoxInventory = errors.New("ebay: invalid value box inventory")
 
+	// ErrInvalidOutputSelector is returned when the 'outputSelector' parameter contains an invalid output selector.
+	ErrInvalidOutputSelector = errors.New("ebay: invalid output selector")
+
 	// ErrInvalidEntriesPerPage is returned when the 'buyerPostalCode' parameter contains an invalid postal code.
 	ErrInvalidPostalCode = errors.New("ebay: invalid postal code")
 
@@ -281,7 +284,7 @@ func (svr *FindingServer) requestItems(
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusBadRequest}
 	}
 
-	req, err := fParams.createRequest(params, appID)
+	req, err := fParams.createRequest(appID)
 	if err != nil {
 		return nil, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
 	}
@@ -303,13 +306,14 @@ func (svr *FindingServer) requestItems(
 
 type findItemsParams interface {
 	validateParams(params map[string]string) error
-	createRequest(params map[string]string, appID string) (*http.Request, error)
+	createRequest(appID string) (*http.Request, error)
 }
 
 type findItemsByKeywordsParams struct {
 	aspectFilters   []aspectFilter
 	itemFilters     []itemFilter
 	keywords        string
+	outputSelectors []string
 	buyerPostalCode *string
 	paginationInput *paginationInput
 	sortOrder       *string
@@ -351,6 +355,12 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 	}
 	fp.itemFilters = itemFilters
 
+	outputSelectors, err := processOutputSelectors(params)
+	if err != nil {
+		return err
+	}
+	fp.outputSelectors = outputSelectors
+
 	buyerPostalCode, bpcOk := params["buyerPostalCode"]
 	if bpcOk {
 		if !isValidPostalCode(buyerPostalCode) {
@@ -377,7 +387,7 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 	return nil
 }
 
-func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, appID string) (*http.Request, error) {
+func (fp *findItemsByKeywordsParams) createRequest(appID string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
@@ -409,6 +419,10 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 	}
 
 	qry.Add("keywords", fp.keywords)
+	for idx := range fp.outputSelectors {
+		qry.Add(fmt.Sprintf("outputSelector(%d)", idx), fp.outputSelectors[idx])
+	}
+
 	if fp.buyerPostalCode != nil {
 		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
 	}
@@ -424,12 +438,6 @@ func (fp *findItemsByKeywordsParams) createRequest(params map[string]string, app
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
 
-	for k, v := range params {
-		if _, ok := qry[k]; !ok {
-			qry.Add(k, v)
-		}
-	}
-
 	req.URL.RawQuery = qry.Encode()
 
 	return req, nil
@@ -441,6 +449,7 @@ type findItemsAdvancedParams struct {
 	descriptionSearch *string
 	itemFilters       []itemFilter
 	keywords          *string
+	outputSelectors   []string
 	buyerPostalCode   *string
 	paginationInput   *paginationInput
 	sortOrder         *string
@@ -488,6 +497,12 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	}
 	fp.itemFilters = itemFilters
 
+	outputSelectors, err := processOutputSelectors(params)
+	if err != nil {
+		return err
+	}
+	fp.outputSelectors = outputSelectors
+
 	buyerPostalCode, bpcOk := params["buyerPostalCode"]
 	if bpcOk {
 		if !isValidPostalCode(buyerPostalCode) {
@@ -514,7 +529,7 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	return nil
 }
 
-func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID string) (*http.Request, error) {
+func (fp *findItemsAdvancedParams) createRequest(appID string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
@@ -555,6 +570,11 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 	if fp.keywords != nil {
 		qry.Add("keywords", *fp.keywords)
 	}
+
+	for idx := range fp.outputSelectors {
+		qry.Add(fmt.Sprintf("outputSelector(%d)", idx), fp.outputSelectors[idx])
+	}
+
 	if fp.buyerPostalCode != nil {
 		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
 	}
@@ -568,12 +588,6 @@ func (fp *findItemsAdvancedParams) createRequest(params map[string]string, appID
 	}
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
-	}
-
-	for k, v := range params {
-		if _, ok := qry[k]; !ok {
-			qry.Add(k, v)
-		}
 	}
 
 	req.URL.RawQuery = qry.Encode()
@@ -1334,6 +1348,64 @@ func isValidDescriptionSearch(descriptionSearch string) bool {
 	}
 
 	return true
+}
+
+// Valid OutputSelectorType values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/callref/types/OutputSelectorType.html
+var validOutputSelectors = []string{
+	"AspectHistogram",
+	"CategoryHistogram",
+	"ConditionHistogram",
+	"GalleryInfo",
+	"PictureURLLarge",
+	"PictureURLSuperSize",
+	"SellerInfo",
+	"StoreInfo",
+	"UnitPriceInfo",
+}
+
+func processOutputSelectors(params map[string]string) ([]string, error) {
+	// Check if both "outputSelector" and "outputSelector(0)" syntax types occur in the params.
+	outputSelector, nonNumberedExists := params["outputSelector"]
+	_, numberedExists := params["outputSelector(0)"]
+
+	if nonNumberedExists && numberedExists {
+		return nil, ErrInvalidFilterSyntax
+	}
+
+	if nonNumberedExists {
+		if !isValidOutputSelector(outputSelector) {
+			return nil, ErrInvalidOutputSelector
+		}
+
+		return []string{outputSelector}, nil
+	}
+
+	var outputSelectors []string
+	for i := 0; ; i++ {
+		selector, ok := params[fmt.Sprintf("outputSelector(%d)", i)]
+		if !ok {
+			break
+		}
+
+		if !isValidOutputSelector(selector) {
+			return nil, ErrInvalidOutputSelector
+		}
+
+		outputSelectors = append(outputSelectors, selector)
+	}
+
+	return outputSelectors, nil
+}
+
+func isValidOutputSelector(outputSelector string) bool {
+	for _, os := range validOutputSelectors {
+		if outputSelector == os {
+			return true
+		}
+	}
+
+	return false
 }
 
 const minPostalCodeLen = 3

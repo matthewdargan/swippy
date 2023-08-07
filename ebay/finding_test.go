@@ -1181,7 +1181,7 @@ var (
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeFrom",
-				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
 		},
 		{
@@ -1218,7 +1218,7 @@ var (
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeTo",
-				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
 		},
 		{
@@ -3304,10 +3304,10 @@ var (
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "ModTimeFrom",
-				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
 			ExpectedError: fmt.Errorf("%w: %q",
-				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).UTC().Format(time.RFC3339)),
+				ebay.ErrInvalidDateTime, time.Now().Add(5*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
 			Name: "can find items if params contains ReturnsAcceptedOnly itemFilter.value=true",
@@ -3447,7 +3447,7 @@ var (
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeFrom",
-				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
 		},
 		{
@@ -3484,7 +3484,7 @@ var (
 			Params: map[string]string{
 				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeTo",
-				"itemFilter.value": time.Now().Add(1 * time.Second).UTC().Format(time.RFC3339),
+				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
 		},
 		{
@@ -3587,6 +3587,127 @@ var (
 				"itemFilter.value": "123",
 			},
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
+		},
+		{
+			Name: "can find items if params contains AspectHistogram outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "AspectHistogram",
+			},
+		},
+		{
+			Name: "can find items if params contains CategoryHistogram outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "CategoryHistogram",
+			},
+		},
+		{
+			Name: "can find items if params contains ConditionHistogram outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "ConditionHistogram",
+			},
+		},
+		{
+			Name: "can find items if params contains GalleryInfo outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "GalleryInfo",
+			},
+		},
+		{
+			Name: "can find items if params contains PictureURLLarge outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "PictureURLLarge",
+			},
+		},
+		{
+			Name: "can find items if params contains PictureURLSuperSize outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "PictureURLSuperSize",
+			},
+		},
+		{
+			Name: "can find items if params contains SellerInfo outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "SellerInfo",
+			},
+		},
+		{
+			Name: "can find items if params contains StoreInfo outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "StoreInfo",
+			},
+		},
+		{
+			Name: "can find items if params contains UnitPriceInfo outputSelector",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "UnitPriceInfo",
+			},
+		},
+		{
+			Name: "returns error if params contains non-numbered, unsupported outputSelector name",
+			Params: map[string]string{
+				"keywords":       "marshmallows",
+				"outputSelector": "UnsupportedOutputSelector",
+			},
+			ExpectedError: ebay.ErrInvalidOutputSelector,
+		},
+		{
+			// outputSelector(1) will be ignored because indexing does not start at 0.
+			Name: "can find items if params contains outputSelector, outputSelector(1)",
+			Params: map[string]string{
+				"keywords":          "marshmallows",
+				"outputSelector":    "AspectHistogram",
+				"outputSelector(1)": "CategoryHistogram",
+			},
+		},
+		{
+			Name: "returns error if params contain numbered and non-numbered outputSelector syntax types",
+			Params: map[string]string{
+				"keywords":          "marshmallows",
+				"outputSelector":    "AspectHistogram",
+				"outputSelector(0)": "CategoryHistogram",
+			},
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name: "can find items by numbered outputSelector",
+			Params: map[string]string{
+				"keywords":          "marshmallows",
+				"outputSelector(0)": "AspectHistogram",
+			},
+		},
+		{
+			Name: "can find items by 2 numbered outputSelector",
+			Params: map[string]string{
+				"keywords":          "marshmallows",
+				"outputSelector(0)": "AspectHistogram",
+				"outputSelector(1)": "CategoryHistogram",
+			},
+		},
+		{
+			Name: "returns error if params contains numbered, unsupported outputSelector name",
+			Params: map[string]string{
+				"keywords":          "marshmallows",
+				"outputSelector(0)": "UnsupportedOutputSelector",
+			},
+			ExpectedError: ebay.ErrInvalidOutputSelector,
+		},
+		{
+			Name: "returns error if params contains 1 supported, 1 unsupported outputSelector name",
+			Params: map[string]string{
+				"keywords":          "marshmallows",
+				"outputSelector(0)": "AspectHistogram",
+				"outputSelector(1)": "UnsupportedOutputSelector",
+			},
+			ExpectedError: ebay.ErrInvalidOutputSelector,
 		},
 		{
 			Name: "can find items if params contains buyerPostalCode=111",
@@ -3964,6 +4085,11 @@ func TestFindItemsByKeywords(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
+			Name:          "returns error if params contains outputSelector but not keywords",
+			Params:        map[string]string{"outputSelector": "AspectHistogram"},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
 			Name:          "returns error if params contains buyerPostalCode but not keywords",
 			Params:        map[string]string{"buyerPostalCode": "111"},
 			ExpectedError: ebay.ErrKeywordsMissing,
@@ -4194,6 +4320,11 @@ func TestFindItemsAdvanced(t *testing.T) {
 		{
 			Name:          "returns error if params contains descriptionSearch but not categoryId or keywords",
 			Params:        map[string]string{"descriptionSearch": "true"},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name:          "returns error if params contains outputSelector but not categoryId or keywords",
+			Params:        map[string]string{"outputSelector": "AspectHistogram"},
 			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
 		},
 		{

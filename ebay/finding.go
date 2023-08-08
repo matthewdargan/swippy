@@ -191,6 +191,30 @@ var (
 	// ErrInvalidOutputSelector is returned when the 'outputSelector' parameter contains an invalid output selector.
 	ErrInvalidOutputSelector = errors.New("ebay: invalid output selector")
 
+	maxCustomIDLen = 256
+
+	// ErrInvalidCustomIDLength is returned when the 'affiliate.customId' parameter
+	// exceeds the maximum length of 256 characters.
+	ErrInvalidCustomIDLength = fmt.Errorf(
+		"ebay: invalid affiliate custom ID length: must be no more than %d characters", maxCustomIDLen)
+
+	// ErrIncompleteAffiliateParams is returned when an affiliate is missing
+	// either the 'networkId' or 'trackingId' parameter, as both 'networkId' and 'trackingId'
+	// are required when either one is specified.
+	ErrIncompleteAffiliateParams = errors.New(
+		"ebay: incomplete affiliate: both network and tracking IDs must be specified together")
+
+	beFreeID, ebayPartnerNetworkID = 2, 9
+
+	// ErrInvalidNetworkID is returned when the 'affiliate.networkId' parameter
+	// is outside the valid range of 2 (Be Free) and 9 (eBay Partner Network).
+	ErrInvalidNetworkID = fmt.Errorf("ebay: invalid affiliate network ID: must be between %d and %d",
+		beFreeID, ebayPartnerNetworkID)
+
+	// ErrInvalidCampaignID is returned when the 'affiliate.networkId' parameter is 9 (eBay Partner Network)
+	// and the 'affiliate.trackingId' parameter is not a 10-digit number (eBay Partner Network's Campaign ID).
+	ErrInvalidCampaignID = errors.New("ebay: invalid affiliate Campaign ID length: must be a 10-digit number")
+
 	// ErrInvalidEntriesPerPage is returned when the 'buyerPostalCode' parameter contains an invalid postal code.
 	ErrInvalidPostalCode = errors.New("ebay: invalid postal code")
 
@@ -314,6 +338,7 @@ type findItemsByKeywordsParams struct {
 	itemFilters     []itemFilter
 	keywords        string
 	outputSelectors []string
+	affiliate       *affiliate
 	buyerPostalCode *string
 	paginationInput *paginationInput
 	sortOrder       *string
@@ -329,6 +354,13 @@ type itemFilter struct {
 	values     []string
 	paramName  *string
 	paramValue *string
+}
+
+type affiliate struct {
+	customID     *string
+	geoTargeting *string
+	networkID    *string
+	trackingID   *string
 }
 
 type paginationInput struct {
@@ -360,6 +392,12 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 		return err
 	}
 	fp.outputSelectors = outputSelectors
+
+	affiliate, err := processAffiliate(params)
+	if err != nil {
+		return err
+	}
+	fp.affiliate = affiliate
 
 	buyerPostalCode, bpcOk := params["buyerPostalCode"]
 	if bpcOk {
@@ -423,6 +461,20 @@ func (fp *findItemsByKeywordsParams) createRequest(appID string) (*http.Request,
 		qry.Add(fmt.Sprintf("outputSelector(%d)", idx), fp.outputSelectors[idx])
 	}
 
+	if fp.affiliate != nil {
+		if fp.affiliate.customID != nil {
+			qry.Add("affiliate.customId", *fp.affiliate.customID)
+		}
+		if fp.affiliate.geoTargeting != nil {
+			qry.Add("affiliate.geoTargeting", *fp.affiliate.geoTargeting)
+		}
+		if fp.affiliate.networkID != nil {
+			qry.Add("affiliate.networkId", *fp.affiliate.networkID)
+		}
+		if fp.affiliate.trackingID != nil {
+			qry.Add("affiliate.trackingId", *fp.affiliate.trackingID)
+		}
+	}
 	if fp.buyerPostalCode != nil {
 		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
 	}
@@ -450,6 +502,7 @@ type findItemsAdvancedParams struct {
 	itemFilters       []itemFilter
 	keywords          *string
 	outputSelectors   []string
+	affiliate         *affiliate
 	buyerPostalCode   *string
 	paginationInput   *paginationInput
 	sortOrder         *string
@@ -502,6 +555,12 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		return err
 	}
 	fp.outputSelectors = outputSelectors
+
+	affiliate, err := processAffiliate(params)
+	if err != nil {
+		return err
+	}
+	fp.affiliate = affiliate
 
 	buyerPostalCode, bpcOk := params["buyerPostalCode"]
 	if bpcOk {
@@ -575,6 +634,20 @@ func (fp *findItemsAdvancedParams) createRequest(appID string) (*http.Request, e
 		qry.Add(fmt.Sprintf("outputSelector(%d)", idx), fp.outputSelectors[idx])
 	}
 
+	if fp.affiliate != nil {
+		if fp.affiliate.customID != nil {
+			qry.Add("affiliate.customId", *fp.affiliate.customID)
+		}
+		if fp.affiliate.geoTargeting != nil {
+			qry.Add("affiliate.geoTargeting", *fp.affiliate.geoTargeting)
+		}
+		if fp.affiliate.networkID != nil {
+			qry.Add("affiliate.networkId", *fp.affiliate.networkID)
+		}
+		if fp.affiliate.trackingID != nil {
+			qry.Add("affiliate.trackingId", *fp.affiliate.trackingID)
+		}
+	}
 	if fp.buyerPostalCode != nil {
 		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
 	}
@@ -982,9 +1055,8 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 	return nil
 }
 
-const countryCodeLen = 2
-
 func isValidCountryCode(value string) bool {
+	const countryCodeLen = 2
 	if len(value) != countryCodeLen {
 		return false
 	}
@@ -1280,9 +1352,8 @@ func validatePriceRange(filter *itemFilter, itemFilters []itemFilter) error {
 	return nil
 }
 
-const minAllowedPrice float64 = 0.0
-
 func parsePrice(filter *itemFilter) (float64, error) {
+	const minAllowedPrice float64 = 0.0
 	price, err := strconv.ParseFloat(filter.values[0], 64)
 	if err != nil {
 		return 0, fmt.Errorf("ebay: %w", err)
@@ -1408,9 +1479,71 @@ func isValidOutputSelector(outputSelector string) bool {
 	return false
 }
 
-const minPostalCodeLen = 3
+func processAffiliate(params map[string]string) (*affiliate, error) {
+	var aff affiliate
+	customID, cOk := params["affiliate.customId"]
+	if cOk {
+		if len(customID) > maxCustomIDLen {
+			return nil, ErrInvalidCustomIDLength
+		}
+		aff.customID = &customID
+	}
+
+	geoTargeting, ok := params["affiliate.geoTargeting"]
+	if ok {
+		if geoTargeting != trueValue && geoTargeting != falseValue {
+			return nil, fmt.Errorf("%w: %q", ErrInvalidBooleanValue, geoTargeting)
+		}
+		aff.geoTargeting = &geoTargeting
+	}
+
+	networkID, nOk := params["affiliate.networkId"]
+	trackingID, tOk := params["affiliate.trackingId"]
+	if nOk != tOk {
+		return nil, ErrIncompleteAffiliateParams
+	}
+	if !nOk {
+		return &aff, nil
+	}
+
+	nID, err := strconv.Atoi(networkID)
+	if err != nil {
+		return nil, fmt.Errorf("ebay: %w", err)
+	}
+
+	if nID < beFreeID || nID > ebayPartnerNetworkID {
+		return nil, ErrInvalidNetworkID
+	}
+	if nID == ebayPartnerNetworkID {
+		err := validateTrackingID(trackingID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	aff.networkID = &networkID
+	aff.trackingID = &trackingID
+
+	return &aff, nil
+}
+
+func validateTrackingID(trackingID string) error {
+	_, err := strconv.Atoi(trackingID)
+	if err != nil {
+		return fmt.Errorf("ebay: %w", err)
+	}
+
+	const maxCampIDLen = 10
+	if len(trackingID) != maxCampIDLen {
+		return ErrInvalidCampaignID
+	}
+
+	return nil
+}
 
 func isValidPostalCode(postalCode string) bool {
+	const minPostalCodeLen = 3
+
 	return len(postalCode) >= minPostalCodeLen
 }
 

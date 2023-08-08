@@ -27,9 +27,7 @@ issues:
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function createRequest"
     - path: ebay/finding.go
-      text: "Function 'createRequest' is too long"
-    - path: ebay/finding.go
-      text: "Function 'createRequest' has too many statements"
+      text: "createRequest"
     - path: ebay/finding.go
       text: "handleItemFilterType"
     - path: ebay/finding.go
@@ -38,6 +36,8 @@ issues:
       text: "calculated cyclomatic complexity for function validateListingTypes"
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function validatePriceRange"
+    - path: ebay/finding.go
+      text: "calculated cyclomatic complexity for function processAffiliate"
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function processPaginationInput"
     - path: ebay/finding.go

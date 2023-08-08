@@ -3710,6 +3710,145 @@ var (
 			ExpectedError: ebay.ErrInvalidOutputSelector,
 		},
 		{
+			Name: "can find items if params contains affiliate.customId=1",
+			Params: map[string]string{
+				"keywords":           "marshmallows",
+				"affiliate.customId": "1",
+			},
+		},
+		{
+			Name: "can find items if params contains affiliate.customId of length 256",
+			Params: map[string]string{
+				"keywords":           "marshmallows",
+				"affiliate.customId": generateStringWithLen(256, false),
+			},
+		},
+		{
+			Name: "returns error if params contains affiliate.customId of length 257",
+			Params: map[string]string{
+				"keywords":           "marshmallows",
+				"affiliate.customId": generateStringWithLen(257, false),
+			},
+			ExpectedError: ebay.ErrInvalidCustomIDLength,
+		},
+		{
+			Name: "can find items if params contains affiliate.geoTargeting=true",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"affiliate.geoTargeting": "true",
+			},
+		},
+		{
+			Name: "can find items if params contains affiliate.geoTargeting=false",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"affiliate.geoTargeting": "false",
+			},
+		},
+		{
+			Name: "returns error if params contains affiliate.geoTargeting with non-boolean value",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"affiliate.geoTargeting": "123",
+			},
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+		},
+		{
+			Name: "can find items if params contain affiliate.networkId=2 and trackingId",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "2",
+				"affiliate.trackingId": "1",
+			},
+		},
+		{
+			Name: "can find items if params contain affiliate.networkId=9 and trackingId=1234567890",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "9",
+				"affiliate.trackingId": "1234567890",
+			},
+		},
+		{
+			Name: "can find items if params contain affiliate.networkId=5 and trackingId=veryunique",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "5",
+				"affiliate.trackingId": "veryunique",
+			},
+		},
+		{
+			Name: "returns error if params contains affiliate.networkId but no trackingId",
+			Params: map[string]string{
+				"keywords":            "marshmallows",
+				"affiliate.networkId": "2",
+			},
+			ExpectedError: ebay.ErrIncompleteAffiliateParams,
+		},
+		{
+			Name: "returns error if params contains affiliate.trackingId but no networkId",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.trackingId": "1",
+			},
+			ExpectedError: ebay.ErrIncompleteAffiliateParams,
+		},
+		{
+			Name: "returns error if params contain affiliate.networkId=abc and trackingId",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "abc",
+				"affiliate.trackingId": "1",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contain affiliate.networkId=1 and trackingId",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "1",
+				"affiliate.trackingId": "1",
+			},
+			ExpectedError: ebay.ErrInvalidNetworkID,
+		},
+		{
+			Name: "returns error if params contain affiliate.networkId=10 and trackingId",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "10",
+				"affiliate.trackingId": "1",
+			},
+			ExpectedError: ebay.ErrInvalidNetworkID,
+		},
+		{
+			Name: "returns error if params contain affiliate.networkId=9 and trackingId=abc",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "9",
+				"affiliate.trackingId": "abc",
+			},
+			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contain affiliate.networkId=9 and trackingId=123456789",
+			Params: map[string]string{
+				"keywords":             "marshmallows",
+				"affiliate.networkId":  "9",
+				"affiliate.trackingId": "123456789",
+			},
+			ExpectedError: ebay.ErrInvalidCampaignID,
+		},
+		{
+			Name: "can find items if params contain affiliate.customId, geoTargeting, networkId, trackingId",
+			Params: map[string]string{
+				"keywords":               "marshmallows",
+				"affiliate.customId":     "abc123",
+				"affiliate.geoTargeting": "true",
+				"affiliate.networkId":    "2",
+				"affiliate.trackingId":   "123abc",
+			},
+		},
+		{
 			Name: "can find items if params contains buyerPostalCode=111",
 			Params: map[string]string{
 				"keywords":        "marshmallows",
@@ -4090,6 +4229,16 @@ func TestFindItemsByKeywords(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
+			Name: "returns error if params contains affiliate but not categoryId or keywords",
+			Params: map[string]string{
+				"affiliate.customId":     "123",
+				"affiliate.geoTargeting": "true",
+				"affiliate.networkId":    "2",
+				"affiliate.trackingId":   "123",
+			},
+			ExpectedError: ebay.ErrKeywordsMissing,
+		},
+		{
 			Name:          "returns error if params contains buyerPostalCode but not keywords",
 			Params:        map[string]string{"buyerPostalCode": "111"},
 			ExpectedError: ebay.ErrKeywordsMissing,
@@ -4325,6 +4474,16 @@ func TestFindItemsAdvanced(t *testing.T) {
 		{
 			Name:          "returns error if params contains outputSelector but not categoryId or keywords",
 			Params:        map[string]string{"outputSelector": "AspectHistogram"},
+			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+		},
+		{
+			Name: "returns error if params contains affiliate but not categoryId or keywords",
+			Params: map[string]string{
+				"affiliate.customId":     "123",
+				"affiliate.geoTargeting": "true",
+				"affiliate.networkId":    "2",
+				"affiliate.trackingId":   "123",
+			},
 			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
 		},
 		{

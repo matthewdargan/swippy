@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -691,12 +692,11 @@ func processKeywords(params map[string]string) (string, error) {
 // Split keywords based on special characters acting as search operators.
 // See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
 func splitKeywords(keywords string) []string {
-	isSpecial := func(r rune) bool {
-		return r == ' ' || r == ',' || r == '(' || r == ')' || r == '"' || r == '-' || r == '*' || r == '@' || r == '+'
-	}
-	individualKeywords := strings.FieldsFunc(keywords, isSpecial)
+	const specialChars = ` ,()"-*@+`
 
-	return individualKeywords
+	return strings.FieldsFunc(keywords, func(r rune) bool {
+		return strings.ContainsRune(specialChars, r)
+	})
 }
 
 func processCategoryIDs(categoryID string) error {
@@ -938,6 +938,39 @@ const (
 	smallestMaxDistance = 5
 )
 
+// Valid Currency ID values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html
+var validCurrencyIDs = []string{
+	"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
+}
+
+// Valid Global ID values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html
+var validGlobalIDs = []string{
+	"EBAY-AT",
+	"EBAY-AU",
+	"EBAY-CH",
+	"EBAY-DE",
+	"EBAY-ENCA",
+	"EBAY-ES",
+	"EBAY-FR",
+	"EBAY-FRBE",
+	"EBAY-FRCA",
+	"EBAY-GB",
+	"EBAY-HK",
+	"EBAY-IE",
+	"EBAY-IN",
+	"EBAY-IT",
+	"EBAY-MOTOR",
+	"EBAY-MY",
+	"EBAY-NL",
+	"EBAY-NLBE",
+	"EBAY-PH",
+	"EBAY-PL",
+	"EBAY-SG",
+	"EBAY-US",
+}
+
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params map[string]string) error {
 	switch filter.name {
 	case authorizedSellerOnly, bestOfferOnly, charityOnly, excludeAutoPay, freeShippingOnly, hideDuplicateItems,
@@ -954,7 +987,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return fmt.Errorf("%w: %q", ErrInvalidCondition, filter.values[0])
 		}
 	case currency:
-		if !isValidCurrencyID(filter.values[0]) {
+		if !slices.Contains(validCurrencyIDs, filter.values[0]) {
 			return fmt.Errorf("%w: %q", ErrInvalidCurrencyID, filter.values[0])
 		}
 	case endTimeFrom, endTimeTo, startTimeFrom, startTimeTo:
@@ -981,7 +1014,7 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return err
 		}
 	case listedIn:
-		if !isValidGlobalID(filter.values[0]) {
+		if !slices.Contains(validGlobalIDs, filter.values[0]) {
 			return fmt.Errorf("%w: %q", ErrInvalidGlobalID, filter.values[0])
 		}
 	case listingType:
@@ -1061,8 +1094,8 @@ func isValidCountryCode(value string) bool {
 		return false
 	}
 
-	for _, ch := range value {
-		if !unicode.IsUpper(ch) {
+	for _, r := range value {
+		if !unicode.IsUpper(r) {
 			return false
 		}
 	}
@@ -1077,34 +1110,12 @@ var validConditionIDs = []int{1000, 1500, 1750, 2000, 2010, 2020, 2030, 2500, 27
 func isValidCondition(value string) bool {
 	conditionID, err := strconv.Atoi(value)
 	if err == nil {
-		for _, id := range validConditionIDs {
-			if conditionID == id {
-				return true
-			}
-		}
-	} else {
-		// Value is a condition name, refer to the eBay documentation for condition name definitions.
-		// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html
-		return true
+		return slices.Contains(validConditionIDs, conditionID)
 	}
 
-	return false
-}
-
-// Valid Currency ID values from the eBay documentation.
-// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html
-var validCurrencyIDs = []string{
-	"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
-}
-
-func isValidCurrencyID(value string) bool {
-	for _, currency := range validCurrencyIDs {
-		if value == currency {
-			return true
-		}
-	}
-
-	return false
+	// Value is a condition name, refer to the eBay documentation for condition name definitions.
+	// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html
+	return true
 }
 
 func isValidDateTime(value string, future bool) bool {
@@ -1204,43 +1215,6 @@ func isValidIntegerInRange(value string, min int) bool {
 	return num >= min
 }
 
-// Valid Global ID values from the eBay documentation.
-// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html
-var validGlobalIDs = []string{
-	"EBAY-AT",
-	"EBAY-AU",
-	"EBAY-CH",
-	"EBAY-DE",
-	"EBAY-ENCA",
-	"EBAY-ES",
-	"EBAY-FR",
-	"EBAY-FRBE",
-	"EBAY-FRCA",
-	"EBAY-GB",
-	"EBAY-HK",
-	"EBAY-IE",
-	"EBAY-IN",
-	"EBAY-IT",
-	"EBAY-MOTOR",
-	"EBAY-MY",
-	"EBAY-NL",
-	"EBAY-NLBE",
-	"EBAY-PH",
-	"EBAY-PL",
-	"EBAY-SG",
-	"EBAY-US",
-}
-
-func isValidGlobalID(value string) bool {
-	for _, id := range validGlobalIDs {
-		if value == id {
-			return true
-		}
-	}
-
-	return false
-}
-
 // Valid Listing Type values from the eBay documentation.
 // See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html#ListingType
 var validListingTypes = []string{"Auction", "AuctionWithBIN", "Classified", "FixedPrice", "StoreInventory", "All"}
@@ -1288,15 +1262,9 @@ func validateLocalSearchOnly(values []string, itemFilters []itemFilter, params m
 		return ErrBuyerPostalCodeMissing
 	}
 
-	foundMaxDistance := false
-	for _, flt := range itemFilters {
-		if flt.name == maxDistance {
-			foundMaxDistance = true
-
-			break
-		}
-	}
-
+	foundMaxDistance := slices.ContainsFunc(itemFilters, func(f itemFilter) bool {
+		return f.name == maxDistance
+	})
 	if !foundMaxDistance {
 		return ErrMaxDistanceMissing
 	}
@@ -1366,7 +1334,7 @@ func parsePrice(filter *itemFilter) (float64, error) {
 		return 0, fmt.Errorf("%w: %q", ErrInvalidPriceParamName, *filter.paramName)
 	}
 
-	if filter.paramValue != nil && !isValidCurrencyID(*filter.paramValue) {
+	if filter.paramValue != nil && !slices.Contains(validCurrencyIDs, *filter.paramValue) {
 		return 0, fmt.Errorf("%w: %q", ErrInvalidCurrencyID, *filter.paramValue)
 	}
 
@@ -1414,11 +1382,7 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 }
 
 func isValidDescriptionSearch(descriptionSearch string) bool {
-	if descriptionSearch != trueValue && descriptionSearch != falseValue {
-		return false
-	}
-
-	return true
+	return descriptionSearch == trueValue || descriptionSearch == falseValue
 }
 
 // Valid OutputSelectorType values from the eBay documentation.
@@ -1445,7 +1409,7 @@ func processOutputSelectors(params map[string]string) ([]string, error) {
 	}
 
 	if nonNumberedExists {
-		if !isValidOutputSelector(outputSelector) {
+		if !slices.Contains(validOutputSelectors, outputSelector) {
 			return nil, ErrInvalidOutputSelector
 		}
 
@@ -1459,7 +1423,7 @@ func processOutputSelectors(params map[string]string) ([]string, error) {
 			break
 		}
 
-		if !isValidOutputSelector(selector) {
+		if !slices.Contains(validOutputSelectors, selector) {
 			return nil, ErrInvalidOutputSelector
 		}
 
@@ -1467,16 +1431,6 @@ func processOutputSelectors(params map[string]string) ([]string, error) {
 	}
 
 	return outputSelectors, nil
-}
-
-func isValidOutputSelector(outputSelector string) bool {
-	for _, os := range validOutputSelectors {
-		if outputSelector == os {
-			return true
-		}
-	}
-
-	return false
 }
 
 func processAffiliate(params map[string]string) (*affiliate, error) {
@@ -1604,15 +1558,9 @@ func validateSortOrder(sortOrder string, itemFilters []itemFilter, hasBuyerPosta
 		pricePlusShippingHighest, pricePlusShippingLowest, startTimeNewest, watchCountDecreaseSort:
 		return nil
 	case bidCountFewest, bidCountMost:
-		hasAuctionListing := false
-		for _, f := range itemFilters {
-			for _, v := range f.values {
-				if f.name == listingType && v == "Auction" {
-					hasAuctionListing = true
-				}
-			}
-		}
-
+		hasAuctionListing := slices.ContainsFunc(itemFilters, func(f itemFilter) bool {
+			return f.name == listingType && slices.Contains(f.values, "Auction")
+		})
 		if !hasAuctionListing {
 			return ErrAuctionListingMissing
 		}

@@ -21,8 +21,6 @@ linters:
 issues:
   exclude-rules:
     - path: ebay/finding.go
-      text: "File is not `gci`-ed with --skip-generated -s standard -s default"
-    - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function validateParams"
     - path: ebay/finding.go
       text: "Function 'validateParams' has too many statements"

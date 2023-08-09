@@ -40,7 +40,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 
 	findingSvr := ebay.NewFindingServer(findingClient)
-	items, err := findingSvr.FindItemsAdvanced(request.QueryStringParameters, appID)
+	items, err := findingSvr.FindItemsByCategories(request.QueryStringParameters, appID)
 	if err != nil {
 		var ebayErr *ebay.APIError
 		if errors.As(err, &ebayErr) {
@@ -51,7 +51,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}
 	if err != nil {
 		return generateErrorResponse(
-			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items advanced: %w", err))
+			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items by categories: %w", err))
 	}
 
 	body, err := json.Marshal(items)

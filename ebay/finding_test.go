@@ -27,13 +27,13 @@ var (
 			SearchResult: []ebay.SearchResult{
 				{
 					Count: "1",
-					Item: []ebay.Item{
+					Item: []ebay.SearchItem{
 						{
 							ItemID:   []string{"1234567890"},
 							Title:    []string{"Sample Item"},
 							GlobalID: []string{"global-id-123"},
 							Subtitle: []string{"Sample Item Subtitle"},
-							PrimaryCategory: []ebay.PrimaryCategory{
+							PrimaryCategory: []ebay.Category{
 								{
 									CategoryID:   []string{"category-id-123"},
 									CategoryName: []string{"Sample Category"},
@@ -121,7 +121,7 @@ var (
 					},
 				},
 			},
-			PaginationOutput: []ebay.Pagination{
+			PaginationOutput: []ebay.PaginationOutput{
 				{
 					PageNumber:     []string{"1"},
 					EntriesPerPage: []string{"10"},
@@ -132,6 +132,9 @@ var (
 			ItemSearchURL: []string{"https://example.com/search?q=sample"},
 		},
 	}
+	findItemsByCategoriesResp = ebay.FindItemsByCategoriesResponse{
+		ItemsResponse: itemsResp,
+	}
 	findItemsByKeywordsResp = ebay.FindItemsByKeywordsResponse{
 		ItemsResponse: itemsResp,
 	}
@@ -139,11 +142,81 @@ var (
 		ItemsResponse: itemsResp,
 	}
 
-	findItemsByKeywords = "FindItemsByKeywords"
-	findItemsAdvanced   = "FindItemsAdvanced"
+	findItemsByCategories = "FindItemsByCategories"
+	findItemsByKeywords   = "FindItemsByKeywords"
+	findItemsAdvanced     = "FindItemsAdvanced"
 
-	easternTime = time.FixedZone("EasternTime", -5*60*60)
-	testCases   = []findItemsTestCase{
+	categoryIDTestCases = []findItemsTestCase{
+		{
+			Name:   "can find items if params contains categoryId of length 1",
+			Params: map[string]string{"categoryId": "1"},
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 5",
+			Params: map[string]string{"categoryId": "1234567890"},
+		},
+		{
+			Name:   "can find items if params contains categoryId of length 10",
+			Params: map[string]string{"categoryId": "1234567890"},
+		},
+		{
+			Name:          "returns error if params contains empty categoryId",
+			Params:        map[string]string{"categoryId": ""},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains categoryId of length 11",
+			Params:        map[string]string{"categoryId": "12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:   "can find items if params contains 2 categoryIds of length 1",
+			Params: map[string]string{"categoryId": "1,2"},
+		},
+		{
+			Name:   "can find items if params contains 2 categoryIds of length 10",
+			Params: map[string]string{"categoryId": "1234567890,9876543210"},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
+			Params:        map[string]string{"categoryId": "12345678901,1"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:   "can find items if params contains 3 categoryIds of length 1",
+			Params: map[string]string{"categoryId": "1,2,3"},
+		},
+		{
+			Name:   "can find items if params contains 3 categoryIds of length 10",
+			Params: map[string]string{"categoryId": "1234567890,9876543210,8976543210"},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
+			Params:        map[string]string{"categoryId": "12345678901,1,2"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,12345678901,2"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
+			Params:        map[string]string{"categoryId": "1,2,12345678901"},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name:          "returns error if params contains 4 categoryIds",
+			Params:        map[string]string{"categoryId": "1,2,3,4"},
+			ExpectedError: ebay.ErrMaxCategoryIDs,
+		},
+	}
+	keywordsTestCases = []findItemsTestCase{
 		{
 			Name:   "can find items if params contains keywords of length 2",
 			Params: map[string]string{"keywords": generateStringWithLen(2, true)},
@@ -359,6 +432,10 @@ var (
 			},
 			ExpectedError: ebay.ErrInvalidKeywordLength,
 		},
+	}
+
+	easternTime = time.FixedZone("EasternTime", -5*60*60)
+	testCases   = []findItemsTestCase{
 		{
 			Name: "can find items by aspectFilter.aspectName, aspectValueName",
 			Params: map[string]string{
@@ -4159,6 +4236,116 @@ type findItemsTestCase struct {
 	ExpectedError error
 }
 
+func TestFindItemsByCategories(t *testing.T) {
+	t.Parallel()
+	params := map[string]string{"categoryId": "12345"}
+	testFindItems(t, params, findItemsByCategories)
+
+	t.Run("can find items by categories", func(t *testing.T) {
+		t.Parallel()
+		client := &MockFindingClient{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
+				body, err := json.Marshal(findItemsByCategoriesResp)
+				assertNoError(t, err)
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBuffer(body)),
+				}, nil
+			},
+		}
+		svr := ebay.NewFindingServer(client)
+		resp, err := svr.FindItemsByCategories(params, appID)
+		assertNoError(t, err)
+		if !reflect.DeepEqual(resp, findItemsByCategoriesResp) {
+			t.Errorf("got %v, expected %v", resp, findItemsByCategoriesResp)
+		}
+	})
+
+	findItemsByCategoriesTestCases := []findItemsTestCase{
+		{
+			Name:          "returns error if params does not contain categoryId",
+			Params:        map[string]string{},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered aspectFilter but not categoryId",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name: "returns error if params contains numbered aspectFilter but not categoryId",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter but not categoryId",
+			Params: map[string]string{
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "true",
+			},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name: "returns error if params contains numbered itemFilter but not categoryId",
+			Params: map[string]string{
+				"itemFilter(0).name":  "BestOfferOnly",
+				"itemFilter(0).value": "true",
+			},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name:          "returns error if params contains outputSelector but not categoryId",
+			Params:        map[string]string{"outputSelector": "AspectHistogram"},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name: "returns error if params contains affiliate but not categoryId",
+			Params: map[string]string{
+				"affiliate.customId":     "123",
+				"affiliate.geoTargeting": "true",
+				"affiliate.networkId":    "2",
+				"affiliate.trackingId":   "123",
+			},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name:          "returns error if params contains buyerPostalCode but not categoryId",
+			Params:        map[string]string{"buyerPostalCode": "111"},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name: "returns error if params contains paginationInput but not categoryId",
+			Params: map[string]string{
+				"paginationInput.entriesPerPage": "1",
+				"paginationInput.pageNumber":     "1",
+			},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+		{
+			Name:          "returns error if params contains sortOrder but not categoryId",
+			Params:        map[string]string{"sortOrder": "BestMatch"},
+			ExpectedError: ebay.ErrCategoryIDMissing,
+		},
+	}
+
+	commonTestCases := make([]findItemsTestCase, len(testCases))
+	copy(commonTestCases, testCases)
+	for i := range commonTestCases {
+		commonTestCases[i].Params["categoryId"] = "12345"
+	}
+
+	findItemsByCategoriesTestCases = append(findItemsByCategoriesTestCases, categoryIDTestCases...)
+	findItemsByCategoriesTestCases = append(findItemsByCategoriesTestCases, commonTestCases...)
+	testFindItemsWithParams(t, findItemsByCategories, findItemsByCategoriesResp, findItemsByCategoriesTestCases)
+}
+
 func TestFindItemsByKeywords(t *testing.T) {
 	t.Parallel()
 	params := map[string]string{"keywords": "marshmallows"}
@@ -4229,7 +4416,7 @@ func TestFindItemsByKeywords(t *testing.T) {
 			ExpectedError: ebay.ErrKeywordsMissing,
 		},
 		{
-			Name: "returns error if params contains affiliate but not categoryId or keywords",
+			Name: "returns error if params contains affiliate but not keywords",
 			Params: map[string]string{
 				"affiliate.customId":     "123",
 				"affiliate.geoTargeting": "true",
@@ -4258,7 +4445,14 @@ func TestFindItemsByKeywords(t *testing.T) {
 		},
 	}
 
-	findItemsByKeywordsTestCases = append(findItemsByKeywordsTestCases, testCases...)
+	commonTestCases := make([]findItemsTestCase, len(testCases))
+	copy(commonTestCases, testCases)
+	for i := range commonTestCases {
+		commonTestCases[i].Params["keywords"] = "marshmallows"
+	}
+
+	findItemsByKeywordsTestCases = append(findItemsByKeywordsTestCases, keywordsTestCases...)
+	findItemsByKeywordsTestCases = append(findItemsByKeywordsTestCases, commonTestCases...)
 	testFindItemsWithParams(t, findItemsByKeywords, findItemsByKeywordsResp, findItemsByKeywordsTestCases)
 }
 
@@ -4325,74 +4519,6 @@ func TestFindItemsAdvanced(t *testing.T) {
 				"itemFilter(0).value": "true",
 			},
 			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name:   "can find items if params contains categoryId of length 1",
-			Params: map[string]string{"categoryId": "1"},
-		},
-		{
-			Name:   "can find items if params contains categoryId of length 5",
-			Params: map[string]string{"categoryId": "1234567890"},
-		},
-		{
-			Name:   "can find items if params contains categoryId of length 10",
-			Params: map[string]string{"categoryId": "1234567890"},
-		},
-		{
-			Name:          "returns error if params contains empty categoryId",
-			Params:        map[string]string{"categoryId": ""},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name:          "returns error if params contains categoryId of length 11",
-			Params:        map[string]string{"categoryId": "12345678901"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name:   "can find items if params contains 2 categoryIds of length 1",
-			Params: map[string]string{"categoryId": "1,2"},
-		},
-		{
-			Name:   "can find items if params contains 2 categoryIds of length 10",
-			Params: map[string]string{"categoryId": "1234567890,9876543210"},
-		},
-		{
-			Name:          "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
-			Params:        map[string]string{"categoryId": "1,12345678901"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name:          "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
-			Params:        map[string]string{"categoryId": "12345678901,1"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name:   "can find items if params contains 3 categoryIds of length 1",
-			Params: map[string]string{"categoryId": "1,2,3"},
-		},
-		{
-			Name:   "can find items if params contains 3 categoryIds of length 10",
-			Params: map[string]string{"categoryId": "1234567890,9876543210,8976543210"},
-		},
-		{
-			Name:          "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
-			Params:        map[string]string{"categoryId": "12345678901,1,2"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name:          "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
-			Params:        map[string]string{"categoryId": "1,12345678901,2"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name:          "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
-			Params:        map[string]string{"categoryId": "1,2,12345678901"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name:          "returns error if params contains 4 categoryIds",
-			Params:        map[string]string{"categoryId": "1,2,3,4"},
-			ExpectedError: ebay.ErrMaxCategoryIDs,
 		},
 		{
 			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2",
@@ -4506,7 +4632,15 @@ func TestFindItemsAdvanced(t *testing.T) {
 		},
 	}
 
-	findItemsAdvancedTestCases = append(findItemsAdvancedTestCases, testCases...)
+	commonTestCases := make([]findItemsTestCase, len(testCases))
+	copy(commonTestCases, testCases)
+	for i := range commonTestCases {
+		commonTestCases[i].Params["categoryId"] = "12345"
+	}
+
+	findItemsAdvancedTestCases = append(findItemsAdvancedTestCases, categoryIDTestCases...)
+	findItemsAdvancedTestCases = append(findItemsAdvancedTestCases, keywordsTestCases...)
+	findItemsAdvancedTestCases = append(findItemsAdvancedTestCases, commonTestCases...)
 	testFindItemsWithParams(t, findItemsAdvanced, findItemsAdvancedResp, findItemsAdvancedTestCases)
 }
 
@@ -4523,6 +4657,8 @@ func testFindItems(t *testing.T, params map[string]string, findMethod string) {
 		var err error
 
 		switch findMethod {
+		case findItemsByCategories:
+			_, err = svr.FindItemsByCategories(params, appID)
 		case findItemsByKeywords:
 			_, err = svr.FindItemsByKeywords(params, appID)
 		case findItemsAdvanced:
@@ -4593,6 +4729,8 @@ func testFindItems(t *testing.T, params map[string]string, findMethod string) {
 			var err error
 
 			switch findMethod {
+			case findItemsByCategories:
+				_, err = svr.FindItemsByCategories(params, appID)
 			case findItemsByKeywords:
 				_, err = svr.FindItemsByKeywords(params, appID)
 			case findItemsAdvanced:
@@ -4627,6 +4765,10 @@ func testFindItems(t *testing.T, params map[string]string, findMethod string) {
 		var expected string
 
 		switch findMethod {
+		case findItemsByCategories:
+			_, err = svr.FindItemsByCategories(params, appID)
+			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
+				ebay.ErrDecodeAPIResponse, findItemsByCategories)
 		case findItemsByKeywords:
 			_, err = svr.FindItemsByKeywords(params, appID)
 			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
@@ -4701,6 +4843,8 @@ func testFindItemsWithParams(
 			var err error
 
 			switch findMethod {
+			case findItemsByCategories:
+				resp, err = svr.FindItemsByCategories(testCase.Params, appID)
 			case findItemsByKeywords:
 				resp, err = svr.FindItemsByKeywords(testCase.Params, appID)
 			case findItemsAdvanced:
@@ -4743,7 +4887,6 @@ func generateStringWithLen(length int, includeSpaces bool) string {
 
 func generateFilterParams(filterName string, count int) map[string]string {
 	params := make(map[string]string)
-	params["keywords"] = "marshmallows"
 	params["itemFilter.name"] = filterName
 
 	for i := 0; i < count; i++ {

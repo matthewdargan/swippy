@@ -15,15 +15,19 @@ import (
 const (
 	findingURL                       = "https://svcs.ebay.com/services/search/FindingService/v1?REST-PAYLOAD"
 	findItemsByKeywordsOperationName = "findItemsByKeywords"
+	findItemsByCategoryOperationName = "findItemsByCategory"
 	findItemsAdvancedOperationName   = "findItemsAdvanced"
 	findingServiceVersion            = "1.0.0"
 	findingResponseDataFormat        = "JSON"
 )
 
 var (
+	// ErrCategoryIDMissing is returned when the 'categoryId' parameter is missing in a findItemsByCategory request.
+	ErrCategoryIDMissing = errors.New("ebay: category ID parameter is missing")
+
 	// ErrCategoryIDKeywordsMissing is returned when the 'categoryId' and 'keywords' parameters
 	// are missing in a findItemsAdvanced request.
-	ErrCategoryIDKeywordsMissing = errors.New("ebay: both categoryID and keywords parameters are missing")
+	ErrCategoryIDKeywordsMissing = errors.New("ebay: both category ID and keywords parameters are missing")
 
 	// ErrKeywordsMissing is returned when the 'keywords' parameter is missing.
 	ErrKeywordsMissing = errors.New("ebay: keywords parameter is missing")
@@ -265,6 +269,24 @@ func (e *APIError) Error() string {
 	return e.Err
 }
 
+// FindItemsByCategories searches the eBay Finding API using the provided category, additional parameters,
+// and a valid eBay application ID.
+func (svr *FindingServer) FindItemsByCategories(
+	params map[string]string, appID string,
+) (FindItemsByCategoriesResponse, error) {
+	resp, err := svr.requestItems(params, &findItemsByCategoryParams{}, appID)
+	if err != nil {
+		return FindItemsByCategoriesResponse{}, err
+	}
+
+	itemsResp, err := svr.parseFindItemsByCategoryResponse(resp)
+	if err != nil {
+		return FindItemsByCategoriesResponse{}, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	return itemsResp, nil
+}
+
 // FindItemsByKeywords searches the eBay Finding API using the provided keywords, additional parameters,
 // and a valid eBay application ID.
 func (svr *FindingServer) FindItemsByKeywords(
@@ -332,6 +354,148 @@ func (svr *FindingServer) requestItems(
 type findItemsParams interface {
 	validateParams(params map[string]string) error
 	createRequest(appID string) (*http.Request, error)
+}
+
+type findItemsByCategoryParams struct {
+	aspectFilters   []aspectFilter
+	categoryIDs     string
+	itemFilters     []itemFilter
+	outputSelectors []string
+	affiliate       *affiliate
+	buyerPostalCode *string
+	paginationInput *paginationInput
+	sortOrder       *string
+}
+
+func (fp *findItemsByCategoryParams) validateParams(params map[string]string) error {
+	categoryID, cOk := params["categoryId"]
+	if !cOk {
+		return ErrCategoryIDMissing
+	}
+	err := processCategoryIDs(categoryID)
+	if err != nil {
+		return err
+	}
+	fp.categoryIDs = categoryID
+
+	aspectFilters, err := processAspectFilters(params)
+	if err != nil {
+		return err
+	}
+	fp.aspectFilters = aspectFilters
+
+	itemFilters, err := processItemFilters(params)
+	if err != nil {
+		return err
+	}
+	fp.itemFilters = itemFilters
+
+	outputSelectors, err := processOutputSelectors(params)
+	if err != nil {
+		return err
+	}
+	fp.outputSelectors = outputSelectors
+
+	affiliate, err := processAffiliate(params)
+	if err != nil {
+		return err
+	}
+	fp.affiliate = affiliate
+
+	buyerPostalCode, bpcOk := params["buyerPostalCode"]
+	if bpcOk {
+		if !isValidPostalCode(buyerPostalCode) {
+			return ErrInvalidPostalCode
+		}
+		fp.buyerPostalCode = &buyerPostalCode
+	}
+
+	paginationInput, err := processPaginationInput(params)
+	if err != nil {
+		return err
+	}
+	fp.paginationInput = paginationInput
+
+	sortOrder, cOk := params["sortOrder"]
+	if cOk {
+		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
+		if err != nil {
+			return err
+		}
+		fp.sortOrder = &sortOrder
+	}
+
+	return nil
+}
+
+func (fp *findItemsByCategoryParams) createRequest(appID string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ebay: %w", err)
+	}
+
+	qry := req.URL.Query()
+	qry.Add("OPERATION-NAME", findItemsByCategoryOperationName)
+	qry.Add("SERVICE-VERSION", findingServiceVersion)
+	qry.Add("SECURITY-APPNAME", appID)
+	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
+
+	for idx, aspectFilter := range fp.aspectFilters {
+		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", idx), aspectFilter.aspectName)
+		for j, v := range aspectFilter.aspectValueNames {
+			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", idx, j), v)
+		}
+	}
+
+	qry.Add("categoryId", fp.categoryIDs)
+	for idx, itemFilter := range fp.itemFilters {
+		qry.Add(fmt.Sprintf("itemFilter(%d).name", idx), itemFilter.name)
+		for j, v := range itemFilter.values {
+			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", idx, j), v)
+		}
+
+		if itemFilter.paramName != nil && itemFilter.paramValue != nil {
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", idx), *itemFilter.paramName)
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", idx), *itemFilter.paramValue)
+		}
+	}
+
+	for idx := range fp.outputSelectors {
+		qry.Add(fmt.Sprintf("outputSelector(%d)", idx), fp.outputSelectors[idx])
+	}
+
+	if fp.affiliate != nil {
+		if fp.affiliate.customID != nil {
+			qry.Add("affiliate.customId", *fp.affiliate.customID)
+		}
+		if fp.affiliate.geoTargeting != nil {
+			qry.Add("affiliate.geoTargeting", *fp.affiliate.geoTargeting)
+		}
+		if fp.affiliate.networkID != nil {
+			qry.Add("affiliate.networkId", *fp.affiliate.networkID)
+		}
+		if fp.affiliate.trackingID != nil {
+			qry.Add("affiliate.trackingId", *fp.affiliate.trackingID)
+		}
+	}
+	if fp.buyerPostalCode != nil {
+		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
+	}
+	if fp.paginationInput != nil {
+		if fp.paginationInput.entriesPerPage != nil {
+			qry.Add("paginationInput.entriesPerPage", *fp.paginationInput.entriesPerPage)
+		}
+		if fp.paginationInput.pageNumber != nil {
+			qry.Add("paginationInput.pageNumber", *fp.paginationInput.pageNumber)
+		}
+	}
+	if fp.sortOrder != nil {
+		qry.Add("sortOrder", *fp.sortOrder)
+	}
+
+	req.URL.RawQuery = qry.Encode()
+
+	return req, nil
 }
 
 type findItemsByKeywordsParams struct {
@@ -537,12 +701,12 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	}
 	fp.aspectFilters = aspectFilters
 
-	descriptionSearch, dsOk := params["descriptionSearch"]
+	ds, dsOk := params["descriptionSearch"]
 	if dsOk {
-		if !isValidDescriptionSearch(descriptionSearch) {
-			return fmt.Errorf("%w: %q", ErrInvalidBooleanValue, descriptionSearch)
+		if ds != trueValue && ds != falseValue {
+			return fmt.Errorf("%w: %q", ErrInvalidBooleanValue, ds)
 		}
-		fp.descriptionSearch = &descriptionSearch
+		fp.descriptionSearch = &ds
 	}
 
 	itemFilters, err := processItemFilters(params)
@@ -669,6 +833,26 @@ func (fp *findItemsAdvancedParams) createRequest(appID string) (*http.Request, e
 	return req, nil
 }
 
+func processCategoryIDs(categoryID string) error {
+	if categoryID == "" {
+		return ErrInvalidCategoryIDLength
+	}
+
+	categoryIDs := strings.Split(categoryID, ",")
+	if len(categoryIDs) > maxCategoryIDs {
+		return ErrMaxCategoryIDs
+	}
+
+	for i := range categoryIDs {
+		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
+		if len(categoryIDs[i]) > maxCategoryIDLen {
+			return ErrInvalidCategoryIDLength
+		}
+	}
+
+	return nil
+}
+
 func processKeywords(params map[string]string) (string, error) {
 	keywords, ok := params["keywords"]
 	if !ok {
@@ -697,26 +881,6 @@ func splitKeywords(keywords string) []string {
 	return strings.FieldsFunc(keywords, func(r rune) bool {
 		return strings.ContainsRune(specialChars, r)
 	})
-}
-
-func processCategoryIDs(categoryID string) error {
-	if categoryID == "" {
-		return ErrInvalidCategoryIDLength
-	}
-
-	categoryIDs := strings.Split(categoryID, ",")
-	if len(categoryIDs) > maxCategoryIDs {
-		return ErrMaxCategoryIDs
-	}
-
-	for i := range categoryIDs {
-		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
-		if len(categoryIDs[i]) > maxCategoryIDLen {
-			return ErrInvalidCategoryIDLength
-		}
-	}
-
-	return nil
 }
 
 func processAspectFilters(params map[string]string) ([]aspectFilter, error) {
@@ -1381,10 +1545,6 @@ func validateTopRatedSellerOnly(value string, itemFilters []itemFilter) error {
 	return nil
 }
 
-func isValidDescriptionSearch(descriptionSearch string) bool {
-	return descriptionSearch == trueValue || descriptionSearch == falseValue
-}
-
 // Valid OutputSelectorType values from the eBay documentation.
 // See https://developer.ebay.com/devzone/finding/callref/types/OutputSelectorType.html
 var validOutputSelectors = []string{
@@ -1582,6 +1742,18 @@ func (svr *FindingServer) parseFindItemsByKeywordsResponse(resp *http.Response) 
 	err := json.NewDecoder(resp.Body).Decode(&itemsResp)
 	if err != nil {
 		return FindItemsByKeywordsResponse{}, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
+	}
+
+	return itemsResp, nil
+}
+
+func (svr *FindingServer) parseFindItemsByCategoryResponse(resp *http.Response) (FindItemsByCategoriesResponse, error) {
+	defer resp.Body.Close()
+
+	var itemsResp FindItemsByCategoriesResponse
+	err := json.NewDecoder(resp.Body).Decode(&itemsResp)
+	if err != nil {
+		return FindItemsByCategoriesResponse{}, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
 	}
 
 	return itemsResp, nil

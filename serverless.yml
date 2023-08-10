@@ -8,6 +8,16 @@ provider:
   region: us-east-1
 
 functions:
+  ebay-find-by-category:
+    handler: bin/ebay-find-by-category
+    events:
+      - httpApi:
+          path: /ebay-find-by-category
+          method: get
+    environment:
+      STAGE: ${self:provider.stage}
+    role: ebayFindFunctionRole
+
   ebay-find-by-keyword:
     handler: bin/ebay-find-by-keyword
     events:

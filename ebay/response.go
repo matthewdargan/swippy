@@ -2,12 +2,12 @@ package ebay
 
 import "time"
 
-type FindItemsByKeywordsResponse struct {
-	ItemsResponse []FindItemsResponse `json:"findItemsByKeywordsResponse"`
-}
-
 type FindItemsByCategoriesResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByCategoryResponse"`
+}
+
+type FindItemsByKeywordsResponse struct {
+	ItemsResponse []FindItemsResponse `json:"findItemsByKeywordsResponse"`
 }
 
 type FindItemsAdvancedResponse struct {

@@ -146,7 +146,7 @@ var (
 	findItemsByKeywords   = "FindItemsByKeywords"
 	findItemsAdvanced     = "FindItemsAdvanced"
 
-	categoryIDTestCases = []findItemsTestCase{
+	categoryIDTCs = []findItemsTestCase{
 		{
 			Name:   "can find items if params contains categoryId of length 1",
 			Params: map[string]string{"categoryId": "1"},
@@ -216,7 +216,7 @@ var (
 			ExpectedError: ebay.ErrMaxCategoryIDs,
 		},
 	}
-	keywordsTestCases = []findItemsTestCase{
+	keywordsTCs = []findItemsTestCase{
 		{
 			Name:   "can find items if params contains keywords of length 2",
 			Params: map[string]string{"keywords": generateStringWithLen(2, true)},
@@ -433,13 +433,74 @@ var (
 			ExpectedError: ebay.ErrInvalidKeywordLength,
 		},
 	}
+	missingSearchParamTCs = []findItemsTestCase{
+		{
+			Name:   "returns error if params does not contain ",
+			Params: map[string]string{},
+		},
+		{
+			Name: "returns error if params contains non-numbered aspectFilter but not ",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
+			},
+		},
+		{
+			Name: "returns error if params contains numbered aspectFilter but not ",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+		},
+		{
+			Name: "returns error if params contains non-numbered itemFilter but not ",
+			Params: map[string]string{
+				"itemFilter.name":  "BestOfferOnly",
+				"itemFilter.value": "true",
+			},
+		},
+		{
+			Name: "returns error if params contains numbered itemFilter but not ",
+			Params: map[string]string{
+				"itemFilter(0).name":  "BestOfferOnly",
+				"itemFilter(0).value": "true",
+			},
+		},
+		{
+			Name:   "returns error if params contains outputSelector but not ",
+			Params: map[string]string{"outputSelector": "AspectHistogram"},
+		},
+		{
+			Name: "returns error if params contains affiliate but not ",
+			Params: map[string]string{
+				"affiliate.customId":     "123",
+				"affiliate.geoTargeting": "true",
+				"affiliate.networkId":    "2",
+				"affiliate.trackingId":   "123",
+			},
+		},
+		{
+			Name:   "returns error if params contains buyerPostalCode but not ",
+			Params: map[string]string{"buyerPostalCode": "111"},
+		},
+		{
+			Name: "returns error if params contains paginationInput but not ",
+			Params: map[string]string{
+				"paginationInput.entriesPerPage": "1",
+				"paginationInput.pageNumber":     "1",
+			},
+		},
+		{
+			Name:   "returns error if params contains sortOrder but not ",
+			Params: map[string]string{"sortOrder": "BestMatch"},
+		},
+	}
 
 	easternTime = time.FixedZone("EasternTime", -5*60*60)
 	testCases   = []findItemsTestCase{
 		{
 			Name: "can find items by aspectFilter.aspectName, aspectValueName",
 			Params: map[string]string{
-				"keywords":                     "marshmallows",
 				"aspectFilter.aspectName":      "Size",
 				"aspectFilter.aspectValueName": "10",
 			},
@@ -447,25 +508,20 @@ var (
 		{
 			Name: "can find items by aspectFilter.aspectName, aspectValueName(0), aspectValueName(1)",
 			Params: map[string]string{
-				"keywords":                        "marshmallows",
 				"aspectFilter.aspectName":         "Size",
 				"aspectFilter.aspectValueName(0)": "10",
 				"aspectFilter.aspectValueName(1)": "11",
 			},
 		},
 		{
-			Name: "returns error if params contains aspectFilter.aspectName but not aspectValueName",
-			Params: map[string]string{
-				"keywords":                "marshmallows",
-				"aspectFilter.aspectName": "Size",
-			},
+			Name:          "returns error if params contains aspectFilter.aspectName but not aspectValueName",
+			Params:        map[string]string{"aspectFilter.aspectName": "Size"},
 			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
 		},
 		{
 			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
 			Name: "returns error if params contains aspectFilter.aspectName, aspectValueName(1)",
 			Params: map[string]string{
-				"keywords":                        "marshmallows",
 				"aspectFilter.aspectName":         "Size",
 				"aspectFilter.aspectValueName(1)": "10",
 			},
@@ -476,7 +532,6 @@ var (
 			// Therefore, only aspectFilter.aspectValueName is considered and this becomes a non-numbered aspectFilter.
 			Name: "can find items by aspectFilter.aspectName, aspectValueName, aspectValueName(1)",
 			Params: map[string]string{
-				"keywords":                        "marshmallows",
 				"aspectFilter.aspectName":         "Size",
 				"aspectFilter.aspectValueName":    "10",
 				"aspectFilter.aspectValueName(1)": "11",
@@ -484,16 +539,12 @@ var (
 		},
 		{
 			// The aspectFilter will be ignored if no aspectFilter.aspectName param is found before other aspectFilter params.
-			Name: "can find items if params contains aspectFilter.aspectValueName only",
-			Params: map[string]string{
-				"keywords":                     "marshmallows",
-				"aspectFilter.aspectValueName": "10",
-			},
+			Name:   "can find items if params contains aspectFilter.aspectValueName only",
+			Params: map[string]string{"aspectFilter.aspectValueName": "10"},
 		},
 		{
 			Name: "returns error if params contain numbered and non-numbered aspectFilter syntax types",
 			Params: map[string]string{
-				"keywords":                        "marshmallows",
 				"aspectFilter.aspectName":         "Size",
 				"aspectFilter.aspectValueName":    "10",
 				"aspectFilter(0).aspectName":      "Running",
@@ -504,7 +555,6 @@ var (
 		{
 			Name: "returns error if params contain aspectFilter.aspectName, aspectValueName, aspectValueName(0)",
 			Params: map[string]string{
-				"keywords":                        "marshmallows",
 				"aspectFilter.aspectName":         "Size",
 				"aspectFilter.aspectValueName":    "10",
 				"aspectFilter.aspectValueName(0)": "11",
@@ -514,7 +564,6 @@ var (
 		{
 			Name: "returns error if params contain aspectFilter(0).aspectName, aspectValueName, aspectValueName(0)",
 			Params: map[string]string{
-				"keywords":                           "marshmallows",
 				"aspectFilter(0).aspectName":         "Size",
 				"aspectFilter(0).aspectValueName":    "10",
 				"aspectFilter(0).aspectValueName(0)": "11",
@@ -524,7 +573,6 @@ var (
 		{
 			Name: "can find items by aspectFilter(0).aspectName, aspectValueName",
 			Params: map[string]string{
-				"keywords":                        "marshmallows",
 				"aspectFilter(0).aspectName":      "Size",
 				"aspectFilter(0).aspectValueName": "10",
 			},
@@ -532,7 +580,6 @@ var (
 		{
 			Name: "can find items by aspectFilter(0).aspectName, aspectValueName(0), aspectValueName(1)",
 			Params: map[string]string{
-				"keywords":                           "marshmallows",
 				"aspectFilter(0).aspectName":         "Size",
 				"aspectFilter(0).aspectValueName(0)": "10",
 				"aspectFilter(0).aspectValueName(1)": "11",
@@ -541,7 +588,6 @@ var (
 		{
 			Name: "can find items by 2 numbered aspectFilters",
 			Params: map[string]string{
-				"keywords":                        "marshmallows",
 				"aspectFilter(0).aspectName":      "Size",
 				"aspectFilter(0).aspectValueName": "10",
 				"aspectFilter(1).aspectName":      "Running",
@@ -549,18 +595,14 @@ var (
 			},
 		},
 		{
-			Name: "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
-			Params: map[string]string{
-				"keywords":                   "marshmallows",
-				"aspectFilter(0).aspectName": "Size",
-			},
+			Name:          "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
+			Params:        map[string]string{"aspectFilter(0).aspectName": "Size"},
 			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
 		},
 		{
 			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
 			Name: "returns error if params contains aspectFilter(0).aspectName, aspectValueName(1)",
 			Params: map[string]string{
-				"keywords":                           "marshmallows",
 				"aspectFilter(0).aspectName":         "Size",
 				"aspectFilter(0).aspectValueName(1)": "10",
 			},
@@ -571,7 +613,6 @@ var (
 			// Therefore, only aspectFilter(0).aspectValueName is considered and this becomes a numbered aspectFilter.
 			Name: "can find items by aspectFilter(0).aspectName, aspectValueName aspectValueName(1)",
 			Params: map[string]string{
-				"keywords":                           "marshmallows",
 				"aspectFilter(0).aspectName":         "Size",
 				"aspectFilter(0).aspectValueName":    "10",
 				"aspectFilter(0).aspectValueName(1)": "11",
@@ -579,16 +620,12 @@ var (
 		},
 		{
 			// The aspectFilter will be ignored if no aspectFilter(0).aspectName param is found before other aspectFilter params.
-			Name: "can find items if params contains aspectFilter(0).aspectValueName only",
-			Params: map[string]string{
-				"keywords":                        "marshmallows",
-				"aspectFilter(0).aspectValueName": "10",
-			},
+			Name:   "can find items if params contains aspectFilter(0).aspectValueName only",
+			Params: map[string]string{"aspectFilter(0).aspectValueName": "10"},
 		},
 		{
 			Name: "can find items by itemFilter.name, value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "BestOfferOnly",
 				"itemFilter.value": "true",
 			},
@@ -596,7 +633,6 @@ var (
 		{
 			Name: "can find items by itemFilter.name, value(0), value(1)",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ExcludeCategory",
 				"itemFilter.value(0)": "1",
 				"itemFilter.value(1)": "2",
@@ -605,7 +641,6 @@ var (
 		{
 			Name: "can find items by itemFilter.name, value, paramName, paramValue",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
 				"itemFilter.value":      "5.0",
 				"itemFilter.paramName":  "Currency",
@@ -613,18 +648,14 @@ var (
 			},
 		},
 		{
-			Name: "returns error if params contains itemFilter.name but not value",
-			Params: map[string]string{
-				"keywords":        "marshmallows",
-				"itemFilter.name": "BestOfferOnly",
-			},
+			Name:          "returns error if params contains itemFilter.name but not value",
+			Params:        map[string]string{"itemFilter.name": "BestOfferOnly"},
 			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter.value"),
 		},
 		{
 			// itemFilter.value(1) will be ignored because indexing does not start at 0.
 			Name: "returns error if params contains itemFilter.name, value(1)",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "BestOfferOnly",
 				"itemFilter.value(1)": "true",
 			},
@@ -635,7 +666,6 @@ var (
 			// Therefore, only itemFilter.value is considered and this becomes a non-numbered itemFilter.
 			Name: "can find items by itemFilter.name, value, value(1)",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "BestOfferOnly",
 				"itemFilter.value":    "true",
 				"itemFilter.value(1)": "true",
@@ -643,32 +673,22 @@ var (
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
-			Name: "can find items if params contains itemFilter.value only",
-			Params: map[string]string{
-				"keywords":         "marshmallows",
-				"itemFilter.value": "true",
-			},
+			Name:   "can find items if params contains itemFilter.value only",
+			Params: map[string]string{"itemFilter.value": "true"},
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
-			Name: "can find items if params contains itemFilter.paramName only",
-			Params: map[string]string{
-				"keywords":             "marshmallows",
-				"itemFilter.paramName": "Currency",
-			},
+			Name:   "can find items if params contains itemFilter.paramName only",
+			Params: map[string]string{"itemFilter.paramName": "Currency"},
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter.name param is found before other itemFilter params.
-			Name: "can find items if params contains itemFilter.paramValue only",
-			Params: map[string]string{
-				"keywords":              "marshmallows",
-				"itemFilter.paramValue": "EUR",
-			},
+			Name:   "can find items if params contains itemFilter.paramValue only",
+			Params: map[string]string{"itemFilter.paramValue": "EUR"},
 		},
 		{
 			Name: "returns error if params contains itemFilter.paramName but not paramValue",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"itemFilter.name":      "MaxPrice",
 				"itemFilter.value":     "5.0",
 				"itemFilter.paramName": "Currency",
@@ -678,7 +698,6 @@ var (
 		{
 			Name: "returns error if params contains itemFilter.paramValue but not paramName",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
 				"itemFilter.value":      "5.0",
 				"itemFilter.paramValue": "EUR",
@@ -688,7 +707,6 @@ var (
 		{
 			Name: "returns error if params contain numbered and non-numbered itemFilter syntax types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "BestOfferOnly",
 				"itemFilter.value":    "true",
 				"itemFilter(0).name":  "MaxPrice",
@@ -699,7 +717,6 @@ var (
 		{
 			Name: "returns error if params contain itemFilter.name, value, value(0)",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ExcludeCategory",
 				"itemFilter.value":    "1",
 				"itemFilter.value(0)": "2",
@@ -709,7 +726,6 @@ var (
 		{
 			Name: "returns error if params contain itemFilter(0).name, value, value(0)",
 			Params: map[string]string{
-				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "ExcludeCategory",
 				"itemFilter(0).value":    "1",
 				"itemFilter(0).value(0)": "2",
@@ -719,7 +735,6 @@ var (
 		{
 			Name: "can find items by itemFilter(0).name, value",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "BestOfferOnly",
 				"itemFilter(0).value": "true",
 			},
@@ -727,7 +742,6 @@ var (
 		{
 			Name: "can find items by itemFilter(0).name, value(0), value(1)",
 			Params: map[string]string{
-				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "ExcludeCategory",
 				"itemFilter(0).value(0)": "1",
 				"itemFilter(0).value(1)": "2",
@@ -736,7 +750,6 @@ var (
 		{
 			Name: "can find items by itemFilter(0).name, value, paramName, and paramValue",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(0).paramName":  "Currency",
@@ -746,7 +759,6 @@ var (
 		{
 			Name: "can find items by 2 basic, numbered itemFilters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "BestOfferOnly",
 				"itemFilter(0).value": "true",
 				"itemFilter(1).name":  "MaxPrice",
@@ -756,7 +768,6 @@ var (
 		{
 			Name: "can find items by 1st advanced, numbered and 2nd basic, numbered itemFilters",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(0).paramName":  "Currency",
@@ -768,7 +779,6 @@ var (
 		{
 			Name: "can find items by 1st basic, numbered and 2nd advanced, numbered itemFilters",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "BestOfferOnly",
 				"itemFilter(0).value":      "true",
 				"itemFilter(1).name":       "MaxPrice",
@@ -780,7 +790,6 @@ var (
 		{
 			Name: "can find items by 2 advanced, numbered itemFilters",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MinPrice",
 				"itemFilter(0).value":      "1.0",
 				"itemFilter(0).paramName":  "Currency",
@@ -792,18 +801,14 @@ var (
 			},
 		},
 		{
-			Name: "returns error if params contains itemFilter(0).name but not value",
-			Params: map[string]string{
-				"keywords":           "marshmallows",
-				"itemFilter(0).name": "BestOfferOnly",
-			},
+			Name:          "returns error if params contains itemFilter(0).name but not value",
+			Params:        map[string]string{"itemFilter(0).name": "BestOfferOnly"},
 			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter(0).value"),
 		},
 		{
 			// itemFilter(0).value(1) will be ignored because indexing does not start at 0.
 			Name: "returns error if params contains itemFilter(0).name, value(1)",
 			Params: map[string]string{
-				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "BestOfferOnly",
 				"itemFilter(0).value(1)": "true",
 			},
@@ -814,7 +819,6 @@ var (
 			// Therefore, only itemFilter(0).value is considered and this becomes a numbered itemFilter.
 			Name: "can find items by itemFilter(0).name, value, value(1)",
 			Params: map[string]string{
-				"keywords":               "marshmallows",
 				"itemFilter(0).name":     "BestOfferOnly",
 				"itemFilter(0).value":    "true",
 				"itemFilter(0).value(1)": "true",
@@ -822,32 +826,22 @@ var (
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
-			Name: "can find items if params contains itemFilter(0).value only",
-			Params: map[string]string{
-				"keywords":            "marshmallows",
-				"itemFilter(0).value": "true",
-			},
+			Name:   "can find items if params contains itemFilter(0).value only",
+			Params: map[string]string{"itemFilter(0).value": "true"},
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
-			Name: "can find items if params contains itemFilter(0).paramName only",
-			Params: map[string]string{
-				"keywords":                "marshmallows",
-				"itemFilter(0).paramName": "Currency",
-			},
+			Name:   "can find items if params contains itemFilter(0).paramName only",
+			Params: map[string]string{"itemFilter(0).paramName": "Currency"},
 		},
 		{
 			// The itemFilter will be ignored if no itemFilter(0).name param is found before other itemFilter params.
-			Name: "can find items if params contains itemFilter(0).paramValue only",
-			Params: map[string]string{
-				"keywords":                 "marshmallows",
-				"itemFilter(0).paramValue": "EUR",
-			},
+			Name:   "can find items if params contains itemFilter(0).paramValue only",
+			Params: map[string]string{"itemFilter(0).paramValue": "EUR"},
 		},
 		{
 			Name: "returns error if params contains itemFilter(0).paramName but not paramValue",
 			Params: map[string]string{
-				"keywords":                "marshmallows",
 				"itemFilter(0).name":      "MaxPrice",
 				"itemFilter(0).value":     "5.0",
 				"itemFilter(0).paramName": "Currency",
@@ -857,7 +851,6 @@ var (
 		{
 			Name: "returns error if params contains itemFilter(0).paramValue but not paramName",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(0).paramValue": "EUR",
@@ -867,7 +860,6 @@ var (
 		{
 			Name: "returns error if params contains non-numbered, unsupported itemFilter name",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "UnsupportedFilter",
 				"itemFilter.value": "true",
 			},
@@ -876,7 +868,6 @@ var (
 		{
 			Name: "returns error if params contains numbered, unsupported itemFilter name",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "UnsupportedFilter",
 				"itemFilter(0).value": "true",
 			},
@@ -885,7 +876,6 @@ var (
 		{
 			Name: "returns error if params contains numbered supported and unsupported itemFilter names",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "BestOfferOnly",
 				"itemFilter(0).value": "true",
 				"itemFilter(1).name":  "UnsupportedFilter",
@@ -896,7 +886,6 @@ var (
 		{
 			Name: "can find items if params contains AuthorizedSellerOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "AuthorizedSellerOnly",
 				"itemFilter.value": "true",
 			},
@@ -904,7 +893,6 @@ var (
 		{
 			Name: "can find items if params contains AuthorizedSellerOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "AuthorizedSellerOnly",
 				"itemFilter.value": "false",
 			},
@@ -912,7 +900,6 @@ var (
 		{
 			Name: "returns error if params contains AuthorizedSellerOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "AuthorizedSellerOnly",
 				"itemFilter.value": "123",
 			},
@@ -921,7 +908,6 @@ var (
 		{
 			Name: "can find items if params contains valid AvailableTo itemFilter",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "US",
 			},
@@ -929,7 +915,6 @@ var (
 		{
 			Name: "returns error if params contains AvailableTo itemFilter with lowercase characters",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "us",
 			},
@@ -938,7 +923,6 @@ var (
 		{
 			Name: "returns error if params contains AvailableTo itemFilter with 1 uppercase character",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "U",
 			},
@@ -947,7 +931,6 @@ var (
 		{
 			Name: "returns error if params contains AvailableTo itemFilter with 3 uppercase character",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "USA",
 			},
@@ -956,7 +939,6 @@ var (
 		{
 			Name: "can find items if params contains BestOfferOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "BestOfferOnly",
 				"itemFilter.value": "true",
 			},
@@ -964,7 +946,6 @@ var (
 		{
 			Name: "can find items if params contains BestOfferOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "BestOfferOnly",
 				"itemFilter.value": "false",
 			},
@@ -972,7 +953,6 @@ var (
 		{
 			Name: "returns error if params contains BestOfferOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "BestOfferOnly",
 				"itemFilter.value": "123",
 			},
@@ -981,7 +961,6 @@ var (
 		{
 			Name: "can find items if params contains CharityOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "CharityOnly",
 				"itemFilter.value": "true",
 			},
@@ -989,7 +968,6 @@ var (
 		{
 			Name: "can find items if params contains CharityOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "CharityOnly",
 				"itemFilter.value": "false",
 			},
@@ -997,7 +975,6 @@ var (
 		{
 			Name: "returns error if params contains CharityOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "CharityOnly",
 				"itemFilter.value": "123",
 			},
@@ -1006,7 +983,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition name",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "dirty",
 			},
@@ -1014,7 +990,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 1000",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "1000",
 			},
@@ -1022,7 +997,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 1500",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "1500",
 			},
@@ -1030,7 +1004,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 1750",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "1750",
 			},
@@ -1038,7 +1011,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 2000",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "2000",
 			},
@@ -1046,7 +1018,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 2010",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "2010",
 			},
@@ -1054,7 +1025,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 2020",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "2020",
 			},
@@ -1062,7 +1032,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 2030",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "2030",
 			},
@@ -1070,7 +1039,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 2500",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "2500",
 			},
@@ -1078,7 +1046,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 2750",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "2750",
 			},
@@ -1086,7 +1053,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 3000",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "3000",
 			},
@@ -1094,7 +1060,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 4000",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "4000",
 			},
@@ -1102,7 +1067,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 5000",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "5000",
 			},
@@ -1110,7 +1074,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 6000",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "6000",
 			},
@@ -1118,7 +1081,6 @@ var (
 		{
 			Name: "can find items if params contains Condition itemFilter with condition ID 7000",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "7000",
 			},
@@ -1126,7 +1088,6 @@ var (
 		{
 			Name: "returns error if params contains Condition itemFilter with condition ID 1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "1",
 			},
@@ -1135,7 +1096,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID AUD",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "AUD",
 			},
@@ -1143,7 +1103,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID CAD",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "CAD",
 			},
@@ -1151,7 +1110,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID CHF",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "CHF",
 			},
@@ -1159,7 +1117,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID CNY",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "CNY",
 			},
@@ -1167,7 +1124,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID EUR",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "EUR",
 			},
@@ -1175,7 +1131,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID GBP",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "GBP",
 			},
@@ -1183,7 +1138,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID HKD",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "HKD",
 			},
@@ -1191,7 +1145,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID INR",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "INR",
 			},
@@ -1199,7 +1152,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID MYR",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "MYR",
 			},
@@ -1207,7 +1159,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID PHP",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "PHP",
 			},
@@ -1215,7 +1166,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID PLN",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "PLN",
 			},
@@ -1223,7 +1173,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID SEK",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "SEK",
 			},
@@ -1231,7 +1180,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID SGD",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "SGD",
 			},
@@ -1239,7 +1187,6 @@ var (
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID TWD",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "TWD",
 			},
@@ -1247,7 +1194,6 @@ var (
 		{
 			Name: "returns error if params contains Currency itemFilter with currency ID ZZZ",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "ZZZ",
 			},
@@ -1256,7 +1202,6 @@ var (
 		{
 			Name: "can find items if params contains EndTimeFrom itemFilter with future timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -1264,7 +1209,6 @@ var (
 		{
 			Name: "returns error if params contains EndTimeFrom itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
@@ -1273,7 +1217,6 @@ var (
 		{
 			Name: "returns error if params contains EndTimeFrom itemFilter with non-UTC timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
@@ -1283,7 +1226,6 @@ var (
 		{
 			Name: "returns error if params contains EndTimeFrom itemFilter with past timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -1293,7 +1235,6 @@ var (
 		{
 			Name: "can find items if params contains EndTimeTo itemFilter with future timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -1301,7 +1242,6 @@ var (
 		{
 			Name: "returns error if params contains EndTimeTo itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": "not a timestamp",
 			},
@@ -1310,7 +1250,6 @@ var (
 		{
 			Name: "returns error if params contains EndTimeTo itemFilter with non-UTC timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
@@ -1320,7 +1259,6 @@ var (
 		{
 			Name: "returns error if params contains EndTimeTo itemFilter with past timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -1330,7 +1268,6 @@ var (
 		{
 			Name: "can find items if params contains ExcludeAutoPay itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeAutoPay",
 				"itemFilter.value": "true",
 			},
@@ -1338,7 +1275,6 @@ var (
 		{
 			Name: "can find items if params contains ExcludeAutoPay itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeAutoPay",
 				"itemFilter.value": "false",
 			},
@@ -1346,7 +1282,6 @@ var (
 		{
 			Name: "returns error if params contains ExcludeAutoPay itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeAutoPay",
 				"itemFilter.value": "123",
 			},
@@ -1355,7 +1290,6 @@ var (
 		{
 			Name: "can find items if params contains ExcludeCategory itemFilter with category ID 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "0",
 			},
@@ -1363,7 +1297,6 @@ var (
 		{
 			Name: "can find items if params contains ExcludeCategory itemFilter with category ID 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "5",
 			},
@@ -1371,7 +1304,6 @@ var (
 		{
 			Name: "returns error if params contains ExcludeCategory itemFilter with unparsable category ID",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "not a category ID",
 			},
@@ -1380,7 +1312,6 @@ var (
 		{
 			Name: "returns error if params contains ExcludeCategory itemFilter with category ID -1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "-1",
 			},
@@ -1389,7 +1320,6 @@ var (
 		{
 			Name: "can find items if params contains ExcludeCategory itemFilter with category IDs 0 and 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ExcludeCategory",
 				"itemFilter.value(0)": "0",
 				"itemFilter.value(1)": "1",
@@ -1398,7 +1328,6 @@ var (
 		{
 			Name: "returns error if params contains ExcludeCategory itemFilter with category IDs 0 and -1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ExcludeCategory",
 				"itemFilter.value(0)": "0",
 				"itemFilter.value(1)": "-1",
@@ -1417,7 +1346,6 @@ var (
 		{
 			Name: "can find items if params contains ExcludeSeller itemFilter with seller ID 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExcludeSeller",
 				"itemFilter.value": "0",
 			},
@@ -1425,7 +1353,6 @@ var (
 		{
 			Name: "can find items if params contains ExcludeSeller itemFilter with seller IDs 0 and 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ExcludeSeller",
 				"itemFilter.value(0)": "0",
 				"itemFilter.value(1)": "1",
@@ -1434,7 +1361,6 @@ var (
 		{
 			Name: "returns error if params contains ExcludeSeller and Seller itemFilters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "ExcludeSeller",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "Seller",
@@ -1445,7 +1371,6 @@ var (
 		{
 			Name: "returns error if params contains ExcludeSeller and TopRatedSellerOnly itemFilters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "ExcludeSeller",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "TopRatedSellerOnly",
@@ -1465,7 +1390,6 @@ var (
 		{
 			Name: "can find items if params contains ExpeditedShippingType itemFilter.value=Expedited",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExpeditedShippingType",
 				"itemFilter.value": "Expedited",
 			},
@@ -1473,7 +1397,6 @@ var (
 		{
 			Name: "can find items if params contains ExpeditedShippingType itemFilter.value=OneDayShipping",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExpeditedShippingType",
 				"itemFilter.value": "OneDayShipping",
 			},
@@ -1481,7 +1404,6 @@ var (
 		{
 			Name: "returns error if params contains ExpeditedShippingType itemFilter with invalid shipping type",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ExpeditedShippingType",
 				"itemFilter.value": "InvalidShippingType",
 			},
@@ -1490,7 +1412,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMax itemFilter with max 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "0",
 			},
@@ -1498,7 +1419,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMax itemFilter with max 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "5",
 			},
@@ -1506,7 +1426,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMax itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "not a maximum",
 			},
@@ -1515,7 +1434,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMax itemFilter with max -1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "-1",
 			},
@@ -1524,7 +1442,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin itemFilter with max 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "0",
 			},
@@ -1532,7 +1449,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin itemFilter with max 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "5",
 			},
@@ -1540,7 +1456,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "not a minimum",
 			},
@@ -1549,7 +1464,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin itemFilter with max -1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "-1",
 			},
@@ -1558,7 +1472,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 1 and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1568,7 +1481,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and max 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1578,7 +1490,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1588,7 +1499,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1598,7 +1508,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 10 and min 5",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "10",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1608,7 +1517,6 @@ var (
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 5 and max 10",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "5",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1618,7 +1526,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and unparsable min",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1629,7 +1536,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with unparsable min and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "not a minimum",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1640,7 +1546,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min -1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1651,7 +1556,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min -1 and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "-1",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1662,7 +1566,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1674,7 +1577,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 1 and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1686,7 +1588,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 5 and min 10",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "5",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1698,7 +1599,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 10 and max 5",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "10",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1710,7 +1610,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with unparsable max and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "not a maximum",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1721,7 +1620,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and unparsable max",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1732,7 +1630,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max -1 and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMax",
 				"itemFilter(0).value": "-1",
 				"itemFilter(1).name":  "FeedbackScoreMin",
@@ -1743,7 +1640,6 @@ var (
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and max -1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "FeedbackScoreMin",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "FeedbackScoreMax",
@@ -1755,7 +1651,6 @@ var (
 		{
 			Name: "can find items if params contains FreeShippingOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FreeShippingOnly",
 				"itemFilter.value": "true",
 			},
@@ -1763,7 +1658,6 @@ var (
 		{
 			Name: "can find items if params contains FreeShippingOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FreeShippingOnly",
 				"itemFilter.value": "false",
 			},
@@ -1771,7 +1665,6 @@ var (
 		{
 			Name: "returns error if params contains FreeShippingOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "FreeShippingOnly",
 				"itemFilter.value": "123",
 			},
@@ -1780,7 +1673,6 @@ var (
 		{
 			Name: "can find items if params contains HideDuplicateItems itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "HideDuplicateItems",
 				"itemFilter.value": "true",
 			},
@@ -1788,7 +1680,6 @@ var (
 		{
 			Name: "can find items if params contains HideDuplicateItems itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "HideDuplicateItems",
 				"itemFilter.value": "false",
 			},
@@ -1796,7 +1687,6 @@ var (
 		{
 			Name: "returns error if params contains HideDuplicateItems itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "HideDuplicateItems",
 				"itemFilter.value": "123",
 			},
@@ -1805,7 +1695,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-AT",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-AT",
 			},
@@ -1813,7 +1702,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-AU",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-AU",
 			},
@@ -1821,7 +1709,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-CH",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-CH",
 			},
@@ -1829,7 +1716,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-DE",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-DE",
 			},
@@ -1837,7 +1723,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-ENCA",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-ENCA",
 			},
@@ -1845,7 +1730,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-ES",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-ES",
 			},
@@ -1853,7 +1737,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-FR",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-FR",
 			},
@@ -1861,7 +1744,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-FRBE",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-FRBE",
 			},
@@ -1869,7 +1751,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-FRCA",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-FRCA",
 			},
@@ -1877,7 +1758,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-GB",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-GB",
 			},
@@ -1885,7 +1765,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-HK",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-HK",
 			},
@@ -1893,7 +1772,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-IE",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-IE",
 			},
@@ -1901,7 +1779,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-IN",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-IN",
 			},
@@ -1909,7 +1786,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-IT",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-IT",
 			},
@@ -1917,7 +1793,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-MOTOR",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-MOTOR",
 			},
@@ -1925,7 +1800,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-MY",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-MY",
 			},
@@ -1933,7 +1807,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-NL",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-NL",
 			},
@@ -1941,7 +1814,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-NLBE",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-NLBE",
 			},
@@ -1949,7 +1821,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-PH",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-PH",
 			},
@@ -1957,7 +1828,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-PL",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-PL",
 			},
@@ -1965,7 +1835,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-SG",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-SG",
 			},
@@ -1973,7 +1842,6 @@ var (
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-US",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-US",
 			},
@@ -1981,7 +1849,6 @@ var (
 		{
 			Name: "returns error if params contains ListedIn itemFilter with Global ID EBAY-ZZZ",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-ZZZ",
 			},
@@ -1990,7 +1857,6 @@ var (
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type Auction",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "Auction",
 			},
@@ -1998,7 +1864,6 @@ var (
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type AuctionWithBIN",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "AuctionWithBIN",
 			},
@@ -2006,7 +1871,6 @@ var (
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type Classified",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "Classified",
 			},
@@ -2014,7 +1878,6 @@ var (
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type FixedPrice",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "FixedPrice",
 			},
@@ -2022,7 +1885,6 @@ var (
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type StoreInventory",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "StoreInventory",
 			},
@@ -2030,7 +1892,6 @@ var (
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type All",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "All",
 			},
@@ -2038,7 +1899,6 @@ var (
 		{
 			Name: "returns error if params contains ListingType itemFilter with invalid listing type",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "not a listing type",
 			},
@@ -2047,7 +1907,6 @@ var (
 		{
 			Name: "returns error if params contains ListingType itemFilters with All and Auction listing types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ListingType",
 				"itemFilter.value(0)": "All",
 				"itemFilter.value(1)": "Auction",
@@ -2057,7 +1916,6 @@ var (
 		{
 			Name: "returns error if params contains ListingType itemFilters with StoreInventory and All listing types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ListingType",
 				"itemFilter.value(0)": "StoreInventory",
 				"itemFilter.value(1)": "All",
@@ -2067,7 +1925,6 @@ var (
 		{
 			Name: "returns error if params contains ListingType itemFilters with 2 Auction listing types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ListingType",
 				"itemFilter.value(0)": "Auction",
 				"itemFilter.value(1)": "Auction",
@@ -2077,7 +1934,6 @@ var (
 		{
 			Name: "returns error if params contains ListingType itemFilters with 2 StoreInventory listing types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ListingType",
 				"itemFilter.value(0)": "StoreInventory",
 				"itemFilter.value(1)": "StoreInventory",
@@ -2087,7 +1943,6 @@ var (
 		{
 			Name: "returns error if params contains ListingType itemFilters with Auction and AuctionWithBIN listing types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ListingType",
 				"itemFilter.value(0)": "Auction",
 				"itemFilter.value(1)": "AuctionWithBIN",
@@ -2097,7 +1952,6 @@ var (
 		{
 			Name: "returns error if params contains ListingType itemFilters with AuctionWithBIN and Auction listing types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "ListingType",
 				"itemFilter.value(0)": "AuctionWithBIN",
 				"itemFilter.value(1)": "Auction",
@@ -2107,7 +1961,6 @@ var (
 		{
 			Name: "can find items if params contains LocalPickupOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LocalPickupOnly",
 				"itemFilter.value": "true",
 			},
@@ -2115,7 +1968,6 @@ var (
 		{
 			Name: "can find items if params contains LocalPickupOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LocalPickupOnly",
 				"itemFilter.value": "false",
 			},
@@ -2123,7 +1975,6 @@ var (
 		{
 			Name: "returns error if params contains LocalPickupOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LocalPickupOnly",
 				"itemFilter.value": "123",
 			},
@@ -2132,7 +1983,6 @@ var (
 		{
 			Name: "can find items if params contains LocalSearchOnly itemFilter.value=true, buyerPostalCode, and MaxDistance",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"buyerPostalCode":     "123",
 				"itemFilter(0).name":  "LocalSearchOnly",
 				"itemFilter(0).value": "true",
@@ -2143,7 +1993,6 @@ var (
 		{
 			Name: "can find items if params contains LocalSearchOnly itemFilter.value=false, buyerPostalCode, and MaxDistance",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"buyerPostalCode":     "123",
 				"itemFilter(0).name":  "LocalSearchOnly",
 				"itemFilter(0).value": "false",
@@ -2154,7 +2003,6 @@ var (
 		{
 			Name: "can find items if params contains LocalSearchOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"buyerPostalCode":     "123",
 				"itemFilter(0).name":  "LocalSearchOnly",
 				"itemFilter(0).value": "123",
@@ -2166,7 +2014,6 @@ var (
 		{
 			Name: "returns error if params contains LocalSearchOnly itemFilter but no buyerPostalCode",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "LocalSearchOnly",
 				"itemFilter(0).value": "true",
 				"itemFilter(1).name":  "MaxDistance",
@@ -2177,7 +2024,6 @@ var (
 		{
 			Name: "returns error if params contains LocalSearchOnly itemFilter but no MaxDistance itemFilter",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"buyerPostalCode":  "123",
 				"itemFilter.name":  "LocalSearchOnly",
 				"itemFilter.value": "true",
@@ -2187,7 +2033,6 @@ var (
 		{
 			Name: "can find items if params contains valid LocatedIn itemFilter",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "US",
 			},
@@ -2195,7 +2040,6 @@ var (
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with lowercase characters",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "us",
 			},
@@ -2204,7 +2048,6 @@ var (
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with 1 uppercase character",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "U",
 			},
@@ -2213,7 +2056,6 @@ var (
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with 3 uppercase character",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "USA",
 			},
@@ -2222,7 +2064,6 @@ var (
 		{
 			Name: "can find items if params contains LocatedIn itemFilter with 25 country codes",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"itemFilter.name":      "LocatedIn",
 				"itemFilter.value(0)":  "AA",
 				"itemFilter.value(1)":  "AB",
@@ -2254,7 +2095,6 @@ var (
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with 26 country codes",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"itemFilter.name":      "LocatedIn",
 				"itemFilter.value(0)":  "AA",
 				"itemFilter.value(1)":  "AB",
@@ -2288,7 +2128,6 @@ var (
 		{
 			Name: "can find items if params contains LotsOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LotsOnly",
 				"itemFilter.value": "true",
 			},
@@ -2296,7 +2135,6 @@ var (
 		{
 			Name: "can find items if params contains LotsOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LotsOnly",
 				"itemFilter.value": "false",
 			},
@@ -2304,7 +2142,6 @@ var (
 		{
 			Name: "returns error if params contains LotsOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "LotsOnly",
 				"itemFilter.value": "123",
 			},
@@ -2313,7 +2150,6 @@ var (
 		{
 			Name: "can find items if params contains MaxBids itemFilter with max 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "0",
 			},
@@ -2321,7 +2157,6 @@ var (
 		{
 			Name: "can find items if params contains MaxBids itemFilter with max 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "5",
 			},
@@ -2329,7 +2164,6 @@ var (
 		{
 			Name: "returns error if params contains MaxBids itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "not a maximum",
 			},
@@ -2338,7 +2172,6 @@ var (
 		{
 			Name: "returns error if params contains MaxBids itemFilter with max -1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "-1",
 			},
@@ -2347,7 +2180,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids itemFilter with max 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "0",
 			},
@@ -2355,7 +2187,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids itemFilter with max 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "5",
 			},
@@ -2363,7 +2194,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "not a minimum",
 			},
@@ -2372,7 +2202,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids itemFilter with max -1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "-1",
 			},
@@ -2381,7 +2210,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with max 1 and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MinBids",
@@ -2391,7 +2219,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with min 0 and max 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MaxBids",
@@ -2401,7 +2228,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with max and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MinBids",
@@ -2411,7 +2237,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with min and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MaxBids",
@@ -2421,7 +2246,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with max 10 and min 5",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "10",
 				"itemFilter(1).name":  "MinBids",
@@ -2431,7 +2255,6 @@ var (
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with min 5 and max 10",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "5",
 				"itemFilter(1).name":  "MaxBids",
@@ -2441,7 +2264,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and unparsable min",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MinBids",
@@ -2452,7 +2274,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with unparsable min and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "not a minimum",
 				"itemFilter(1).name":  "MaxBids",
@@ -2463,7 +2284,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min -1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MinBids",
@@ -2474,7 +2294,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min -1 and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "-1",
 				"itemFilter(1).name":  "MaxBids",
@@ -2485,7 +2304,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MinBids",
@@ -2497,7 +2315,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 1 and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MaxBids",
@@ -2509,7 +2326,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 5 and min 10",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "5",
 				"itemFilter(1).name":  "MinBids",
@@ -2521,7 +2337,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 10 and max 5",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "10",
 				"itemFilter(1).name":  "MaxBids",
@@ -2533,7 +2348,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with unparsable max and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "not a maximum",
 				"itemFilter(1).name":  "MinBids",
@@ -2544,7 +2358,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and unparsable max",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MaxBids",
@@ -2555,7 +2368,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max -1 and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxBids",
 				"itemFilter(0).value": "-1",
 				"itemFilter(1).name":  "MinBids",
@@ -2566,7 +2378,6 @@ var (
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and max -1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinBids",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MaxBids",
@@ -2578,7 +2389,6 @@ var (
 		{
 			Name: "can find items if params contains MaxDistance itemFilter with max 5 and buyerPostalCode",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"buyerPostalCode":  "123",
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "5",
@@ -2587,7 +2397,6 @@ var (
 		{
 			Name: "can find items if params contains MaxDistance itemFilter with max 6 and buyerPostalCode",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"buyerPostalCode":  "123",
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "6",
@@ -2596,7 +2405,6 @@ var (
 		{
 			Name: "returns error if params contains MaxDistance itemFilter with unparsable max",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"buyerPostalCode":  "123",
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "not a maximum",
@@ -2606,7 +2414,6 @@ var (
 		{
 			Name: "returns error if params contains MaxDistance itemFilter with max 4 and buyerPostalCode",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"buyerPostalCode":  "123",
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "4",
@@ -2616,7 +2423,6 @@ var (
 		{
 			Name: "returns error if params contains MaxDistance itemFilter with max 5 but no buyerPostalCode",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "5",
 			},
@@ -2625,7 +2431,6 @@ var (
 		{
 			Name: "can find items if params contains MaxHandlingTime itemFilter with max 1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "1",
 			},
@@ -2633,7 +2438,6 @@ var (
 		{
 			Name: "can find items if params contains MaxHandlingTime itemFilter with max 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "5",
 			},
@@ -2641,7 +2445,6 @@ var (
 		{
 			Name: "returns error if params contains MaxHandlingTime itemFilter with max 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "0",
 			},
@@ -2650,7 +2453,6 @@ var (
 		{
 			Name: "returns error if params contains MaxHandlingTime itemFilter with unparsable max",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "not a maximum",
 			},
@@ -2659,7 +2461,6 @@ var (
 		{
 			Name: "can find items if params contains MaxPrice itemFilter with max 0.0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxPrice",
 				"itemFilter.value": "0.0",
 			},
@@ -2667,7 +2468,6 @@ var (
 		{
 			Name: "can find items if params contains MaxPrice itemFilter with max 5.0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxPrice",
 				"itemFilter.value": "5.0",
 			},
@@ -2675,7 +2475,6 @@ var (
 		{
 			Name: "can find items if params contains MaxPrice itemFilter with max 0.0, paramName Currency, and paramValue EUR",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
 				"itemFilter.value":      "0.0",
 				"itemFilter.paramName":  "Currency",
@@ -2685,7 +2484,6 @@ var (
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with unparsable max",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxPrice",
 				"itemFilter.value": "not a maximum",
 			},
@@ -2694,7 +2492,6 @@ var (
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max -1.0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxPrice",
 				"itemFilter.value": "-1.0",
 			},
@@ -2703,7 +2500,6 @@ var (
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max 0.0, paramName NotCurrency, and paramValue EUR",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
 				"itemFilter.value":      "0.0",
 				"itemFilter.paramName":  "NotCurrency",
@@ -2714,7 +2510,6 @@ var (
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MaxPrice",
 				"itemFilter.value":      "0.0",
 				"itemFilter.paramName":  "Currency",
@@ -2725,7 +2520,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice itemFilter with max 0.0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinPrice",
 				"itemFilter.value": "0.0",
 			},
@@ -2733,7 +2527,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice itemFilter with max 5.0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinPrice",
 				"itemFilter.value": "5.0",
 			},
@@ -2741,7 +2534,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice itemFilter with max 0.0, paramName Currency, and paramValue EUR",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MinPrice",
 				"itemFilter.value":      "0.0",
 				"itemFilter.paramName":  "Currency",
@@ -2751,7 +2543,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with unparsable max",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinPrice",
 				"itemFilter.value": "not a maximum",
 			},
@@ -2760,7 +2551,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max -1.0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinPrice",
 				"itemFilter.value": "-1.0",
 			},
@@ -2769,7 +2559,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 0.0, paramName NotCurrency, and paramValue EUR",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MinPrice",
 				"itemFilter.value":      "0.0",
 				"itemFilter.paramName":  "NotCurrency",
@@ -2780,7 +2569,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
 			Params: map[string]string{
-				"keywords":              "marshmallows",
 				"itemFilter.name":       "MinPrice",
 				"itemFilter.value":      "0.0",
 				"itemFilter.paramName":  "Currency",
@@ -2791,7 +2579,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max 1.0 and min 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "1.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2801,7 +2588,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with min 0.0 and max 1.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2811,7 +2597,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max and min 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2821,7 +2606,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with min and max 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2831,7 +2615,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max 10.0 and min 5.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "10.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2841,7 +2624,6 @@ var (
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with min 5.0 and max 10.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "5.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2851,7 +2633,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and unparsable min",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2862,7 +2643,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with unparsable min and max 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "not a minimum",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2873,7 +2653,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and min -1.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2884,7 +2663,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min -1.0 and max 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "-1.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2895,7 +2673,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and min 1.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2906,7 +2683,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 1.0 and max 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "1.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2917,7 +2693,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 5.0 and min 10.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "5.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2928,7 +2703,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 10.0 and max 5.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "10.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2939,7 +2713,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with unparsable max and min 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "not a maximum",
 				"itemFilter(1).name":  "MinPrice",
@@ -2950,7 +2723,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 0.0 and unparsable max",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2961,7 +2733,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max -1.0 and min 0.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "-1.0",
 				"itemFilter(1).name":  "MinPrice",
@@ -2972,7 +2743,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 0.0 and max -1.0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinPrice",
 				"itemFilter(0).value": "0.0",
 				"itemFilter(1).name":  "MaxPrice",
@@ -2983,7 +2753,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 10.0 and min 5.0, paramName Invalid",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
 				"itemFilter(0).value":      "10.0",
 				"itemFilter(1).name":       "MinPrice",
@@ -2996,7 +2765,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0, paramName Invalid and max 10.0",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MinPrice",
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(0).paramName":  "Invalid",
@@ -3009,7 +2777,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 10.0 and min 5.0, paramValue ZZZ",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
 				"itemFilter(0).value":      "10.0",
 				"itemFilter(1).name":       "MinPrice",
@@ -3022,7 +2789,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with min 5.0, paramValue ZZZ and max 10.0",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MinPrice",
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(0).paramName":  "Currency",
@@ -3035,7 +2801,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 10.0, paramName Invalid and min 5.0",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
 				"itemFilter(0).value":      "10.0",
 				"itemFilter(0).paramName":  "Invalid",
@@ -3048,7 +2813,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0 and max 10.0, paramName Invalid",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MinPrice",
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(1).name":       "MaxPrice",
@@ -3061,7 +2825,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 10.0, paramValue ZZZ and min 5.0",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MaxPrice",
 				"itemFilter(0).value":      "10.0",
 				"itemFilter(0).paramName":  "Currency",
@@ -3074,7 +2837,6 @@ var (
 		{
 			Name: "returns error if params contains MinPrice itemFilter with min 5.0 and max 10.0, paramValue ZZZ",
 			Params: map[string]string{
-				"keywords":                 "marshmallows",
 				"itemFilter(0).name":       "MinPrice",
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(1).name":       "MaxPrice",
@@ -3087,7 +2849,6 @@ var (
 		{
 			Name: "can find items if params contains MaxQuantity itemFilter with max 1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "1",
 			},
@@ -3095,7 +2856,6 @@ var (
 		{
 			Name: "can find items if params contains MaxQuantity itemFilter with max 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "5",
 			},
@@ -3103,7 +2863,6 @@ var (
 		{
 			Name: "returns error if params contains MaxQuantity itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "not a maximum",
 			},
@@ -3112,7 +2871,6 @@ var (
 		{
 			Name: "returns error if params contains MaxQuantity itemFilter with max 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "0",
 			},
@@ -3121,7 +2879,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity itemFilter with max 1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "1",
 			},
@@ -3129,7 +2886,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity itemFilter with max 5",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "5",
 			},
@@ -3137,7 +2893,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "not a minimum",
 			},
@@ -3146,7 +2901,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity itemFilter with max 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "0",
 			},
@@ -3155,7 +2909,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with max 2 and min 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "2",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3165,7 +2918,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with min 1 and max 2",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3175,7 +2927,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with max and min 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3185,7 +2936,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with min and max 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3195,7 +2945,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with max 10 and min 5",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "10",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3205,7 +2954,6 @@ var (
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with min 5 and max 10",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "5",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3215,7 +2963,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 1 and unparsable min",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3226,7 +2973,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with unparsable min and max 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "not a minimum",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3237,7 +2983,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 1 and min 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3248,7 +2993,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 0 and max 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3259,7 +3003,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 1 and min 2",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3271,7 +3014,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 2 and max 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "2",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3283,7 +3025,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 5 and min 10",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "5",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3295,7 +3036,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 10 and max 5",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "10",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3307,7 +3047,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with unparsable max and min 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "not a maximum",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3318,7 +3057,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 1 and unparsable max",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3329,7 +3067,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 0 and min 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MaxQuantity",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "MinQuantity",
@@ -3340,7 +3077,6 @@ var (
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 1 and max 0",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "MinQuantity",
 				"itemFilter(0).value": "1",
 				"itemFilter(1).name":  "MaxQuantity",
@@ -3352,7 +3088,6 @@ var (
 		{
 			Name: "can find items if params contains ModTimeFrom itemFilter with past timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -3360,7 +3095,6 @@ var (
 		{
 			Name: "returns error if params contains ModTimeFrom itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
@@ -3369,7 +3103,6 @@ var (
 		{
 			Name: "returns error if params contains ModTimeFrom itemFilter with non-UTC timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
@@ -3379,7 +3112,6 @@ var (
 		{
 			Name: "returns error if params contains ModTimeFrom itemFilter with future timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -3389,7 +3121,6 @@ var (
 		{
 			Name: "can find items if params contains ReturnsAcceptedOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ReturnsAcceptedOnly",
 				"itemFilter.value": "true",
 			},
@@ -3397,7 +3128,6 @@ var (
 		{
 			Name: "can find items if params contains ReturnsAcceptedOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ReturnsAcceptedOnly",
 				"itemFilter.value": "false",
 			},
@@ -3405,7 +3135,6 @@ var (
 		{
 			Name: "returns error if params contains ReturnsAcceptedOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ReturnsAcceptedOnly",
 				"itemFilter.value": "123",
 			},
@@ -3414,7 +3143,6 @@ var (
 		{
 			Name: "can find items if params contains Seller itemFilter with seller ID 0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "Seller",
 				"itemFilter.value": "0",
 			},
@@ -3422,7 +3150,6 @@ var (
 		{
 			Name: "can find items if params contains Seller itemFilter with seller IDs 0 and 1",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "Seller",
 				"itemFilter.value(0)": "0",
 				"itemFilter.value(1)": "1",
@@ -3431,7 +3158,6 @@ var (
 		{
 			Name: "returns error if params contains Seller and ExcludeSeller itemFilters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "Seller",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "ExcludeSeller",
@@ -3442,7 +3168,6 @@ var (
 		{
 			Name: "returns error if params contains Seller and TopRatedSellerOnly itemFilters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "Seller",
 				"itemFilter(0).value": "0",
 				"itemFilter(1).name":  "TopRatedSellerOnly",
@@ -3462,7 +3187,6 @@ var (
 		{
 			Name: "can find items if params contains SellerBusinessType itemFilter with Business type",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "SellerBusinessType",
 				"itemFilter.value": "Business",
 			},
@@ -3470,7 +3194,6 @@ var (
 		{
 			Name: "can find items if params contains SellerBusinessType itemFilter with Private type",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "SellerBusinessType",
 				"itemFilter.value": "Private",
 			},
@@ -3478,7 +3201,6 @@ var (
 		{
 			Name: "returns error if params contains SellerBusinessType itemFilter with NotBusiness type",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "SellerBusinessType",
 				"itemFilter.value": "NotBusiness",
 			},
@@ -3487,7 +3209,6 @@ var (
 		{
 			Name: "returns error if params contains SellerBusinessType itemFilter with Business and Private types",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter.name":     "SellerBusinessType",
 				"itemFilter.value(0)": "Business",
 				"itemFilter.value(1)": "Private",
@@ -3497,7 +3218,6 @@ var (
 		{
 			Name: "can find items if params contains SoldItemsOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "SoldItemsOnly",
 				"itemFilter.value": "true",
 			},
@@ -3505,7 +3225,6 @@ var (
 		{
 			Name: "can find items if params contains SoldItemsOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "SoldItemsOnly",
 				"itemFilter.value": "false",
 			},
@@ -3513,7 +3232,6 @@ var (
 		{
 			Name: "returns error if params contains SoldItemsOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "SoldItemsOnly",
 				"itemFilter.value": "123",
 			},
@@ -3522,7 +3240,6 @@ var (
 		{
 			Name: "can find items if params contains StartTimeFrom itemFilter with future timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -3530,7 +3247,6 @@ var (
 		{
 			Name: "returns error if params contains StartTimeFrom itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
@@ -3539,7 +3255,6 @@ var (
 		{
 			Name: "returns error if params contains StartTimeFrom itemFilter with non-UTC timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
@@ -3549,7 +3264,6 @@ var (
 		{
 			Name: "returns error if params contains StartTimeFrom itemFilter with past timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -3559,7 +3273,6 @@ var (
 		{
 			Name: "can find items if params contains StartTimeTo itemFilter with future timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -3567,7 +3280,6 @@ var (
 		{
 			Name: "returns error if params contains StartTimeTo itemFilter with unparsable value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": "not a timestamp",
 			},
@@ -3576,7 +3288,6 @@ var (
 		{
 			Name: "returns error if params contains StartTimeTo itemFilter with non-UTC timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
@@ -3586,7 +3297,6 @@ var (
 		{
 			Name: "returns error if params contains StartTimeTo itemFilter with past timestamp",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
@@ -3596,7 +3306,6 @@ var (
 		{
 			Name: "can find items if params contains TopRatedSellerOnly itemFilter.value=true",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "TopRatedSellerOnly",
 				"itemFilter.value": "true",
 			},
@@ -3604,7 +3313,6 @@ var (
 		{
 			Name: "can find items if params contains TopRatedSellerOnly itemFilter.value=false",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "TopRatedSellerOnly",
 				"itemFilter.value": "false",
 			},
@@ -3612,7 +3320,6 @@ var (
 		{
 			Name: "returns error if params contains TopRatedSellerOnly itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "TopRatedSellerOnly",
 				"itemFilter.value": "123",
 			},
@@ -3621,7 +3328,6 @@ var (
 		{
 			Name: "returns error if params contains TopRatedSellerOnly and Seller itemFilters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "TopRatedSellerOnly",
 				"itemFilter(0).value": "true",
 				"itemFilter(1).name":  "Seller",
@@ -3632,7 +3338,6 @@ var (
 		{
 			Name: "returns error if params contains TopRatedSellerOnly and ExcludeSeller itemFilters",
 			Params: map[string]string{
-				"keywords":            "marshmallows",
 				"itemFilter(0).name":  "TopRatedSellerOnly",
 				"itemFilter(0).value": "true",
 				"itemFilter(1).name":  "ExcludeSeller",
@@ -3643,7 +3348,6 @@ var (
 		{
 			Name: "can find items if params contains ValueBoxInventory itemFilter.value=1",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ValueBoxInventory",
 				"itemFilter.value": "1",
 			},
@@ -3651,7 +3355,6 @@ var (
 		{
 			Name: "can find items if params contains ValueBoxInventory itemFilter.value=0",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ValueBoxInventory",
 				"itemFilter.value": "0",
 			},
@@ -3659,88 +3362,56 @@ var (
 		{
 			Name: "returns error if params contains ValueBoxInventory itemFilter with non-boolean value",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ValueBoxInventory",
 				"itemFilter.value": "123",
 			},
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
 		},
 		{
-			Name: "can find items if params contains AspectHistogram outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "AspectHistogram",
-			},
+			Name:   "can find items if params contains AspectHistogram outputSelector",
+			Params: map[string]string{"outputSelector": "AspectHistogram"},
 		},
 		{
-			Name: "can find items if params contains CategoryHistogram outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "CategoryHistogram",
-			},
+			Name:   "can find items if params contains CategoryHistogram outputSelector",
+			Params: map[string]string{"outputSelector": "CategoryHistogram"},
 		},
 		{
-			Name: "can find items if params contains ConditionHistogram outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "ConditionHistogram",
-			},
+			Name:   "can find items if params contains ConditionHistogram outputSelector",
+			Params: map[string]string{"outputSelector": "ConditionHistogram"},
 		},
 		{
-			Name: "can find items if params contains GalleryInfo outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "GalleryInfo",
-			},
+			Name:   "can find items if params contains GalleryInfo outputSelector",
+			Params: map[string]string{"outputSelector": "GalleryInfo"},
 		},
 		{
-			Name: "can find items if params contains PictureURLLarge outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "PictureURLLarge",
-			},
+			Name:   "can find items if params contains PictureURLLarge outputSelector",
+			Params: map[string]string{"outputSelector": "PictureURLLarge"},
 		},
 		{
-			Name: "can find items if params contains PictureURLSuperSize outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "PictureURLSuperSize",
-			},
+			Name:   "can find items if params contains PictureURLSuperSize outputSelector",
+			Params: map[string]string{"outputSelector": "PictureURLSuperSize"},
 		},
 		{
-			Name: "can find items if params contains SellerInfo outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "SellerInfo",
-			},
+			Name:   "can find items if params contains SellerInfo outputSelector",
+			Params: map[string]string{"outputSelector": "SellerInfo"},
 		},
 		{
-			Name: "can find items if params contains StoreInfo outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "StoreInfo",
-			},
+			Name:   "can find items if params contains StoreInfo outputSelector",
+			Params: map[string]string{"outputSelector": "StoreInfo"},
 		},
 		{
-			Name: "can find items if params contains UnitPriceInfo outputSelector",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "UnitPriceInfo",
-			},
+			Name:   "can find items if params contains UnitPriceInfo outputSelector",
+			Params: map[string]string{"outputSelector": "UnitPriceInfo"},
 		},
 		{
-			Name: "returns error if params contains non-numbered, unsupported outputSelector name",
-			Params: map[string]string{
-				"keywords":       "marshmallows",
-				"outputSelector": "UnsupportedOutputSelector",
-			},
+			Name:          "returns error if params contains non-numbered, unsupported outputSelector name",
+			Params:        map[string]string{"outputSelector": "UnsupportedOutputSelector"},
 			ExpectedError: ebay.ErrInvalidOutputSelector,
 		},
 		{
 			// outputSelector(1) will be ignored because indexing does not start at 0.
 			Name: "can find items if params contains outputSelector, outputSelector(1)",
 			Params: map[string]string{
-				"keywords":          "marshmallows",
 				"outputSelector":    "AspectHistogram",
 				"outputSelector(1)": "CategoryHistogram",
 			},
@@ -3748,92 +3419,64 @@ var (
 		{
 			Name: "returns error if params contain numbered and non-numbered outputSelector syntax types",
 			Params: map[string]string{
-				"keywords":          "marshmallows",
 				"outputSelector":    "AspectHistogram",
 				"outputSelector(0)": "CategoryHistogram",
 			},
 			ExpectedError: ebay.ErrInvalidFilterSyntax,
 		},
 		{
-			Name: "can find items by numbered outputSelector",
-			Params: map[string]string{
-				"keywords":          "marshmallows",
-				"outputSelector(0)": "AspectHistogram",
-			},
+			Name:   "can find items by numbered outputSelector",
+			Params: map[string]string{"outputSelector(0)": "AspectHistogram"},
 		},
 		{
 			Name: "can find items by 2 numbered outputSelector",
 			Params: map[string]string{
-				"keywords":          "marshmallows",
 				"outputSelector(0)": "AspectHistogram",
 				"outputSelector(1)": "CategoryHistogram",
 			},
 		},
 		{
-			Name: "returns error if params contains numbered, unsupported outputSelector name",
-			Params: map[string]string{
-				"keywords":          "marshmallows",
-				"outputSelector(0)": "UnsupportedOutputSelector",
-			},
+			Name:          "returns error if params contains numbered, unsupported outputSelector name",
+			Params:        map[string]string{"outputSelector(0)": "UnsupportedOutputSelector"},
 			ExpectedError: ebay.ErrInvalidOutputSelector,
 		},
 		{
 			Name: "returns error if params contains 1 supported, 1 unsupported outputSelector name",
 			Params: map[string]string{
-				"keywords":          "marshmallows",
 				"outputSelector(0)": "AspectHistogram",
 				"outputSelector(1)": "UnsupportedOutputSelector",
 			},
 			ExpectedError: ebay.ErrInvalidOutputSelector,
 		},
 		{
-			Name: "can find items if params contains affiliate.customId=1",
-			Params: map[string]string{
-				"keywords":           "marshmallows",
-				"affiliate.customId": "1",
-			},
+			Name:   "can find items if params contains affiliate.customId=1",
+			Params: map[string]string{"affiliate.customId": "1"},
 		},
 		{
-			Name: "can find items if params contains affiliate.customId of length 256",
-			Params: map[string]string{
-				"keywords":           "marshmallows",
-				"affiliate.customId": generateStringWithLen(256, false),
-			},
+			Name:   "can find items if params contains affiliate.customId of length 256",
+			Params: map[string]string{"affiliate.customId": generateStringWithLen(256, false)},
 		},
 		{
-			Name: "returns error if params contains affiliate.customId of length 257",
-			Params: map[string]string{
-				"keywords":           "marshmallows",
-				"affiliate.customId": generateStringWithLen(257, false),
-			},
+			Name:          "returns error if params contains affiliate.customId of length 257",
+			Params:        map[string]string{"affiliate.customId": generateStringWithLen(257, false)},
 			ExpectedError: ebay.ErrInvalidCustomIDLength,
 		},
 		{
-			Name: "can find items if params contains affiliate.geoTargeting=true",
-			Params: map[string]string{
-				"keywords":               "marshmallows",
-				"affiliate.geoTargeting": "true",
-			},
+			Name:   "can find items if params contains affiliate.geoTargeting=true",
+			Params: map[string]string{"affiliate.geoTargeting": "true"},
 		},
 		{
-			Name: "can find items if params contains affiliate.geoTargeting=false",
-			Params: map[string]string{
-				"keywords":               "marshmallows",
-				"affiliate.geoTargeting": "false",
-			},
+			Name:   "can find items if params contains affiliate.geoTargeting=false",
+			Params: map[string]string{"affiliate.geoTargeting": "false"},
 		},
 		{
-			Name: "returns error if params contains affiliate.geoTargeting with non-boolean value",
-			Params: map[string]string{
-				"keywords":               "marshmallows",
-				"affiliate.geoTargeting": "123",
-			},
+			Name:          "returns error if params contains affiliate.geoTargeting with non-boolean value",
+			Params:        map[string]string{"affiliate.geoTargeting": "123"},
 			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contain affiliate.networkId=2 and trackingId",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "2",
 				"affiliate.trackingId": "1",
 			},
@@ -3841,7 +3484,6 @@ var (
 		{
 			Name: "can find items if params contain affiliate.networkId=9 and trackingId=1234567890",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "9",
 				"affiliate.trackingId": "1234567890",
 			},
@@ -3849,31 +3491,23 @@ var (
 		{
 			Name: "can find items if params contain affiliate.networkId=5 and trackingId=veryunique",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "5",
 				"affiliate.trackingId": "veryunique",
 			},
 		},
 		{
-			Name: "returns error if params contains affiliate.networkId but no trackingId",
-			Params: map[string]string{
-				"keywords":            "marshmallows",
-				"affiliate.networkId": "2",
-			},
+			Name:          "returns error if params contains affiliate.networkId but no trackingId",
+			Params:        map[string]string{"affiliate.networkId": "2"},
 			ExpectedError: ebay.ErrIncompleteAffiliateParams,
 		},
 		{
-			Name: "returns error if params contains affiliate.trackingId but no networkId",
-			Params: map[string]string{
-				"keywords":             "marshmallows",
-				"affiliate.trackingId": "1",
-			},
+			Name:          "returns error if params contains affiliate.trackingId but no networkId",
+			Params:        map[string]string{"affiliate.trackingId": "1"},
 			ExpectedError: ebay.ErrIncompleteAffiliateParams,
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=abc and trackingId",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "abc",
 				"affiliate.trackingId": "1",
 			},
@@ -3882,7 +3516,6 @@ var (
 		{
 			Name: "returns error if params contain affiliate.networkId=1 and trackingId",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "1",
 				"affiliate.trackingId": "1",
 			},
@@ -3891,7 +3524,6 @@ var (
 		{
 			Name: "returns error if params contain affiliate.networkId=10 and trackingId",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "10",
 				"affiliate.trackingId": "1",
 			},
@@ -3900,7 +3532,6 @@ var (
 		{
 			Name: "returns error if params contain affiliate.networkId=9 and trackingId=abc",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "9",
 				"affiliate.trackingId": "abc",
 			},
@@ -3909,7 +3540,6 @@ var (
 		{
 			Name: "returns error if params contain affiliate.networkId=9 and trackingId=123456789",
 			Params: map[string]string{
-				"keywords":             "marshmallows",
 				"affiliate.networkId":  "9",
 				"affiliate.trackingId": "123456789",
 			},
@@ -3918,7 +3548,6 @@ var (
 		{
 			Name: "can find items if params contain affiliate.customId, geoTargeting, networkId, trackingId",
 			Params: map[string]string{
-				"keywords":               "marshmallows",
 				"affiliate.customId":     "abc123",
 				"affiliate.geoTargeting": "true",
 				"affiliate.networkId":    "2",
@@ -3926,112 +3555,69 @@ var (
 			},
 		},
 		{
-			Name: "can find items if params contains buyerPostalCode=111",
-			Params: map[string]string{
-				"keywords":        "marshmallows",
-				"buyerPostalCode": "111",
-			},
+			Name:   "can find items if params contains buyerPostalCode=111",
+			Params: map[string]string{"buyerPostalCode": "111"},
 		},
 		{
-			Name: "can find items if params contains buyerPostalCode=aaaaa",
-			Params: map[string]string{
-				"keywords":        "marshmallows",
-				"buyerPostalCode": "aaaaa",
-			},
+			Name:   "can find items if params contains buyerPostalCode=aaaaa",
+			Params: map[string]string{"buyerPostalCode": "aaaaa"},
 		},
 		{
-			Name: "can find items if params contains buyerPostalCode=Postal Code Here",
-			Params: map[string]string{
-				"keywords":        "marshmallows",
-				"buyerPostalCode": "Postal Code Here",
-			},
+			Name:   "can find items if params contains buyerPostalCode=Postal Code Here",
+			Params: map[string]string{"buyerPostalCode": "Postal Code Here"},
 		},
 		{
-			Name: "returns error if params contains buyerPostalCode=11",
-			Params: map[string]string{
-				"keywords":        "marshmallows",
-				"buyerPostalCode": "11",
-			},
+			Name:          "returns error if params contains buyerPostalCode=11",
+			Params:        map[string]string{"buyerPostalCode": "11"},
 			ExpectedError: ebay.ErrInvalidPostalCode,
 		},
 		{
-			Name: "can find items if params contains paginationInput.entriesPerPage=1",
-			Params: map[string]string{
-				"keywords":                       "marshmallows",
-				"paginationInput.entriesPerPage": "1",
-			},
+			Name:   "can find items if params contains paginationInput.entriesPerPage=1",
+			Params: map[string]string{"paginationInput.entriesPerPage": "1"},
 		},
 		{
-			Name: "can find items if params contains paginationInput.entriesPerPage=50",
-			Params: map[string]string{
-				"keywords":                       "marshmallows",
-				"paginationInput.entriesPerPage": "50",
-			},
+			Name:   "can find items if params contains paginationInput.entriesPerPage=50",
+			Params: map[string]string{"paginationInput.entriesPerPage": "50"},
 		},
 		{
-			Name: "can find items if params contains paginationInput.entriesPerPage=100",
-			Params: map[string]string{
-				"keywords":                       "marshmallows",
-				"paginationInput.entriesPerPage": "100",
-			},
+			Name:   "can find items if params contains paginationInput.entriesPerPage=100",
+			Params: map[string]string{"paginationInput.entriesPerPage": "100"},
 		},
 		{
-			Name: "returns error if params contains paginationInput.entriesPerPage=0",
-			Params: map[string]string{
-				"keywords":                       "marshmallows",
-				"paginationInput.entriesPerPage": "0",
-			},
+			Name:          "returns error if params contains paginationInput.entriesPerPage=0",
+			Params:        map[string]string{"paginationInput.entriesPerPage": "0"},
 			ExpectedError: ebay.ErrInvalidEntriesPerPage,
 		},
 		{
-			Name: "returns error if params contains paginationInput.entriesPerPage=101",
-			Params: map[string]string{
-				"keywords":                       "marshmallows",
-				"paginationInput.entriesPerPage": "101",
-			},
+			Name:          "returns error if params contains paginationInput.entriesPerPage=101",
+			Params:        map[string]string{"paginationInput.entriesPerPage": "101"},
 			ExpectedError: ebay.ErrInvalidEntriesPerPage,
 		},
 		{
-			Name: "can find items if params contains paginationInput.pageNumber=1",
-			Params: map[string]string{
-				"keywords":                   "marshmallows",
-				"paginationInput.pageNumber": "1",
-			},
+			Name:   "can find items if params contains paginationInput.pageNumber=1",
+			Params: map[string]string{"paginationInput.pageNumber": "1"},
 		},
 		{
-			Name: "can find items if params contains paginationInput.pageNumber=50",
-			Params: map[string]string{
-				"keywords":                   "marshmallows",
-				"paginationInput.pageNumber": "50",
-			},
+			Name:   "can find items if params contains paginationInput.pageNumber=50",
+			Params: map[string]string{"paginationInput.pageNumber": "50"},
 		},
 		{
-			Name: "can find items if params contains paginationInput.pageNumber=100",
-			Params: map[string]string{
-				"keywords":                   "marshmallows",
-				"paginationInput.pageNumber": "100",
-			},
+			Name:   "can find items if params contains paginationInput.pageNumber=100",
+			Params: map[string]string{"paginationInput.pageNumber": "100"},
 		},
 		{
-			Name: "returns error if params contains paginationInput.pageNumber=0",
-			Params: map[string]string{
-				"keywords":                   "marshmallows",
-				"paginationInput.pageNumber": "0",
-			},
+			Name:          "returns error if params contains paginationInput.pageNumber=0",
+			Params:        map[string]string{"paginationInput.pageNumber": "0"},
 			ExpectedError: ebay.ErrInvalidPageNumber,
 		},
 		{
-			Name: "returns error if params contains paginationInput.pageNumber=101",
-			Params: map[string]string{
-				"keywords":                   "marshmallows",
-				"paginationInput.pageNumber": "101",
-			},
+			Name:          "returns error if params contains paginationInput.pageNumber=101",
+			Params:        map[string]string{"paginationInput.pageNumber": "101"},
 			ExpectedError: ebay.ErrInvalidPageNumber,
 		},
 		{
 			Name: "can find items if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=1",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "1",
 			},
@@ -4039,7 +3625,6 @@ var (
 		{
 			Name: "can find items if params contains paginationInput.entriesPerPage=100, paginationInput.pageNumber=100",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "100",
 				"paginationInput.pageNumber":     "100",
 			},
@@ -4047,7 +3632,6 @@ var (
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=0, paginationInput.pageNumber=1",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "0",
 				"paginationInput.pageNumber":     "1",
 			},
@@ -4056,7 +3640,6 @@ var (
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=1",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "101",
 				"paginationInput.pageNumber":     "1",
 			},
@@ -4065,7 +3648,6 @@ var (
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=0",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "0",
 			},
@@ -4074,7 +3656,6 @@ var (
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=101",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "101",
 			},
@@ -4083,7 +3664,6 @@ var (
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=0, paginationInput.pageNumber=0",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "0",
 				"paginationInput.pageNumber":     "0",
 			},
@@ -4092,7 +3672,6 @@ var (
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=101",
 			Params: map[string]string{
-				"keywords":                       "marshmallows",
 				"paginationInput.entriesPerPage": "101",
 				"paginationInput.pageNumber":     "101",
 			},
@@ -4101,122 +3680,82 @@ var (
 		{
 			Name: "can find items if params contains BestMatch sortOrder",
 			Params: map[string]string{
-				"keywords":  "marshmallows",
 				"sortOrder": "BestMatch",
 			},
 		},
 		{
 			Name: "can find items if params contains BidCountFewest sortOrder and Auction listing type",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "Auction",
 				"sortOrder":        "BidCountFewest",
 			},
 		},
 		{
-			Name: "returns error if params contains BidCountFewest sortOrder but no Auction listing type",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "BidCountFewest",
-			},
+			Name:          "returns error if params contains BidCountFewest sortOrder but no Auction listing type",
+			Params:        map[string]string{"sortOrder": "BidCountFewest"},
 			ExpectedError: ebay.ErrAuctionListingMissing,
 		},
 		{
 			Name: "can find items if params contains BidCountMost sortOrder and Auction listing type",
 			Params: map[string]string{
-				"keywords":         "marshmallows",
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "Auction",
 				"sortOrder":        "BidCountMost",
 			},
 		},
 		{
-			Name: "returns error if params contains BidCountMost sortOrder but no Auction listing type",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "BidCountMost",
-			},
+			Name:          "returns error if params contains BidCountMost sortOrder but no Auction listing type",
+			Params:        map[string]string{"sortOrder": "BidCountMost"},
 			ExpectedError: ebay.ErrAuctionListingMissing,
 		},
 		{
-			Name: "can find items if params contains CountryAscending sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "CountryAscending",
-			},
+			Name:   "can find items if params contains CountryAscending sortOrder",
+			Params: map[string]string{"sortOrder": "CountryAscending"},
 		},
 		{
-			Name: "can find items if params contains CountryDescending sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "CountryDescending",
-			},
+			Name:   "can find items if params contains CountryDescending sortOrder",
+			Params: map[string]string{"sortOrder": "CountryDescending"},
 		},
 		{
-			Name: "can find items if params contains CurrentPriceHighest sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "CurrentPriceHighest",
-			},
+			Name:   "can find items if params contains CurrentPriceHighest sortOrder",
+			Params: map[string]string{"sortOrder": "CurrentPriceHighest"},
 		},
 		{
 			Name: "can find items if params contains DistanceNearest sortOrder and buyerPostalCode",
 			Params: map[string]string{
-				"keywords":        "marshmallows",
 				"buyerPostalCode": "111",
 				"sortOrder":       "DistanceNearest",
 			},
 		},
 		{
-			Name: "returns error if params contains DistanceNearest sortOrder but no buyerPostalCode",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "DistanceNearest",
-			},
+			Name:          "returns error if params contains DistanceNearest sortOrder but no buyerPostalCode",
+			Params:        map[string]string{"sortOrder": "DistanceNearest"},
 			ExpectedError: ebay.ErrBuyerPostalCodeMissing,
 		},
 		{
-			Name: "can find items if params contains EndTimeSoonest sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "EndTimeSoonest",
-			},
+			Name:   "can find items if params contains EndTimeSoonest sortOrder",
+			Params: map[string]string{"sortOrder": "EndTimeSoonest"},
 		},
 		{
-			Name: "can find items if params contains PricePlusShippingHighest sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "PricePlusShippingHighest",
-			},
+			Name:   "can find items if params contains PricePlusShippingHighest sortOrder",
+			Params: map[string]string{"sortOrder": "PricePlusShippingHighest"},
 		},
 		{
-			Name: "can find items if params contains PricePlusShippingLowest sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "PricePlusShippingLowest",
-			},
+			Name:   "can find items if params contains PricePlusShippingLowest sortOrder",
+			Params: map[string]string{"sortOrder": "PricePlusShippingLowest"},
 		},
 		{
-			Name: "can find items if params contains StartTimeNewest sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "StartTimeNewest",
-			},
+			Name:   "can find items if params contains StartTimeNewest sortOrder",
+			Params: map[string]string{"sortOrder": "StartTimeNewest"},
 		},
 		{
-			Name: "can find items if params contains WatchCountDecreaseSort sortOrder",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "WatchCountDecreaseSort",
-			},
+			Name:   "can find items if params contains WatchCountDecreaseSort sortOrder",
+			Params: map[string]string{"sortOrder": "WatchCountDecreaseSort"},
 		},
 		{
-			Name: "returns error if params contains unsupported sortOrder name",
-			Params: map[string]string{
-				"keywords":  "marshmallows",
-				"sortOrder": "UnsupportedSortOrder",
-			},
+			Name:          "returns error if params contains unsupported sortOrder name",
+			Params:        map[string]string{"sortOrder": "UnsupportedSortOrder"},
 			ExpectedError: ebay.ErrUnsupportedSortOrderType,
 		},
 	}
@@ -4239,287 +3778,21 @@ type findItemsTestCase struct {
 func TestFindItemsByCategories(t *testing.T) {
 	t.Parallel()
 	params := map[string]string{"categoryId": "12345"}
-	testFindItems(t, params, findItemsByCategories)
-
-	t.Run("can find items by categories", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{
-			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(findItemsByCategoriesResp)
-				assertNoError(t, err)
-
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBuffer(body)),
-				}, nil
-			},
-		}
-		svr := ebay.NewFindingServer(client)
-		resp, err := svr.FindItemsByCategories(params, appID)
-		assertNoError(t, err)
-		if !reflect.DeepEqual(resp, findItemsByCategoriesResp) {
-			t.Errorf("got %v, expected %v", resp, findItemsByCategoriesResp)
-		}
-	})
-
-	findItemsByCategoriesTestCases := []findItemsTestCase{
-		{
-			Name:          "returns error if params does not contain categoryId",
-			Params:        map[string]string{},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name: "returns error if params contains non-numbered aspectFilter but not categoryId",
-			Params: map[string]string{
-				"aspectFilter.aspectName":      "Size",
-				"aspectFilter.aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name: "returns error if params contains numbered aspectFilter but not categoryId",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":      "Size",
-				"aspectFilter(0).aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name: "returns error if params contains non-numbered itemFilter but not categoryId",
-			Params: map[string]string{
-				"itemFilter.name":  "BestOfferOnly",
-				"itemFilter.value": "true",
-			},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name: "returns error if params contains numbered itemFilter but not categoryId",
-			Params: map[string]string{
-				"itemFilter(0).name":  "BestOfferOnly",
-				"itemFilter(0).value": "true",
-			},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name:          "returns error if params contains outputSelector but not categoryId",
-			Params:        map[string]string{"outputSelector": "AspectHistogram"},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name: "returns error if params contains affiliate but not categoryId",
-			Params: map[string]string{
-				"affiliate.customId":     "123",
-				"affiliate.geoTargeting": "true",
-				"affiliate.networkId":    "2",
-				"affiliate.trackingId":   "123",
-			},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name:          "returns error if params contains buyerPostalCode but not categoryId",
-			Params:        map[string]string{"buyerPostalCode": "111"},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name: "returns error if params contains paginationInput but not categoryId",
-			Params: map[string]string{
-				"paginationInput.entriesPerPage": "1",
-				"paginationInput.pageNumber":     "1",
-			},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-		{
-			Name:          "returns error if params contains sortOrder but not categoryId",
-			Params:        map[string]string{"sortOrder": "BestMatch"},
-			ExpectedError: ebay.ErrCategoryIDMissing,
-		},
-	}
-
-	commonTestCases := make([]findItemsTestCase, len(testCases))
-	copy(commonTestCases, testCases)
-	for i := range commonTestCases {
-		commonTestCases[i].Params["categoryId"] = "12345"
-	}
-
-	findItemsByCategoriesTestCases = append(findItemsByCategoriesTestCases, categoryIDTestCases...)
-	findItemsByCategoriesTestCases = append(findItemsByCategoriesTestCases, commonTestCases...)
-	testFindItemsWithParams(t, findItemsByCategories, findItemsByCategoriesResp, findItemsByCategoriesTestCases)
+	findItemsByCategoriesTCs := combineTestCases(t, findItemsByCategories, categoryIDTCs)
+	testFindItems(t, params, findItemsByCategories, findItemsByCategoriesResp, findItemsByCategoriesTCs)
 }
 
 func TestFindItemsByKeywords(t *testing.T) {
 	t.Parallel()
 	params := map[string]string{"keywords": "marshmallows"}
-	testFindItems(t, params, findItemsByKeywords)
-
-	t.Run("can find items by keywords", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{
-			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(findItemsByKeywordsResp)
-				assertNoError(t, err)
-
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBuffer(body)),
-				}, nil
-			},
-		}
-		svr := ebay.NewFindingServer(client)
-		resp, err := svr.FindItemsByKeywords(params, appID)
-		assertNoError(t, err)
-		if !reflect.DeepEqual(resp, findItemsByKeywordsResp) {
-			t.Errorf("got %v, expected %v", resp, findItemsByKeywordsResp)
-		}
-	})
-
-	findItemsByKeywordsTestCases := []findItemsTestCase{
-		{
-			Name:          "returns error if params does not contain keywords",
-			Params:        map[string]string{},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains non-numbered aspectFilter but not keywords",
-			Params: map[string]string{
-				"aspectFilter.aspectName":      "Size",
-				"aspectFilter.aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains numbered aspectFilter but not keywords",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":      "Size",
-				"aspectFilter(0).aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains non-numbered itemFilter but not keywords",
-			Params: map[string]string{
-				"itemFilter.name":  "BestOfferOnly",
-				"itemFilter.value": "true",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains numbered itemFilter but not keywords",
-			Params: map[string]string{
-				"itemFilter(0).name":  "BestOfferOnly",
-				"itemFilter(0).value": "true",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name:          "returns error if params contains outputSelector but not keywords",
-			Params:        map[string]string{"outputSelector": "AspectHistogram"},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains affiliate but not keywords",
-			Params: map[string]string{
-				"affiliate.customId":     "123",
-				"affiliate.geoTargeting": "true",
-				"affiliate.networkId":    "2",
-				"affiliate.trackingId":   "123",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name:          "returns error if params contains buyerPostalCode but not keywords",
-			Params:        map[string]string{"buyerPostalCode": "111"},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains paginationInput but not keywords",
-			Params: map[string]string{
-				"paginationInput.entriesPerPage": "1",
-				"paginationInput.pageNumber":     "1",
-			},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-		{
-			Name:          "returns error if params contains sortOrder but not keywords",
-			Params:        map[string]string{"sortOrder": "BestMatch"},
-			ExpectedError: ebay.ErrKeywordsMissing,
-		},
-	}
-
-	commonTestCases := make([]findItemsTestCase, len(testCases))
-	copy(commonTestCases, testCases)
-	for i := range commonTestCases {
-		commonTestCases[i].Params["keywords"] = "marshmallows"
-	}
-
-	findItemsByKeywordsTestCases = append(findItemsByKeywordsTestCases, keywordsTestCases...)
-	findItemsByKeywordsTestCases = append(findItemsByKeywordsTestCases, commonTestCases...)
-	testFindItemsWithParams(t, findItemsByKeywords, findItemsByKeywordsResp, findItemsByKeywordsTestCases)
+	findItemsByKeywordsTCs := combineTestCases(t, findItemsByKeywords, keywordsTCs)
+	testFindItems(t, params, findItemsByKeywords, findItemsByKeywordsResp, findItemsByKeywordsTCs)
 }
 
 func TestFindItemsAdvanced(t *testing.T) {
 	t.Parallel()
 	params := map[string]string{"categoryId": "12345"}
-	testFindItems(t, params, findItemsAdvanced)
-
-	t.Run("can find items with advanced search", func(t *testing.T) {
-		t.Parallel()
-		client := &MockFindingClient{
-			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(findItemsAdvancedResp)
-				assertNoError(t, err)
-
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBuffer(body)),
-				}, nil
-			},
-		}
-		svr := ebay.NewFindingServer(client)
-		resp, err := svr.FindItemsAdvanced(params, appID)
-		assertNoError(t, err)
-		if !reflect.DeepEqual(resp, findItemsAdvancedResp) {
-			t.Errorf("got %v, expected %v", resp, findItemsAdvancedResp)
-		}
-	})
-
-	findItemsAdvancedTestCases := []findItemsTestCase{
-		{
-			Name:          "returns error if params does not contain categoryId or keywords",
-			Params:        map[string]string{},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains non-numbered aspectFilter but not categoryId or keywords",
-			Params: map[string]string{
-				"aspectFilter.aspectName":      "Size",
-				"aspectFilter.aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains numbered aspectFilter but not categoryId or keywords",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":      "Size",
-				"aspectFilter(0).aspectValueName": "10",
-			},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains non-numbered itemFilter but not categoryId or keywords",
-			Params: map[string]string{
-				"itemFilter.name":  "BestOfferOnly",
-				"itemFilter.value": "true",
-			},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains numbered itemFilter but not categoryId or keywords",
-			Params: map[string]string{
-				"itemFilter(0).name":  "BestOfferOnly",
-				"itemFilter(0).value": "true",
-			},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
+	findItemsAdvancedTCs := []findItemsTestCase{
 		{
 			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2",
 			Params: map[string]string{
@@ -4597,55 +3870,103 @@ func TestFindItemsAdvanced(t *testing.T) {
 			Params:        map[string]string{"descriptionSearch": "true"},
 			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
 		},
-		{
-			Name:          "returns error if params contains outputSelector but not categoryId or keywords",
-			Params:        map[string]string{"outputSelector": "AspectHistogram"},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains affiliate but not categoryId or keywords",
-			Params: map[string]string{
-				"affiliate.customId":     "123",
-				"affiliate.geoTargeting": "true",
-				"affiliate.networkId":    "2",
-				"affiliate.trackingId":   "123",
-			},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name:          "returns error if params contains buyerPostalCode but not categoryId or keywords",
-			Params:        map[string]string{"buyerPostalCode": "111"},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name: "returns error if params contains paginationInput but not categoryId or keywords",
-			Params: map[string]string{
-				"paginationInput.entriesPerPage": "1",
-				"paginationInput.pageNumber":     "1",
-			},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
-		{
-			Name:          "returns error if params contains sortOrder but not categoryId or keywords",
-			Params:        map[string]string{"sortOrder": "BestMatch"},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
-		},
 	}
 
-	commonTestCases := make([]findItemsTestCase, len(testCases))
-	copy(commonTestCases, testCases)
-	for i := range commonTestCases {
-		commonTestCases[i].Params["categoryId"] = "12345"
-	}
-
-	findItemsAdvancedTestCases = append(findItemsAdvancedTestCases, categoryIDTestCases...)
-	findItemsAdvancedTestCases = append(findItemsAdvancedTestCases, keywordsTestCases...)
-	findItemsAdvancedTestCases = append(findItemsAdvancedTestCases, commonTestCases...)
-	testFindItemsWithParams(t, findItemsAdvanced, findItemsAdvancedResp, findItemsAdvancedTestCases)
+	combinedTCs := combineTestCases(
+		t, findItemsAdvanced, categoryIDTCs, keywordsTCs, findItemsAdvancedTCs)
+	testFindItems(t, params, findItemsAdvanced, findItemsAdvancedResp, combinedTCs)
 }
 
-func testFindItems(t *testing.T, params map[string]string, findMethod string) {
+func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCase) []findItemsTestCase {
 	t.Helper()
+	var searchKey, searchValue, missingDesc string
+	var searchErr error
+
+	switch findMethod {
+	case findItemsByCategories:
+		searchKey = "categoryId"
+		searchValue = "12345"
+		missingDesc = searchKey
+		searchErr = ebay.ErrCategoryIDMissing
+	case findItemsByKeywords:
+		searchKey = "keywords"
+		searchValue = "marshmallows"
+		missingDesc = searchKey
+		searchErr = ebay.ErrKeywordsMissing
+	case findItemsAdvanced:
+		searchKey = "categoryId"
+		searchValue = "12345"
+		missingDesc = "categoryId or keywords"
+		searchErr = ebay.ErrCategoryIDKeywordsMissing
+	default:
+		t.Errorf("Unsupported findMethod: %s", findMethod)
+
+		return nil
+	}
+
+	missingParamTCs := make([]findItemsTestCase, len(missingSearchParamTCs))
+	copy(missingParamTCs, missingSearchParamTCs)
+	for i := range missingParamTCs {
+		missingParamTCs[i].Name += missingDesc
+		missingParamTCs[i].ExpectedError = searchErr
+	}
+
+	commonTCs := make([]findItemsTestCase, len(testCases))
+	copy(commonTCs, testCases)
+	for i := range commonTCs {
+		commonTCs[i].Params[searchKey] = searchValue
+	}
+
+	var combinedTCs []findItemsTestCase
+	for _, cs := range tcs {
+		combinedTCs = append(combinedTCs, cs...)
+	}
+	combinedTCs = append(combinedTCs, missingParamTCs...)
+	combinedTCs = append(combinedTCs, commonTCs...)
+
+	return combinedTCs
+}
+
+func testFindItems(
+	t *testing.T, params map[string]string, findMethod string, expectedResp any, tcs []findItemsTestCase,
+) {
+	t.Helper()
+	t.Run(fmt.Sprintf("can find items by %s", findMethod), func(t *testing.T) {
+		t.Parallel()
+		client := &MockFindingClient{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
+				body, err := json.Marshal(expectedResp)
+				assertNoError(t, err)
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBuffer(body)),
+				}, nil
+			},
+		}
+		svr := ebay.NewFindingServer(client)
+		var resp any
+		var err error
+
+		switch findMethod {
+		case findItemsByCategories:
+			resp, err = svr.FindItemsByCategories(params, appID)
+		case findItemsByKeywords:
+			resp, err = svr.FindItemsByKeywords(params, appID)
+		case findItemsAdvanced:
+			resp, err = svr.FindItemsAdvanced(params, appID)
+		default:
+			t.Errorf("Unsupported findMethod: %s", findMethod)
+
+			return
+		}
+
+		assertNoError(t, err)
+		if !reflect.DeepEqual(resp, expectedResp) {
+			t.Errorf("got %v, expected %v", resp, expectedResp)
+		}
+	})
+
 	t.Run("returns error if the client returns an error", func(t *testing.T) {
 		t.Parallel()
 		client := &MockFindingClient{
@@ -4786,6 +4107,51 @@ func testFindItems(t *testing.T, params map[string]string, findMethod string) {
 		assertErrorEquals(t, got, expected)
 		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
 	})
+
+	for _, tc := range tcs {
+		testCase := tc
+		t.Run(testCase.Name, func(t *testing.T) {
+			t.Parallel()
+			client := &MockFindingClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					body, err := json.Marshal(expectedResp)
+					assertNoError(t, err)
+
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(bytes.NewBuffer(body)),
+					}, nil
+				},
+			}
+			svr := ebay.NewFindingServer(client)
+			var resp any
+			var err error
+
+			switch findMethod {
+			case findItemsByCategories:
+				resp, err = svr.FindItemsByCategories(testCase.Params, appID)
+			case findItemsByKeywords:
+				resp, err = svr.FindItemsByKeywords(testCase.Params, appID)
+			case findItemsAdvanced:
+				resp, err = svr.FindItemsAdvanced(testCase.Params, appID)
+			default:
+				t.Errorf("Unsupported findMethod: %s", findMethod)
+
+				return
+			}
+
+			if testCase.ExpectedError != nil {
+				assertError(t, err)
+				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
+				assertStatusCodeEquals(t, err, http.StatusBadRequest)
+			} else {
+				assertNoError(t, err)
+				if !reflect.DeepEqual(resp, expectedResp) {
+					t.Errorf("got %v, expected %v", resp, expectedResp)
+				}
+			}
+		})
+	}
 }
 
 func assertError(tb testing.TB, err error) {
@@ -4816,56 +4182,6 @@ func assertStatusCodeEquals(tb testing.TB, err error, expectedStatusCode int) {
 		tb.Error("expected APIError")
 	} else if apiError.StatusCode != expectedStatusCode {
 		tb.Errorf("got status code %d, expected %d", apiError.StatusCode, expectedStatusCode)
-	}
-}
-
-func testFindItemsWithParams(
-	t *testing.T, findMethod string, expectedResp interface{}, testCases []findItemsTestCase,
-) {
-	t.Helper()
-	for _, tc := range testCases {
-		testCase := tc
-		t.Run(testCase.Name, func(t *testing.T) {
-			t.Parallel()
-			client := &MockFindingClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					body, err := json.Marshal(expectedResp)
-					assertNoError(t, err)
-
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       io.NopCloser(bytes.NewBuffer(body)),
-					}, nil
-				},
-			}
-			svr := ebay.NewFindingServer(client)
-			var resp interface{}
-			var err error
-
-			switch findMethod {
-			case findItemsByCategories:
-				resp, err = svr.FindItemsByCategories(testCase.Params, appID)
-			case findItemsByKeywords:
-				resp, err = svr.FindItemsByKeywords(testCase.Params, appID)
-			case findItemsAdvanced:
-				resp, err = svr.FindItemsAdvanced(testCase.Params, appID)
-			default:
-				t.Errorf("Unsupported findMethod: %s", findMethod)
-
-				return
-			}
-
-			if testCase.ExpectedError != nil {
-				assertError(t, err)
-				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
-				assertStatusCodeEquals(t, err, http.StatusBadRequest)
-			} else {
-				assertNoError(t, err)
-				if !reflect.DeepEqual(resp, expectedResp) {
-					t.Errorf("got %v, expected %v", resp, expectedResp)
-				}
-			}
-		})
 	}
 }
 

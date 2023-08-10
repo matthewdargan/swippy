@@ -43,8 +43,6 @@ issues:
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function validateSortOrder"
     - path: ebay/finding_test.go
-      text: "Function 'TestFindItemsByKeywords' is too long"
-    - path: ebay/finding_test.go
       text: "Function 'TestFindItemsAdvanced' is too long"
     - path: ebay/finding_test.go
       text: "Function 'testFindItems' is too long"

@@ -17,6 +17,7 @@ linters:
     - structcheck
     - tagliatelle
     - varcheck
+    - varnamelen
     - wsl
 issues:
   exclude-rules:
@@ -25,9 +26,11 @@ issues:
     - path: ebay/finding.go
       text: "Function 'validateParams' has too many statements"
     - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function createRequest"
-    - path: ebay/finding.go
       text: "createRequest"
+    - path: ebay/finding.go
+      text: "calculated cyclomatic complexity for function processProductID"
+    - path: ebay/finding.go
+      text: "calculated cyclomatic complexity for function isValidISBN"
     - path: ebay/finding.go
       text: "handleItemFilterType"
     - path: ebay/finding.go

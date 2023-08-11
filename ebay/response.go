@@ -14,6 +14,10 @@ type FindItemsAdvancedResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsAdvancedResponse"`
 }
 
+type FindItemsByProductResponse struct {
+	ItemsResponse []FindItemsResponse `json:"findItemsByProductResponse"`
+}
+
 type FindItemsResponse struct {
 	Ack              []string           `json:"ack"`
 	ErrorMessage     []ErrorMessage     `json:"errorMessage"`

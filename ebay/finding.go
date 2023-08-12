@@ -1055,8 +1055,7 @@ func processKeywords(params map[string]string) (string, error) {
 		return "", ErrKeywordsMissing
 	}
 
-	keywordsLen := len(keywords)
-	if keywordsLen < minKeywordsLen || keywordsLen > maxKeywordsLen {
+	if len(keywords) < minKeywordsLen || len(keywords) > maxKeywordsLen {
 		return "", ErrInvalidKeywordsLength
 	}
 
@@ -1090,28 +1089,27 @@ const (
 )
 
 func (p *productID) processProductID() error {
-	valueLen := len(p.value)
 	switch p.idType {
 	case referenceID:
-		if valueLen < 1 {
+		if len(p.value) < 1 {
 			return ErrInvalidProductIDLength
 		}
 	case isbn:
-		if valueLen != isbnShortLen && valueLen != isbnLongLen {
+		if len(p.value) != isbnShortLen && len(p.value) != isbnLongLen {
 			return ErrInvalidISBNLength
 		}
 		if !isValidISBN(p.value) {
 			return ErrInvalidISBN
 		}
 	case upc:
-		if valueLen != upcLen {
+		if len(p.value) != upcLen {
 			return ErrInvalidUPCLength
 		}
 		if !isValidUPC(p.value) {
 			return ErrInvalidUPC
 		}
 	case ean:
-		if valueLen != eanShortLen && valueLen != eanLongLen {
+		if len(p.value) != eanShortLen && len(p.value) != eanLongLen {
 			return ErrInvalidEANLength
 		}
 		if !isValidEAN(p.value) {
@@ -1192,24 +1190,23 @@ func isValidUPC(upc string) bool {
 
 func isValidEAN(ean string) bool {
 	const altMultiplier = 3
-	eanLen := len(ean)
 	var sum int
-	for i, r := range ean[:eanLen-1] {
+	for i, r := range ean[:len(ean)-1] {
 		digit := int(r - '0')
 		if !isDigit(digit) {
 			return false
 		}
 
 		switch {
-		case eanLen == eanShortLen && i%2 == 0,
-			eanLen == eanLongLen && i%2 != 0:
+		case len(ean) == eanShortLen && i%2 == 0,
+			len(ean) == eanLongLen && i%2 != 0:
 			sum += digit * altMultiplier
 		default:
 			sum += digit
 		}
 	}
 
-	checkDigit := int(ean[eanLen-1] - '0')
+	checkDigit := int(ean[len(ean)-1] - '0')
 	if !isDigit(checkDigit) {
 		return false
 	}

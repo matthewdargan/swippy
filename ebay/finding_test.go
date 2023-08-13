@@ -3892,7 +3892,396 @@ func TestFindItemsByProduct(t *testing.T) {
 		"productId.@type": "ReferenceID",
 		"productId":       "123",
 	}
-	findItemsByProductTCs := []findItemsTestCase{}
+	findItemsByProductTCs := []findItemsTestCase{
+		{
+			Name:          "returns error if params contains productId but not productId.@type",
+			Params:        map[string]string{"productId": "123"},
+			ExpectedError: ebay.ErrProductIDMissing,
+		},
+		{
+			Name:          "returns error if params contains productId.@type but not productId",
+			Params:        map[string]string{"productId.@type": "ReferenceID"},
+			ExpectedError: ebay.ErrProductIDMissing,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UnsupportedProductID, productId=1",
+			Params: map[string]string{
+				"productId.@type": "UnsupportedProductID",
+				"productId":       "1",
+			},
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedProductIDType, "UnsupportedProductID"),
+		},
+		{
+			Name: "can find items if params contains productId.@type=ReferenceID, productId=1",
+			Params: map[string]string{
+				"productId.@type": "ReferenceID",
+				"productId":       "1",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ReferenceID, productId=123",
+			Params: map[string]string{
+				"productId.@type": "ReferenceID",
+				"productId":       "123",
+			},
+		},
+		{
+			Name:          "returns error if params contains productId.@type=ReferenceID, empty productId",
+			Params:        map[string]string{"productId.@type": "ReferenceID", "productId": ""},
+			ExpectedError: ebay.ErrInvalidProductIDLength,
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=0131103628",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "0131103628",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=954911659X",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "954911659X",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=802510897X",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "802510897X",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=7111075897",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "7111075897",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=986154142X",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "986154142X",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780131101630",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131101630",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780131103627",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131103627",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780133086249",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780133086249",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9789332549449",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9789332549449",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780131158177",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131158177",
+			},
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 9",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 11",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "11111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 12",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 14",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "11111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-10 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "886154142X",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-13 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "8780131158177",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-10 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9861541429",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-13 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131158178",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=036000291452",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "036000291452",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=194253378907",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253378907",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=753575979881",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "753575979881",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=194253402220",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253402220",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=194253407980",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253407980",
+			},
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of length 11",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "11111111111",
+			},
+			ExpectedError: ebay.ErrInvalidUPCLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of length 13",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "1111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidUPCLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of invalid UPC (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "294253407980",
+			},
+			ExpectedError: ebay.ErrInvalidUPC,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of invalid UPC (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253407981",
+			},
+			ExpectedError: ebay.ErrInvalidUPC,
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=73513537",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "73513537",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=96385074",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "96385074",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=29033706",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "29033706",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=40170725",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "40170725",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=40123455",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "40123455",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=4006381333931",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "4006381333931",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253373933",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253373933",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253374398",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253374398",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253381099",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253381099",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253373476",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253373476",
+			},
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 7",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "1111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 9",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 10",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "1111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 11",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "11111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 12",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 14",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "11111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-8 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "50123455",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-13 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "1194253373476",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-8 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "40123456",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-13 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253373477",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+	}
 
 	combinedTCs := combineTestCases(t, findItemsByProduct, findItemsByProductTCs)
 	testFindItems(t, params, findItemsByProduct, findItemsByProductResp, combinedTCs)

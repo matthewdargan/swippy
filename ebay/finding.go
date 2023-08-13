@@ -29,9 +29,9 @@ var (
 	// are missing in a findItemsAdvanced request.
 	ErrCategoryIDKeywordsMissing = errors.New("ebay: both category ID and keywords parameters are missing")
 
-	// ErrProductIDMissing is returned when the 'productId' and/or 'productId.@type' parameters
+	// ErrProductIDMissing is returned when the 'productId' or 'productId.@type' parameters
 	// are missing in a findItemsByProduct request.
-	ErrProductIDMissing = errors.New("ebay: product ID parameter and/or product ID type are missing")
+	ErrProductIDMissing = errors.New("ebay: product ID parameter or product ID type are missing")
 
 	maxCategoryIDs = 3
 
@@ -911,7 +911,7 @@ type productID struct {
 func (fp *findItemsByProductParams) validateParams(params map[string]string) error {
 	productIDType, ptOk := params["productId.@type"]
 	productValue, pOk := params["productId"]
-	if !ptOk && !pOk {
+	if !ptOk || !pOk {
 		return ErrProductIDMissing
 	}
 	p := productID{idType: productIDType, value: productValue}
@@ -1105,7 +1105,7 @@ func (p *productID) processProductID() error {
 		if len(p.value) != upcLen {
 			return ErrInvalidUPCLength
 		}
-		if !isValidUPC(p.value) {
+		if !isValidEAN(p.value) {
 			return ErrInvalidUPC
 		}
 	case ean:
@@ -1164,30 +1164,6 @@ func isDigit(digit int) bool {
 	return digit >= 0 && digit <= 9
 }
 
-func isValidUPC(upc string) bool {
-	const altMultiplier = 3
-	var sum int
-	for i, r := range upc[:len(upc)-1] {
-		digit := int(r - '0')
-		if !isDigit(digit) {
-			return false
-		}
-
-		if i%2 == 0 {
-			sum += digit
-		} else {
-			sum += digit * altMultiplier
-		}
-	}
-
-	checkDigit := int(upc[len(upc)-1] - '0')
-	if !isDigit(checkDigit) {
-		return false
-	}
-
-	return (sum+checkDigit)%10 == 0
-}
-
 func isValidEAN(ean string) bool {
 	const altMultiplier = 3
 	var sum int
@@ -1199,7 +1175,8 @@ func isValidEAN(ean string) bool {
 
 		switch {
 		case len(ean) == eanShortLen && i%2 == 0,
-			len(ean) == eanLongLen && i%2 != 0:
+			len(ean) == eanLongLen && i%2 != 0,
+			len(ean) == upcLen && i%2 == 0:
 			sum += digit * altMultiplier
 		default:
 			sum += digit

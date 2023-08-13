@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -141,10 +142,14 @@ var (
 	findItemsAdvancedResp = ebay.FindItemsAdvancedResponse{
 		ItemsResponse: itemsResp,
 	}
+	findItemsByProductResp = ebay.FindItemsByProductResponse{
+		ItemsResponse: itemsResp,
+	}
 
 	findItemsByCategories = "FindItemsByCategories"
 	findItemsByKeywords   = "FindItemsByKeywords"
 	findItemsAdvanced     = "FindItemsAdvanced"
+	findItemsByProduct    = "FindItemsByProduct"
 
 	categoryIDTCs = []findItemsTestCase{
 		{
@@ -439,20 +444,6 @@ var (
 			Params: map[string]string{},
 		},
 		{
-			Name: "returns error if params contains non-numbered aspectFilter but not ",
-			Params: map[string]string{
-				"aspectFilter.aspectName":      "Size",
-				"aspectFilter.aspectValueName": "10",
-			},
-		},
-		{
-			Name: "returns error if params contains numbered aspectFilter but not ",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":      "Size",
-				"aspectFilter(0).aspectValueName": "10",
-			},
-		},
-		{
 			Name: "returns error if params contains non-numbered itemFilter but not ",
 			Params: map[string]string{
 				"itemFilter.name":  "BestOfferOnly",
@@ -495,134 +486,25 @@ var (
 			Params: map[string]string{"sortOrder": "BestMatch"},
 		},
 	}
-
-	easternTime = time.FixedZone("EasternTime", -5*60*60)
-	testCases   = []findItemsTestCase{
+	aspectFilterMissingSearchParamTCs = []findItemsTestCase{
 		{
-			Name: "can find items by aspectFilter.aspectName, aspectValueName",
+			Name: "returns error if params contains non-numbered aspectFilter but not ",
 			Params: map[string]string{
 				"aspectFilter.aspectName":      "Size",
 				"aspectFilter.aspectValueName": "10",
 			},
 		},
 		{
-			Name: "can find items by aspectFilter.aspectName, aspectValueName(0), aspectValueName(1)",
-			Params: map[string]string{
-				"aspectFilter.aspectName":         "Size",
-				"aspectFilter.aspectValueName(0)": "10",
-				"aspectFilter.aspectValueName(1)": "11",
-			},
-		},
-		{
-			Name:          "returns error if params contains aspectFilter.aspectName but not aspectValueName",
-			Params:        map[string]string{"aspectFilter.aspectName": "Size"},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
-		},
-		{
-			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
-			Name: "returns error if params contains aspectFilter.aspectName, aspectValueName(1)",
-			Params: map[string]string{
-				"aspectFilter.aspectName":         "Size",
-				"aspectFilter.aspectValueName(1)": "10",
-			},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
-		},
-		{
-			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
-			// Therefore, only aspectFilter.aspectValueName is considered and this becomes a non-numbered aspectFilter.
-			Name: "can find items by aspectFilter.aspectName, aspectValueName, aspectValueName(1)",
-			Params: map[string]string{
-				"aspectFilter.aspectName":         "Size",
-				"aspectFilter.aspectValueName":    "10",
-				"aspectFilter.aspectValueName(1)": "11",
-			},
-		},
-		{
-			// The aspectFilter will be ignored if no aspectFilter.aspectName param is found before other aspectFilter params.
-			Name:   "can find items if params contains aspectFilter.aspectValueName only",
-			Params: map[string]string{"aspectFilter.aspectValueName": "10"},
-		},
-		{
-			Name: "returns error if params contain numbered and non-numbered aspectFilter syntax types",
-			Params: map[string]string{
-				"aspectFilter.aspectName":         "Size",
-				"aspectFilter.aspectValueName":    "10",
-				"aspectFilter(0).aspectName":      "Running",
-				"aspectFilter(0).aspectValueName": "true",
-			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
-		},
-		{
-			Name: "returns error if params contain aspectFilter.aspectName, aspectValueName, aspectValueName(0)",
-			Params: map[string]string{
-				"aspectFilter.aspectName":         "Size",
-				"aspectFilter.aspectValueName":    "10",
-				"aspectFilter.aspectValueName(0)": "11",
-			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
-		},
-		{
-			Name: "returns error if params contain aspectFilter(0).aspectName, aspectValueName, aspectValueName(0)",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":         "Size",
-				"aspectFilter(0).aspectValueName":    "10",
-				"aspectFilter(0).aspectValueName(0)": "11",
-			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
-		},
-		{
-			Name: "can find items by aspectFilter(0).aspectName, aspectValueName",
+			Name: "returns error if params contains numbered aspectFilter but not ",
 			Params: map[string]string{
 				"aspectFilter(0).aspectName":      "Size",
 				"aspectFilter(0).aspectValueName": "10",
 			},
 		},
-		{
-			Name: "can find items by aspectFilter(0).aspectName, aspectValueName(0), aspectValueName(1)",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":         "Size",
-				"aspectFilter(0).aspectValueName(0)": "10",
-				"aspectFilter(0).aspectValueName(1)": "11",
-			},
-		},
-		{
-			Name: "can find items by 2 numbered aspectFilters",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":      "Size",
-				"aspectFilter(0).aspectValueName": "10",
-				"aspectFilter(1).aspectName":      "Running",
-				"aspectFilter(1).aspectValueName": "true",
-			},
-		},
-		{
-			Name:          "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
-			Params:        map[string]string{"aspectFilter(0).aspectName": "Size"},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
-		},
-		{
-			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
-			Name: "returns error if params contains aspectFilter(0).aspectName, aspectValueName(1)",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":         "Size",
-				"aspectFilter(0).aspectValueName(1)": "10",
-			},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
-		},
-		{
-			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
-			// Therefore, only aspectFilter(0).aspectValueName is considered and this becomes a numbered aspectFilter.
-			Name: "can find items by aspectFilter(0).aspectName, aspectValueName aspectValueName(1)",
-			Params: map[string]string{
-				"aspectFilter(0).aspectName":         "Size",
-				"aspectFilter(0).aspectValueName":    "10",
-				"aspectFilter(0).aspectValueName(1)": "11",
-			},
-		},
-		{
-			// The aspectFilter will be ignored if no aspectFilter(0).aspectName param is found before other aspectFilter params.
-			Name:   "can find items if params contains aspectFilter(0).aspectValueName only",
-			Params: map[string]string{"aspectFilter(0).aspectValueName": "10"},
-		},
+	}
+
+	easternTime = time.FixedZone("EasternTime", -5*60*60)
+	testCases   = []findItemsTestCase{
 		{
 			Name: "can find items by itemFilter.name, value",
 			Params: map[string]string{
@@ -3759,6 +3641,133 @@ var (
 			ExpectedError: ebay.ErrUnsupportedSortOrderType,
 		},
 	}
+	aspectFilterTestCases = []findItemsTestCase{
+		{
+			Name: "can find items by aspectFilter.aspectName, aspectValueName",
+			Params: map[string]string{
+				"aspectFilter.aspectName":      "Size",
+				"aspectFilter.aspectValueName": "10",
+			},
+		},
+		{
+			Name: "can find items by aspectFilter.aspectName, aspectValueName(0), aspectValueName(1)",
+			Params: map[string]string{
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName(0)": "10",
+				"aspectFilter.aspectValueName(1)": "11",
+			},
+		},
+		{
+			Name:          "returns error if params contains aspectFilter.aspectName but not aspectValueName",
+			Params:        map[string]string{"aspectFilter.aspectName": "Size"},
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
+		},
+		{
+			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains aspectFilter.aspectName, aspectValueName(1)",
+			Params: map[string]string{
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName(1)": "10",
+			},
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
+		},
+		{
+			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
+			// Therefore, only aspectFilter.aspectValueName is considered and this becomes a non-numbered aspectFilter.
+			Name: "can find items by aspectFilter.aspectName, aspectValueName, aspectValueName(1)",
+			Params: map[string]string{
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName":    "10",
+				"aspectFilter.aspectValueName(1)": "11",
+			},
+		},
+		{
+			// The aspectFilter will be ignored if no aspectFilter.aspectName param is found before other aspectFilter params.
+			Name:   "can find items if params contains aspectFilter.aspectValueName only",
+			Params: map[string]string{"aspectFilter.aspectValueName": "10"},
+		},
+		{
+			Name: "returns error if params contain numbered and non-numbered aspectFilter syntax types",
+			Params: map[string]string{
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName":    "10",
+				"aspectFilter(0).aspectName":      "Running",
+				"aspectFilter(0).aspectValueName": "true",
+			},
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name: "returns error if params contain aspectFilter.aspectName, aspectValueName, aspectValueName(0)",
+			Params: map[string]string{
+				"aspectFilter.aspectName":         "Size",
+				"aspectFilter.aspectValueName":    "10",
+				"aspectFilter.aspectValueName(0)": "11",
+			},
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name: "returns error if params contain aspectFilter(0).aspectName, aspectValueName, aspectValueName(0)",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName":    "10",
+				"aspectFilter(0).aspectValueName(0)": "11",
+			},
+			ExpectedError: ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name: "can find items by aspectFilter(0).aspectName, aspectValueName",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+			},
+		},
+		{
+			Name: "can find items by aspectFilter(0).aspectName, aspectValueName(0), aspectValueName(1)",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName(0)": "10",
+				"aspectFilter(0).aspectValueName(1)": "11",
+			},
+		},
+		{
+			Name: "can find items by 2 numbered aspectFilters",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":      "Size",
+				"aspectFilter(0).aspectValueName": "10",
+				"aspectFilter(1).aspectName":      "Running",
+				"aspectFilter(1).aspectValueName": "true",
+			},
+		},
+		{
+			Name:          "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
+			Params:        map[string]string{"aspectFilter(0).aspectName": "Size"},
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
+		},
+		{
+			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
+			Name: "returns error if params contains aspectFilter(0).aspectName, aspectValueName(1)",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName(1)": "10",
+			},
+			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
+		},
+		{
+			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
+			// Therefore, only aspectFilter(0).aspectValueName is considered and this becomes a numbered aspectFilter.
+			Name: "can find items by aspectFilter(0).aspectName, aspectValueName aspectValueName(1)",
+			Params: map[string]string{
+				"aspectFilter(0).aspectName":         "Size",
+				"aspectFilter(0).aspectValueName":    "10",
+				"aspectFilter(0).aspectValueName(1)": "11",
+			},
+		},
+		{
+			// The aspectFilter will be ignored if no aspectFilter(0).aspectName param is found before other aspectFilter params.
+			Name:   "can find items if params contains aspectFilter(0).aspectValueName only",
+			Params: map[string]string{"aspectFilter(0).aspectValueName": "10"},
+		},
+	}
 )
 
 type MockFindingClient struct {
@@ -3877,44 +3886,455 @@ func TestFindItemsAdvanced(t *testing.T) {
 	testFindItems(t, params, findItemsAdvanced, findItemsAdvancedResp, combinedTCs)
 }
 
+func TestFindItemsByProduct(t *testing.T) {
+	t.Parallel()
+	params := map[string]string{
+		"productId.@type": "ReferenceID",
+		"productId":       "123",
+	}
+	findItemsByProductTCs := []findItemsTestCase{
+		{
+			Name:          "returns error if params contains productId but not productId.@type",
+			Params:        map[string]string{"productId": "123"},
+			ExpectedError: ebay.ErrProductIDMissing,
+		},
+		{
+			Name:          "returns error if params contains productId.@type but not productId",
+			Params:        map[string]string{"productId.@type": "ReferenceID"},
+			ExpectedError: ebay.ErrProductIDMissing,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UnsupportedProductID, productId=1",
+			Params: map[string]string{
+				"productId.@type": "UnsupportedProductID",
+				"productId":       "1",
+			},
+			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedProductIDType, "UnsupportedProductID"),
+		},
+		{
+			Name: "can find items if params contains productId.@type=ReferenceID, productId=1",
+			Params: map[string]string{
+				"productId.@type": "ReferenceID",
+				"productId":       "1",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ReferenceID, productId=123",
+			Params: map[string]string{
+				"productId.@type": "ReferenceID",
+				"productId":       "123",
+			},
+		},
+		{
+			Name:          "returns error if params contains productId.@type=ReferenceID, empty productId",
+			Params:        map[string]string{"productId.@type": "ReferenceID", "productId": ""},
+			ExpectedError: ebay.ErrInvalidProductIDLength,
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=0131103628",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "0131103628",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=954911659X",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "954911659X",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=802510897X",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "802510897X",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=7111075897",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "7111075897",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=986154142X",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "986154142X",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780131101630",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131101630",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780131103627",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131103627",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780133086249",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780133086249",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9789332549449",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9789332549449",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=ISBN, productId=9780131158177",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131158177",
+			},
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 9",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 11",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "11111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 12",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of length 14",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "11111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidISBNLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-10 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "886154142X",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-13 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "8780131158177",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-10 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9861541429",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-13 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "ISBN",
+				"productId":       "9780131158178",
+			},
+			ExpectedError: ebay.ErrInvalidISBN,
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=036000291452",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "036000291452",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=194253378907",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253378907",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=753575979881",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "753575979881",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=194253402220",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253402220",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=UPC, productId=194253407980",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253407980",
+			},
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of length 11",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "11111111111",
+			},
+			ExpectedError: ebay.ErrInvalidUPCLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of length 13",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "1111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidUPCLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of invalid UPC (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "294253407980",
+			},
+			ExpectedError: ebay.ErrInvalidUPC,
+		},
+		{
+			Name: "returns error if params contains productId.@type=UPC, productId of invalid UPC (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "UPC",
+				"productId":       "194253407981",
+			},
+			ExpectedError: ebay.ErrInvalidUPC,
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=73513537",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "73513537",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=96385074",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "96385074",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=29033706",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "29033706",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=40170725",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "40170725",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=40123455",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "40123455",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=4006381333931",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "4006381333931",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253373933",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253373933",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253374398",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253374398",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253381099",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253381099",
+			},
+		},
+		{
+			Name: "can find items if params contains productId.@type=EAN, productId=0194253373476",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253373476",
+			},
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 7",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "1111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 9",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 10",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "1111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 11",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "11111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 12",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of length 14",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "11111111111111",
+			},
+			ExpectedError: ebay.ErrInvalidEANLength,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-8 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "50123455",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-13 (invalid first digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "1194253373476",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-8 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "40123456",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+		{
+			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-13 (invalid last digit)",
+			Params: map[string]string{
+				"productId.@type": "EAN",
+				"productId":       "0194253373477",
+			},
+			ExpectedError: ebay.ErrInvalidEAN,
+		},
+	}
+
+	combinedTCs := combineTestCases(t, findItemsByProduct, findItemsByProductTCs)
+	testFindItems(t, params, findItemsByProduct, findItemsByProductResp, combinedTCs)
+}
+
 func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCase) []findItemsTestCase {
 	t.Helper()
-	var searchKey, searchValue, missingDesc string
+	var missingDesc string
 	var searchErr error
+	params := make(map[string]string)
 
 	switch findMethod {
 	case findItemsByCategories:
-		searchKey = "categoryId"
-		searchValue = "12345"
-		missingDesc = searchKey
+		missingDesc = "categoryId"
 		searchErr = ebay.ErrCategoryIDMissing
+		params["categoryId"] = "12345"
 	case findItemsByKeywords:
-		searchKey = "keywords"
-		searchValue = "marshmallows"
-		missingDesc = searchKey
+		missingDesc = "keywords"
 		searchErr = ebay.ErrKeywordsMissing
+		params["keywords"] = "marshmallows"
 	case findItemsAdvanced:
-		searchKey = "categoryId"
-		searchValue = "12345"
 		missingDesc = "categoryId or keywords"
 		searchErr = ebay.ErrCategoryIDKeywordsMissing
+		params["categoryId"] = "12345"
+	case findItemsByProduct:
+		missingDesc = "productId"
+		searchErr = ebay.ErrProductIDMissing
+		params["productId.@type"] = "ReferenceID"
+		params["productId"] = "123"
 	default:
 		t.Errorf("Unsupported findMethod: %s", findMethod)
 
 		return nil
 	}
 
-	missingParamTCs := make([]findItemsTestCase, len(missingSearchParamTCs))
-	copy(missingParamTCs, missingSearchParamTCs)
+	missingParamTCs := append([]findItemsTestCase{}, missingSearchParamTCs...)
+	if findMethod != findItemsByProduct {
+		missingParamTCs = append(missingParamTCs, aspectFilterMissingSearchParamTCs...)
+	}
 	for i := range missingParamTCs {
 		missingParamTCs[i].Name += missingDesc
 		missingParamTCs[i].ExpectedError = searchErr
 	}
 
-	commonTCs := make([]findItemsTestCase, len(testCases))
-	copy(commonTCs, testCases)
+	commonTCs := append([]findItemsTestCase{}, testCases...)
+	if findMethod != findItemsByProduct {
+		commonTCs = append(commonTCs, aspectFilterTestCases...)
+	}
 	for i := range commonTCs {
-		commonTCs[i].Params[searchKey] = searchValue
+		paramsCopy := make(map[string]string)
+		maps.Copy(paramsCopy, params)
+		maps.Copy(paramsCopy, commonTCs[i].Params)
+		commonTCs[i].Params = paramsCopy
 	}
 
 	var combinedTCs []findItemsTestCase
@@ -3955,6 +4375,8 @@ func testFindItems(
 			resp, err = svr.FindItemsByKeywords(params, appID)
 		case findItemsAdvanced:
 			resp, err = svr.FindItemsAdvanced(params, appID)
+		case findItemsByProduct:
+			resp, err = svr.FindItemsByProduct(params, appID)
 		default:
 			t.Errorf("Unsupported findMethod: %s", findMethod)
 
@@ -3984,6 +4406,8 @@ func testFindItems(
 			_, err = svr.FindItemsByKeywords(params, appID)
 		case findItemsAdvanced:
 			_, err = svr.FindItemsAdvanced(params, appID)
+		case findItemsByProduct:
+			_, err = svr.FindItemsByProduct(params, appID)
 		default:
 			t.Errorf("Unsupported findMethod: %s", findMethod)
 		}
@@ -4056,6 +4480,8 @@ func testFindItems(
 				_, err = svr.FindItemsByKeywords(params, appID)
 			case findItemsAdvanced:
 				_, err = svr.FindItemsAdvanced(params, appID)
+			case findItemsByProduct:
+				_, err = svr.FindItemsByProduct(params, appID)
 			default:
 				t.Errorf("Unsupported findMethod: %s", findMethod)
 			}
@@ -4098,6 +4524,10 @@ func testFindItems(
 			_, err = svr.FindItemsAdvanced(params, appID)
 			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
 				ebay.ErrDecodeAPIResponse, findItemsAdvanced)
+		case findItemsByProduct:
+			_, err = svr.FindItemsByProduct(params, appID)
+			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
+				ebay.ErrDecodeAPIResponse, findItemsByProduct)
 		default:
 			t.Errorf("Unsupported findMethod: %s", findMethod)
 		}
@@ -4134,6 +4564,8 @@ func testFindItems(
 				resp, err = svr.FindItemsByKeywords(testCase.Params, appID)
 			case findItemsAdvanced:
 				resp, err = svr.FindItemsAdvanced(testCase.Params, appID)
+			case findItemsByProduct:
+				resp, err = svr.FindItemsByProduct(testCase.Params, appID)
 			default:
 				t.Errorf("Unsupported findMethod: %s", findMethod)
 

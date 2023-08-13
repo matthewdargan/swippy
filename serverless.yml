@@ -38,6 +38,16 @@ functions:
       STAGE: ${self:provider.stage}
     role: ebayFindFunctionRole
 
+  ebay-find-by-product:
+    handler: bin/ebay-find-by-product
+    events:
+      - httpApi:
+          path: /ebay-find-by-product
+          method: get
+    environment:
+      STAGE: ${self:provider.stage}
+    role: ebayFindFunctionRole
+
 resources:
   Resources:
     ebayFindFunctionRole:

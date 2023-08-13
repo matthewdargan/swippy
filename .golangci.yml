@@ -54,8 +54,4 @@ issues:
     - path: ebay/finding_test.go
       text: "calculated cyclomatic complexity for function combineTestCases"
     - path: ebay/finding_test.go
-      text: "Function 'testFindItems' is too long"
-    - path: ebay/finding_test.go
-      text: "calculated cyclomatic complexity for function testFindItems"
-    - path: ebay/finding_test.go
-      text: "Function name: testFindItems, Cyclomatic Complexity"
+      text: "testFindItems"

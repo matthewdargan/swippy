@@ -33,6 +33,11 @@ var (
 	// are missing in a findItemsByProduct request.
 	ErrProductIDMissing = errors.New("ebay: product ID parameter or product ID type are missing")
 
+	// ErrCategoryIDKeywordsStoreNameMissing is returned when the 'categoryId', 'keywords', and 'storeName' parameters
+	// are missing in a findItemsIneBayStores request.
+	ErrCategoryIDKeywordsStoreNameMissing = errors.New(
+		"ebay: category ID, keywords, and store name parameters are missing")
+
 	maxCategoryIDs = 3
 
 	// ErrMaxCategoryIDs is returned when the 'categoryId' parameter contains more category IDs than the maximum allowed.
@@ -98,6 +103,12 @@ var (
 
 	// ErrUnsupportedProductIDType is returned when the 'productId.type' parameter has an unsupported type.
 	ErrUnsupportedProductIDType = errors.New("ebay: unsupported product ID type")
+
+	// ErrInvalidStoreNameLength is returned when the 'storeName' parameter is empty.
+	ErrInvalidStoreNameLength = errors.New("ebay: invalid store name length")
+
+	// ErrInvalidStoreNameAmpersand is returned when the 'storeName' parameter contains unescaped '&' characters.
+	ErrInvalidStoreNameAmpersand = errors.New("ebay: storeName contains unescaped '&' characters")
 
 	// ErrInvalidFilterSyntax is returned when both syntax types for filters are used in the params.
 	ErrInvalidFilterSyntax = errors.New("ebay: invalid filter syntax: both syntax types are present")
@@ -378,6 +389,24 @@ func (svr *FindingServer) FindItemsByProduct(
 	itemsResp, err := svr.parseFindItemsByProductResponse(resp)
 	if err != nil {
 		return FindItemsByProductResponse{}, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
+	}
+
+	return itemsResp, nil
+}
+
+// FindItemsInEBayStores searches the eBay Finding API using the provided category, keywords, and/or store name,
+// additional parameters, and a valid eBay application ID.
+func (svr *FindingServer) FindItemsInEBayStores(
+	params map[string]string, appID string,
+) (FindItemsInEBayStoresResponse, error) {
+	resp, err := svr.requestItems(params, &findItemsInEBayStoresParams{}, appID)
+	if err != nil {
+		return FindItemsInEBayStoresResponse{}, err
+	}
+
+	itemsResp, err := svr.parseFindItemsInEBayStoresResponse(resp)
+	if err != nil {
+		return FindItemsInEBayStoresResponse{}, &APIError{Err: err.Error(), StatusCode: http.StatusInternalServerError}
 	}
 
 	return itemsResp, nil
@@ -1029,6 +1058,179 @@ func (fp *findItemsByProductParams) createRequest(appID string) (*http.Request, 
 	return req, nil
 }
 
+type findItemsInEBayStoresParams struct {
+	aspectFilters   []aspectFilter
+	categoryIDs     *string
+	itemFilters     []itemFilter
+	keywords        *string
+	outputSelectors []string
+	storeName       *string
+	affiliate       *affiliate
+	buyerPostalCode *string
+	paginationInput *paginationInput
+	sortOrder       *string
+}
+
+func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) error {
+	categoryID, cOk := params["categoryId"]
+	_, kwOk := params["keywords"]
+	storeName, ok := params["storeName"]
+	if !cOk && !kwOk && !ok {
+		return ErrCategoryIDKeywordsStoreNameMissing
+	}
+
+	if cOk {
+		err := processCategoryIDs(categoryID)
+		if err != nil {
+			return err
+		}
+		fp.categoryIDs = &categoryID
+	}
+	if kwOk {
+		keywords, err := processKeywords(params)
+		if err != nil {
+			return err
+		}
+		fp.keywords = &keywords
+	}
+	if ok {
+		err := processStoreName(storeName)
+		if err != nil {
+			return err
+		}
+		fp.storeName = &storeName
+	}
+
+	aspectFilters, err := processAspectFilters(params)
+	if err != nil {
+		return err
+	}
+	fp.aspectFilters = aspectFilters
+
+	itemFilters, err := processItemFilters(params)
+	if err != nil {
+		return err
+	}
+	fp.itemFilters = itemFilters
+
+	outputSelectors, err := processOutputSelectors(params)
+	if err != nil {
+		return err
+	}
+	fp.outputSelectors = outputSelectors
+
+	affiliate, err := processAffiliate(params)
+	if err != nil {
+		return err
+	}
+	fp.affiliate = affiliate
+
+	buyerPostalCode, ok := params["buyerPostalCode"]
+	if ok {
+		if !isValidPostalCode(buyerPostalCode) {
+			return ErrInvalidPostalCode
+		}
+		fp.buyerPostalCode = &buyerPostalCode
+	}
+
+	paginationInput, err := processPaginationInput(params)
+	if err != nil {
+		return err
+	}
+	fp.paginationInput = paginationInput
+
+	sortOrder, ok := params["sortOrder"]
+	if ok {
+		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
+		if err != nil {
+			return err
+		}
+		fp.sortOrder = &sortOrder
+	}
+
+	return nil
+}
+
+func (fp *findItemsInEBayStoresParams) createRequest(appID string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, findingURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ebay: %w", err)
+	}
+
+	qry := req.URL.Query()
+	qry.Add("OPERATION-NAME", findItemsAdvancedOperationName)
+	qry.Add("SERVICE-VERSION", findingServiceVersion)
+	qry.Add("SECURITY-APPNAME", appID)
+	qry.Add("RESPONSE-DATA-FORMAT", findingResponseDataFormat)
+
+	for i, f := range fp.aspectFilters {
+		qry.Add(fmt.Sprintf("aspectFilter(%d).aspectName", i), f.aspectName)
+		for j, v := range f.aspectValueNames {
+			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", i, j), v)
+		}
+	}
+
+	if fp.categoryIDs != nil {
+		qry.Add("categoryId", *fp.categoryIDs)
+	}
+
+	for i, f := range fp.itemFilters {
+		qry.Add(fmt.Sprintf("itemFilter(%d).name", i), f.name)
+		for j, v := range f.values {
+			qry.Add(fmt.Sprintf("itemFilter(%d).value(%d)", i, j), v)
+		}
+
+		if f.paramName != nil && f.paramValue != nil {
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramName", i), *f.paramName)
+			qry.Add(fmt.Sprintf("itemFilter(%d).paramValue", i), *f.paramValue)
+		}
+	}
+
+	if fp.keywords != nil {
+		qry.Add("keywords", *fp.keywords)
+	}
+
+	for i := range fp.outputSelectors {
+		qry.Add(fmt.Sprintf("outputSelector(%d)", i), fp.outputSelectors[i])
+	}
+
+	if fp.storeName != nil {
+		qry.Add("storeName", *fp.storeName)
+	}
+	if fp.affiliate != nil {
+		if fp.affiliate.customID != nil {
+			qry.Add("affiliate.customId", *fp.affiliate.customID)
+		}
+		if fp.affiliate.geoTargeting != nil {
+			qry.Add("affiliate.geoTargeting", *fp.affiliate.geoTargeting)
+		}
+		if fp.affiliate.networkID != nil {
+			qry.Add("affiliate.networkId", *fp.affiliate.networkID)
+		}
+		if fp.affiliate.trackingID != nil {
+			qry.Add("affiliate.trackingId", *fp.affiliate.trackingID)
+		}
+	}
+	if fp.buyerPostalCode != nil {
+		qry.Add("buyerPostalCode", *fp.buyerPostalCode)
+	}
+	if fp.paginationInput != nil {
+		if fp.paginationInput.entriesPerPage != nil {
+			qry.Add("paginationInput.entriesPerPage", *fp.paginationInput.entriesPerPage)
+		}
+		if fp.paginationInput.pageNumber != nil {
+			qry.Add("paginationInput.pageNumber", *fp.paginationInput.pageNumber)
+		}
+	}
+	if fp.sortOrder != nil {
+		qry.Add("sortOrder", *fp.sortOrder)
+	}
+
+	req.URL.RawQuery = qry.Encode()
+
+	return req, nil
+}
+
 func processCategoryIDs(categoryID string) error {
 	if categoryID == "" {
 		return ErrInvalidCategoryIDLength
@@ -1189,6 +1391,18 @@ func isValidEAN(ean string) bool {
 	}
 
 	return (sum+checkDigit)%10 == 0
+}
+
+func processStoreName(storeName string) error {
+	if storeName == "" {
+		return ErrInvalidStoreNameLength
+	}
+
+	if strings.Contains(storeName, "&") && !strings.Contains(storeName, "&amp;") {
+		return ErrInvalidStoreNameAmpersand
+	}
+
+	return nil
 }
 
 func processAspectFilters(params map[string]string) ([]aspectFilter, error) {
@@ -2086,6 +2300,20 @@ func (svr *FindingServer) parseFindItemsByProductResponse(resp *http.Response) (
 	err := json.NewDecoder(resp.Body).Decode(&itemsResp)
 	if err != nil {
 		return FindItemsByProductResponse{}, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
+	}
+
+	return itemsResp, nil
+}
+
+func (svr *FindingServer) parseFindItemsInEBayStoresResponse(
+	resp *http.Response,
+) (FindItemsInEBayStoresResponse, error) {
+	defer resp.Body.Close()
+
+	var itemsResp FindItemsInEBayStoresResponse
+	err := json.NewDecoder(resp.Body).Decode(&itemsResp)
+	if err != nil {
+		return FindItemsInEBayStoresResponse{}, fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err)
 	}
 
 	return itemsResp, nil

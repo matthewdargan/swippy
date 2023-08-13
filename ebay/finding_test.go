@@ -145,11 +145,15 @@ var (
 	findItemsByProductResp = ebay.FindItemsByProductResponse{
 		ItemsResponse: itemsResp,
 	}
+	findItemsInEBayStoresResp = ebay.FindItemsInEBayStoresResponse{
+		ItemsResponse: itemsResp,
+	}
 
 	findItemsByCategories = "FindItemsByCategories"
 	findItemsByKeywords   = "FindItemsByKeywords"
 	findItemsAdvanced     = "FindItemsAdvanced"
 	findItemsByProduct    = "FindItemsByProduct"
+	findItemsInEBayStores = "FindItemsInEBayStores"
 
 	categoryIDTCs = []findItemsTestCase{
 		{
@@ -434,6 +438,58 @@ var (
 			Name: "returns error if params contains 2 asterisk keyword groups, 1 keyword of length 99",
 			Params: map[string]string{
 				"keywords": "ap* " + generateStringWithLen(99, false) + "*",
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+	}
+	categoryIDKeywordsTCs = []findItemsTestCase{
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(2, true),
+			},
+		},
+		{
+			Name: "can find items if params contains 2 categoryIds of length 1, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1,2",
+				"keywords":   generateStringWithLen(2, true),
+			},
+		},
+		{
+			Name: "returns error if params contains empty categoryId, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "",
+				"keywords":   generateStringWithLen(2, true),
+			},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name: "returns error if params contains 4 categoryIds, keywords of length 2",
+			Params: map[string]string{
+				"categoryId": "1,2,3,4",
+				"keywords":   generateStringWithLen(2, true),
+			},
+			ExpectedError: ebay.ErrMaxCategoryIDs,
+		},
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, 2 keywords of length 1",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(1, false) + "," + generateStringWithLen(1, false),
+			},
+		},
+		{
+			Name:          "returns error if params contains 1 categoryId of length 1, empty keywords",
+			Params:        map[string]string{"categoryId": "1", "keywords": ""},
+			ExpectedError: ebay.ErrInvalidKeywordsLength,
+		},
+		{
+			Name: "returns error if params contains 1 categoryId of length 1, 1 keyword of length 99",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(99, false),
 			},
 			ExpectedError: ebay.ErrInvalidKeywordLength,
 		},
@@ -3803,56 +3859,6 @@ func TestFindItemsAdvanced(t *testing.T) {
 	params := map[string]string{"categoryId": "12345"}
 	findItemsAdvancedTCs := []findItemsTestCase{
 		{
-			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2",
-			Params: map[string]string{
-				"categoryId": "1",
-				"keywords":   generateStringWithLen(2, true),
-			},
-		},
-		{
-			Name: "can find items if params contains 2 categoryIds of length 1, keywords of length 2",
-			Params: map[string]string{
-				"categoryId": "1,2",
-				"keywords":   generateStringWithLen(2, true),
-			},
-		},
-		{
-			Name: "returns error if params contains empty categoryId, keywords of length 2",
-			Params: map[string]string{
-				"categoryId": "",
-				"keywords":   generateStringWithLen(2, true),
-			},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
-		},
-		{
-			Name: "returns error if params contains 4 categoryIds, keywords of length 2",
-			Params: map[string]string{
-				"categoryId": "1,2,3,4",
-				"keywords":   generateStringWithLen(2, true),
-			},
-			ExpectedError: ebay.ErrMaxCategoryIDs,
-		},
-		{
-			Name: "can find items if params contains 1 categoryId of length 1, 2 keywords of length 1",
-			Params: map[string]string{
-				"categoryId": "1",
-				"keywords":   generateStringWithLen(1, false) + "," + generateStringWithLen(1, false),
-			},
-		},
-		{
-			Name:          "returns error if params contains 1 categoryId of length 1, empty keywords",
-			Params:        map[string]string{"categoryId": "1", "keywords": ""},
-			ExpectedError: ebay.ErrInvalidKeywordsLength,
-		},
-		{
-			Name: "returns error if params contains 1 categoryId of length 1, 1 keyword of length 99",
-			Params: map[string]string{
-				"categoryId": "1",
-				"keywords":   generateStringWithLen(99, false),
-			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
-		},
-		{
 			Name: "can find items if params contains descriptionSearch=true",
 			Params: map[string]string{
 				"categoryId":        "1",
@@ -3882,7 +3888,7 @@ func TestFindItemsAdvanced(t *testing.T) {
 	}
 
 	combinedTCs := combineTestCases(
-		t, findItemsAdvanced, categoryIDTCs, keywordsTCs, findItemsAdvancedTCs)
+		t, findItemsAdvanced, categoryIDTCs, keywordsTCs, categoryIDKeywordsTCs, findItemsAdvancedTCs)
 	testFindItems(t, params, findItemsAdvanced, findItemsAdvancedResp, combinedTCs)
 }
 
@@ -4287,6 +4293,105 @@ func TestFindItemsByProduct(t *testing.T) {
 	testFindItems(t, params, findItemsByProduct, findItemsByProductResp, combinedTCs)
 }
 
+func TestFindItemsInEBayStores(t *testing.T) {
+	t.Parallel()
+	params := map[string]string{"storeName": "Supplytronics"}
+	findItemsInEBayStoresTCs := []findItemsTestCase{
+		{
+			Name:   "can find items if params contains storeName=a",
+			Params: map[string]string{"storeName": "a"},
+		},
+		{
+			Name:          "returns error if params contains empty storeName",
+			Params:        map[string]string{"storeName": ""},
+			ExpectedError: ebay.ErrInvalidStoreNameLength,
+		},
+		{
+			Name:   "can find items if params contains storeName=Ben &amp; Jerry's",
+			Params: map[string]string{"storeName": "Ben &amp; Jerry's"},
+		},
+		{
+			Name:          "returns error if params contains storeName=Ben & Jerry's",
+			Params:        map[string]string{"storeName": "Ben & Jerry's"},
+			ExpectedError: ebay.ErrInvalidStoreNameAmpersand,
+		},
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2, storeName of length 1",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(2, true),
+				"storeName":  "a",
+			},
+		},
+		{
+			Name: "returns error if params contains empty categoryId, keywords of length 2, storeName of length 1",
+			Params: map[string]string{
+				"categoryId": "",
+				"keywords":   generateStringWithLen(2, true),
+				"storeName":  "a",
+			},
+			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+		},
+		{
+			Name: "returns error if params contains 4 categoryIds, keywords of length 2, storeName of length 1",
+			Params: map[string]string{
+				"categoryId": "1,2,3,4",
+				"keywords":   generateStringWithLen(2, true),
+				"storeName":  "a",
+			},
+			ExpectedError: ebay.ErrMaxCategoryIDs,
+		},
+		{
+			Name: "returns error if params contains 1 categoryId of length 1, empty keywords, storeName of length 1",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   "",
+				"storeName":  "a",
+			},
+			ExpectedError: ebay.ErrInvalidKeywordsLength,
+		},
+		{
+			Name: "returns error if params contains 1 categoryId of length 1, 1 keyword of length 99, storeName of length 1",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(99, false),
+				"storeName":  "a",
+			},
+			ExpectedError: ebay.ErrInvalidKeywordLength,
+		},
+		{
+			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2, &-escaped storeName",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(2, true),
+				"storeName":  "Ben &amp; Jerry's",
+			},
+		},
+		{
+			Name: "returns error if params contains 1 categoryId of length 1, keywords of length 2, empty storeName",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(2, true),
+				"storeName":  "",
+			},
+			ExpectedError: ebay.ErrInvalidStoreNameLength,
+		},
+		{
+			Name: "returns error if params contains 1 categoryId of length 1, keywords of length 2, storeName=Ben & Jerry's",
+			Params: map[string]string{
+				"categoryId": "1",
+				"keywords":   generateStringWithLen(2, true),
+				"storeName":  "Ben & Jerry's",
+			},
+			ExpectedError: ebay.ErrInvalidStoreNameAmpersand,
+		},
+	}
+
+	combinedTCs := combineTestCases(
+		t, findItemsInEBayStores, categoryIDTCs, keywordsTCs, categoryIDKeywordsTCs, findItemsInEBayStoresTCs)
+	testFindItems(t, params, findItemsInEBayStores, findItemsInEBayStoresResp, combinedTCs)
+}
+
 func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCase) []findItemsTestCase {
 	t.Helper()
 	var missingDesc string
@@ -4311,6 +4416,10 @@ func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCas
 		searchErr = ebay.ErrProductIDMissing
 		params["productId.@type"] = "ReferenceID"
 		params["productId"] = "123"
+	case findItemsInEBayStores:
+		missingDesc = "categoryId, keywords, or storeName"
+		searchErr = ebay.ErrCategoryIDKeywordsStoreNameMissing
+		params["storeName"] = "Supplytronics"
 	default:
 		t.Errorf("Unsupported findMethod: %s", findMethod)
 
@@ -4377,6 +4486,8 @@ func testFindItems(
 			resp, err = svr.FindItemsAdvanced(params, appID)
 		case findItemsByProduct:
 			resp, err = svr.FindItemsByProduct(params, appID)
+		case findItemsInEBayStores:
+			resp, err = svr.FindItemsInEBayStores(params, appID)
 		default:
 			t.Errorf("Unsupported findMethod: %s", findMethod)
 
@@ -4408,6 +4519,8 @@ func testFindItems(
 			_, err = svr.FindItemsAdvanced(params, appID)
 		case findItemsByProduct:
 			_, err = svr.FindItemsByProduct(params, appID)
+		case findItemsInEBayStores:
+			_, err = svr.FindItemsInEBayStores(params, appID)
 		default:
 			t.Errorf("Unsupported findMethod: %s", findMethod)
 		}
@@ -4482,6 +4595,8 @@ func testFindItems(
 				_, err = svr.FindItemsAdvanced(params, appID)
 			case findItemsByProduct:
 				_, err = svr.FindItemsByProduct(params, appID)
+			case findItemsInEBayStores:
+				_, err = svr.FindItemsInEBayStores(params, appID)
 			default:
 				t.Errorf("Unsupported findMethod: %s", findMethod)
 			}
@@ -4528,6 +4643,10 @@ func testFindItems(
 			_, err = svr.FindItemsByProduct(params, appID)
 			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
 				ebay.ErrDecodeAPIResponse, findItemsByProduct)
+		case findItemsInEBayStores:
+			_, err = svr.FindItemsInEBayStores(params, appID)
+			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
+				ebay.ErrDecodeAPIResponse, findItemsInEBayStores)
 		default:
 			t.Errorf("Unsupported findMethod: %s", findMethod)
 		}
@@ -4566,6 +4685,8 @@ func testFindItems(
 				resp, err = svr.FindItemsAdvanced(testCase.Params, appID)
 			case findItemsByProduct:
 				resp, err = svr.FindItemsByProduct(testCase.Params, appID)
+			case findItemsInEBayStores:
+				resp, err = svr.FindItemsInEBayStores(testCase.Params, appID)
 			default:
 				t.Errorf("Unsupported findMethod: %s", findMethod)
 

@@ -48,6 +48,16 @@ functions:
       STAGE: ${self:provider.stage}
     role: ebayFindFunctionRole
 
+  ebay-find-in-ebay-stores:
+    handler: bin/ebay-find-in-ebay-stores
+    events:
+      - httpApi:
+          path: /ebay-find-in-ebay-stores
+          method: get
+    environment:
+      STAGE: ${self:provider.stage}
+    role: ebayFindFunctionRole
+
 resources:
   Resources:
     ebayFindFunctionRole:

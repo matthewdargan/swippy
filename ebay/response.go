@@ -18,6 +18,10 @@ type FindItemsByProductResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByProductResponse"`
 }
 
+type FindItemsInEBayStoresResponse struct {
+	ItemsResponse []FindItemsResponse `json:"findItemsIneBayStoresResponse"`
+}
+
 type FindItemsResponse struct {
 	Ack              []string           `json:"ack"`
 	ErrorMessage     []ErrorMessage     `json:"errorMessage"`

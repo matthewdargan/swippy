@@ -5,12 +5,14 @@ linters:
     - depguard
     - exhaustivestruct
     - exhaustruct
+    - funlen
     - gochecknoglobals
     - gochecknoinits
     - golint
     - ifshort
     - interfacer
     - maligned
+    - nlreturn
     - noctx
     - nosnakecase
     - scopelint
@@ -23,8 +25,6 @@ issues:
   exclude-rules:
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function validateParams"
-    - path: ebay/finding.go
-      text: "Function 'validateParams' has too many statements"
     - path: ebay/finding.go
       text: "createRequest"
     - path: ebay/finding.go
@@ -46,11 +46,7 @@ issues:
     - path: ebay/finding.go
       text: "calculated cyclomatic complexity for function validateSortOrder"
     - path: ebay/finding_test.go
-      text: "Function 'TestFindItemsAdvanced' is too long"
-    - path: ebay/finding_test.go
       text: "TestFindItemsByProduct"
-    - path: ebay/finding_test.go
-      text: "Function 'combineTestCases' has too many statements"
     - path: ebay/finding_test.go
       text: "calculated cyclomatic complexity for function combineTestCases"
     - path: ebay/finding_test.go

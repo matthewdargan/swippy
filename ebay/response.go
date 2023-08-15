@@ -2,24 +2,48 @@ package ebay
 
 import "time"
 
+type FindItems interface {
+	Items() []FindItemsResponse
+}
+
 type FindItemsByCategoriesResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByCategoryResponse"`
+}
+
+func (r FindItemsByCategoriesResponse) Items() []FindItemsResponse {
+	return r.ItemsResponse
 }
 
 type FindItemsByKeywordsResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByKeywordsResponse"`
 }
 
+func (r FindItemsByKeywordsResponse) Items() []FindItemsResponse {
+	return r.ItemsResponse
+}
+
 type FindItemsAdvancedResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsAdvancedResponse"`
+}
+
+func (r FindItemsAdvancedResponse) Items() []FindItemsResponse {
+	return r.ItemsResponse
 }
 
 type FindItemsByProductResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByProductResponse"`
 }
 
+func (r FindItemsByProductResponse) Items() []FindItemsResponse {
+	return r.ItemsResponse
+}
+
 type FindItemsInEBayStoresResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsIneBayStoresResponse"`
+}
+
+func (r FindItemsInEBayStoresResponse) Items() []FindItemsResponse {
+	return r.ItemsResponse
 }
 
 type FindItemsResponse struct {

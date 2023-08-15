@@ -1,13 +1,12 @@
 package ebay_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strconv"
 	"strings"
@@ -17,10 +16,15 @@ import (
 	"github.com/matthewdargan/swippy-api/ebay"
 )
 
+type findItemsTestCase struct {
+	Name   string
+	Params map[string]string
+	Err    error
+}
+
 var (
-	ErrClientFailure = errors.New("http: client failed")
-	appID            = "super secret ID"
-	itemsResp        = []ebay.FindItemsResponse{
+	appID     = "super secret ID"
+	itemsResp = []ebay.FindItemsResponse{
 		{
 			Ack:       []string{"Success"},
 			Version:   []string{"1.0"},
@@ -169,14 +173,14 @@ var (
 			Params: map[string]string{"categoryId": "1234567890"},
 		},
 		{
-			Name:          "returns error if params contains empty categoryId",
-			Params:        map[string]string{"categoryId": ""},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Name:   "returns error if params contains empty categoryId",
+			Params: map[string]string{"categoryId": ""},
+			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:          "returns error if params contains categoryId of length 11",
-			Params:        map[string]string{"categoryId": "12345678901"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Name:   "returns error if params contains categoryId of length 11",
+			Params: map[string]string{"categoryId": "12345678901"},
+			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
 			Name:   "can find items if params contains 2 categoryIds of length 1",
@@ -187,14 +191,14 @@ var (
 			Params: map[string]string{"categoryId": "1234567890,9876543210"},
 		},
 		{
-			Name:          "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
-			Params:        map[string]string{"categoryId": "1,12345678901"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Name:   "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
+			Params: map[string]string{"categoryId": "1,12345678901"},
+			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:          "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
-			Params:        map[string]string{"categoryId": "12345678901,1"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Name:   "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
+			Params: map[string]string{"categoryId": "12345678901,1"},
+			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
 			Name:   "can find items if params contains 3 categoryIds of length 1",
@@ -205,24 +209,24 @@ var (
 			Params: map[string]string{"categoryId": "1234567890,9876543210,8976543210"},
 		},
 		{
-			Name:          "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
-			Params:        map[string]string{"categoryId": "12345678901,1,2"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Name:   "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
+			Params: map[string]string{"categoryId": "12345678901,1,2"},
+			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:          "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
-			Params:        map[string]string{"categoryId": "1,12345678901,2"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Name:   "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
+			Params: map[string]string{"categoryId": "1,12345678901,2"},
+			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:          "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
-			Params:        map[string]string{"categoryId": "1,2,12345678901"},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Name:   "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
+			Params: map[string]string{"categoryId": "1,2,12345678901"},
+			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:          "returns error if params contains 4 categoryIds",
-			Params:        map[string]string{"categoryId": "1,2,3,4"},
-			ExpectedError: ebay.ErrMaxCategoryIDs,
+			Name:   "returns error if params contains 4 categoryIds",
+			Params: map[string]string{"categoryId": "1,2,3,4"},
+			Err:    ebay.ErrMaxCategoryIDs,
 		},
 	}
 	keywordsTCs = []findItemsTestCase{
@@ -239,19 +243,19 @@ var (
 			Params: map[string]string{"keywords": generateStringWithLen(350, true)},
 		},
 		{
-			Name:          "returns error if params contains empty keywords",
-			Params:        map[string]string{"keywords": ""},
-			ExpectedError: ebay.ErrInvalidKeywordsLength,
+			Name:   "returns error if params contains empty keywords",
+			Params: map[string]string{"keywords": ""},
+			Err:    ebay.ErrInvalidKeywordsLength,
 		},
 		{
-			Name:          "returns error if params contains keywords of length 1",
-			Params:        map[string]string{"keywords": generateStringWithLen(1, true)},
-			ExpectedError: ebay.ErrInvalidKeywordsLength,
+			Name:   "returns error if params contains keywords of length 1",
+			Params: map[string]string{"keywords": generateStringWithLen(1, true)},
+			Err:    ebay.ErrInvalidKeywordsLength,
 		},
 		{
-			Name:          "returns error if params contains keywords of length 351",
-			Params:        map[string]string{"keywords": generateStringWithLen(351, true)},
-			ExpectedError: ebay.ErrInvalidKeywordsLength,
+			Name:   "returns error if params contains keywords of length 351",
+			Params: map[string]string{"keywords": generateStringWithLen(351, true)},
+			Err:    ebay.ErrInvalidKeywordsLength,
 		},
 		{
 			Name:   "can find items if params contains 1 keyword of length 2",
@@ -262,9 +266,9 @@ var (
 			Params: map[string]string{"keywords": generateStringWithLen(98, false)},
 		},
 		{
-			Name:          "returns error if params contains 1 keyword of length 99",
-			Params:        map[string]string{"keywords": generateStringWithLen(99, false)},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Name:   "returns error if params contains 1 keyword of length 99",
+			Params: map[string]string{"keywords": generateStringWithLen(99, false)},
+			Err:    ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains 2 keywords of length 1",
@@ -295,21 +299,21 @@ var (
 			Params: map[string]string{
 				"keywords": generateStringWithLen(99, false) + "," + generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "returns error if params contains keywords of length 1 and 99",
 			Params: map[string]string{
 				"keywords": generateStringWithLen(1, false) + "," + generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "returns error if params contains keywords of length 99 and 1",
 			Params: map[string]string{
 				"keywords": generateStringWithLen(99, false) + "," + generateStringWithLen(1, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=baseball card",
@@ -322,7 +326,7 @@ var (
 			Params: map[string]string{
 				"keywords": "baseball " + generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=baseball,card",
@@ -335,7 +339,7 @@ var (
 			Params: map[string]string{
 				"keywords": "baseball," + generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=(baseball,card)",
@@ -348,7 +352,7 @@ var (
 			Params: map[string]string{
 				"keywords": "(baseball," + generateStringWithLen(99, false) + ")",
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: `can find items if params contains keywords="baseball card"`,
@@ -361,7 +365,7 @@ var (
 			Params: map[string]string{
 				"keywords": `"baseball ` + generateStringWithLen(99, false) + `"`,
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=baseball -autograph",
@@ -374,7 +378,7 @@ var (
 			Params: map[string]string{
 				"keywords": "baseball -" + generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=baseball -(autograph,card,star)",
@@ -387,7 +391,7 @@ var (
 			Params: map[string]string{
 				"keywords": "baseball -(autograph,card," + generateStringWithLen(99, false) + ")",
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=baseball*",
@@ -400,7 +404,7 @@ var (
 			Params: map[string]string{
 				"keywords": generateStringWithLen(99, false) + "*",
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=@1 baseball autograph card",
@@ -413,7 +417,7 @@ var (
 			Params: map[string]string{
 				"keywords": "@1 baseball autograph " + generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=@1 baseball autograph card +star",
@@ -426,7 +430,7 @@ var (
 			Params: map[string]string{
 				"keywords": "@1 baseball autograph card +" + generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains keywords=ap* ip*",
@@ -439,7 +443,7 @@ var (
 			Params: map[string]string{
 				"keywords": "ap* " + generateStringWithLen(99, false) + "*",
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 	}
 	categoryIDKeywordsTCs = []findItemsTestCase{
@@ -463,7 +467,7 @@ var (
 				"categoryId": "",
 				"keywords":   generateStringWithLen(2, true),
 			},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Err: ebay.ErrInvalidCategoryIDLength,
 		},
 		{
 			Name: "returns error if params contains 4 categoryIds, keywords of length 2",
@@ -471,7 +475,7 @@ var (
 				"categoryId": "1,2,3,4",
 				"keywords":   generateStringWithLen(2, true),
 			},
-			ExpectedError: ebay.ErrMaxCategoryIDs,
+			Err: ebay.ErrMaxCategoryIDs,
 		},
 		{
 			Name: "can find items if params contains 1 categoryId of length 1, 2 keywords of length 1",
@@ -481,9 +485,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains 1 categoryId of length 1, empty keywords",
-			Params:        map[string]string{"categoryId": "1", "keywords": ""},
-			ExpectedError: ebay.ErrInvalidKeywordsLength,
+			Name:   "returns error if params contains 1 categoryId of length 1, empty keywords",
+			Params: map[string]string{"categoryId": "1", "keywords": ""},
+			Err:    ebay.ErrInvalidKeywordsLength,
 		},
 		{
 			Name: "returns error if params contains 1 categoryId of length 1, 1 keyword of length 99",
@@ -491,7 +495,7 @@ var (
 				"categoryId": "1",
 				"keywords":   generateStringWithLen(99, false),
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 	}
 	missingSearchParamTCs = []findItemsTestCase{
@@ -558,7 +562,6 @@ var (
 			},
 		},
 	}
-
 	easternTime = time.FixedZone("EasternTime", -5*60*60)
 	testCases   = []findItemsTestCase{
 		{
@@ -586,9 +589,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains itemFilter.name but not value",
-			Params:        map[string]string{"itemFilter.name": "BestOfferOnly"},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter.value"),
+			Name:   "returns error if params contains itemFilter.name but not value",
+			Params: map[string]string{"itemFilter.name": "BestOfferOnly"},
+			Err:    fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter.value"),
 		},
 		{
 			// itemFilter.value(1) will be ignored because indexing does not start at 0.
@@ -597,7 +600,7 @@ var (
 				"itemFilter.name":     "BestOfferOnly",
 				"itemFilter.value(1)": "true",
 			},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter.value"),
+			Err: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter.value"),
 		},
 		{
 			// itemFilter.value(1) will be ignored because indexing does not start at 0.
@@ -631,7 +634,7 @@ var (
 				"itemFilter.value":     "5.0",
 				"itemFilter.paramName": "Currency",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+			Err: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
 			Name: "returns error if params contains itemFilter.paramValue but not paramName",
@@ -640,7 +643,7 @@ var (
 				"itemFilter.value":      "5.0",
 				"itemFilter.paramValue": "EUR",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+			Err: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
 			Name: "returns error if params contain numbered and non-numbered itemFilter syntax types",
@@ -650,7 +653,7 @@ var (
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "5.0",
 			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidFilterSyntax,
 		},
 		{
 			Name: "returns error if params contain itemFilter.name, value, value(0)",
@@ -659,7 +662,7 @@ var (
 				"itemFilter.value":    "1",
 				"itemFilter.value(0)": "2",
 			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidFilterSyntax,
 		},
 		{
 			Name: "returns error if params contain itemFilter(0).name, value, value(0)",
@@ -668,7 +671,7 @@ var (
 				"itemFilter(0).value":    "1",
 				"itemFilter(0).value(0)": "2",
 			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidFilterSyntax,
 		},
 		{
 			Name: "can find items by itemFilter(0).name, value",
@@ -739,9 +742,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains itemFilter(0).name but not value",
-			Params:        map[string]string{"itemFilter(0).name": "BestOfferOnly"},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter(0).value"),
+			Name:   "returns error if params contains itemFilter(0).name but not value",
+			Params: map[string]string{"itemFilter(0).name": "BestOfferOnly"},
+			Err:    fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter(0).value"),
 		},
 		{
 			// itemFilter(0).value(1) will be ignored because indexing does not start at 0.
@@ -750,7 +753,7 @@ var (
 				"itemFilter(0).name":     "BestOfferOnly",
 				"itemFilter(0).value(1)": "true",
 			},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter(0).value"),
+			Err: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "itemFilter(0).value"),
 		},
 		{
 			// itemFilter(0).value(1) will be ignored because indexing does not start at 0.
@@ -784,7 +787,7 @@ var (
 				"itemFilter(0).value":     "5.0",
 				"itemFilter(0).paramName": "Currency",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+			Err: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
 			Name: "returns error if params contains itemFilter(0).paramValue but not paramName",
@@ -793,7 +796,7 @@ var (
 				"itemFilter(0).value":      "5.0",
 				"itemFilter(0).paramValue": "EUR",
 			},
-			ExpectedError: ebay.ErrIncompleteItemFilterParam,
+			Err: ebay.ErrIncompleteItemFilterParam,
 		},
 		{
 			Name: "returns error if params contains non-numbered, unsupported itemFilter name",
@@ -801,7 +804,7 @@ var (
 				"itemFilter.name":  "UnsupportedFilter",
 				"itemFilter.value": "true",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
 			Name: "returns error if params contains numbered, unsupported itemFilter name",
@@ -809,7 +812,7 @@ var (
 				"itemFilter(0).name":  "UnsupportedFilter",
 				"itemFilter(0).value": "true",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
 			Name: "returns error if params contains numbered supported and unsupported itemFilter names",
@@ -819,7 +822,7 @@ var (
 				"itemFilter(1).name":  "UnsupportedFilter",
 				"itemFilter(1).value": "true",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrUnsupportedItemFilterType, "UnsupportedFilter"),
 		},
 		{
 			Name: "can find items if params contains AuthorizedSellerOnly itemFilter.value=true",
@@ -841,7 +844,7 @@ var (
 				"itemFilter.name":  "AuthorizedSellerOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains valid AvailableTo itemFilter",
@@ -856,7 +859,7 @@ var (
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "us",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "us"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "us"),
 		},
 		{
 			Name: "returns error if params contains AvailableTo itemFilter with 1 uppercase character",
@@ -864,7 +867,7 @@ var (
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "U",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "U"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "U"),
 		},
 		{
 			Name: "returns error if params contains AvailableTo itemFilter with 3 uppercase character",
@@ -872,7 +875,7 @@ var (
 				"itemFilter.name":  "AvailableTo",
 				"itemFilter.value": "USA",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "USA"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "USA"),
 		},
 		{
 			Name: "can find items if params contains BestOfferOnly itemFilter.value=true",
@@ -894,7 +897,7 @@ var (
 				"itemFilter.name":  "BestOfferOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains CharityOnly itemFilter.value=true",
@@ -916,7 +919,7 @@ var (
 				"itemFilter.name":  "CharityOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains Condition itemFilter with condition name",
@@ -1029,7 +1032,7 @@ var (
 				"itemFilter.name":  "Condition",
 				"itemFilter.value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCondition, "1"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCondition, "1"),
 		},
 		{
 			Name: "can find items if params contains Currency itemFilter with currency ID AUD",
@@ -1135,7 +1138,7 @@ var (
 				"itemFilter.name":  "Currency",
 				"itemFilter.value": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains EndTimeFrom itemFilter with future timestamp",
@@ -1150,7 +1153,7 @@ var (
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains EndTimeFrom itemFilter with non-UTC timestamp",
@@ -1158,7 +1161,7 @@ var (
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(easternTime).Format(time.RFC3339)),
 		},
 		{
@@ -1167,7 +1170,7 @@ var (
 				"itemFilter.name":  "EndTimeFrom",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -1183,7 +1186,7 @@ var (
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains EndTimeTo itemFilter with non-UTC timestamp",
@@ -1191,7 +1194,7 @@ var (
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(easternTime).Format(time.RFC3339)),
 		},
 		{
@@ -1200,7 +1203,7 @@ var (
 				"itemFilter.name":  "EndTimeTo",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -1223,7 +1226,7 @@ var (
 				"itemFilter.name":  "ExcludeAutoPay",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains ExcludeCategory itemFilter with category ID 0",
@@ -1245,7 +1248,7 @@ var (
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "not a category ID",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a category ID", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a category ID", 0),
 		},
 		{
 			Name: "returns error if params contains ExcludeCategory itemFilter with category ID -1",
@@ -1253,7 +1256,7 @@ var (
 				"itemFilter.name":  "ExcludeCategory",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains ExcludeCategory itemFilter with category IDs 0 and 1",
@@ -1270,16 +1273,16 @@ var (
 				"itemFilter.value(0)": "0",
 				"itemFilter.value(1)": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name:   "can find items if params contains ExcludeCategory itemFilter with 25 category IDs",
 			Params: generateFilterParams("ExcludeCategory", 25),
 		},
 		{
-			Name:          "returns error if params contains ExcludeCategory itemFilter with 26 category IDs",
-			Params:        generateFilterParams("ExcludeCategory", 26),
-			ExpectedError: ebay.ErrMaxExcludeCategories,
+			Name:   "returns error if params contains ExcludeCategory itemFilter with 26 category IDs",
+			Params: generateFilterParams("ExcludeCategory", 26),
+			Err:    ebay.ErrMaxExcludeCategories,
 		},
 		{
 			Name: "can find items if params contains ExcludeSeller itemFilter with seller ID 0",
@@ -1304,7 +1307,7 @@ var (
 				"itemFilter(1).name":  "Seller",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: ebay.ErrExcludeSellerCannotBeUsedWithSellers,
+			Err: ebay.ErrExcludeSellerCannotBeUsedWithSellers,
 		},
 		{
 			Name: "returns error if params contains ExcludeSeller and TopRatedSellerOnly itemFilters",
@@ -1314,16 +1317,16 @@ var (
 				"itemFilter(1).name":  "TopRatedSellerOnly",
 				"itemFilter(1).value": "true",
 			},
-			ExpectedError: ebay.ErrExcludeSellerCannotBeUsedWithSellers,
+			Err: ebay.ErrExcludeSellerCannotBeUsedWithSellers,
 		},
 		{
 			Name:   "can find items if params contains ExcludeSeller itemFilter with 100 seller IDs",
 			Params: generateFilterParams("ExcludeSeller", 100),
 		},
 		{
-			Name:          "returns error if params contains ExcludeSeller itemFilter with 101 seller IDs",
-			Params:        generateFilterParams("ExcludeSeller", 101),
-			ExpectedError: ebay.ErrMaxExcludeSellers,
+			Name:   "returns error if params contains ExcludeSeller itemFilter with 101 seller IDs",
+			Params: generateFilterParams("ExcludeSeller", 101),
+			Err:    ebay.ErrMaxExcludeSellers,
 		},
 		{
 			Name: "can find items if params contains ExpeditedShippingType itemFilter.value=Expedited",
@@ -1345,7 +1348,7 @@ var (
 				"itemFilter.name":  "ExpeditedShippingType",
 				"itemFilter.value": "InvalidShippingType",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidExpeditedShippingType, "InvalidShippingType"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidExpeditedShippingType, "InvalidShippingType"),
 		},
 		{
 			Name: "can find items if params contains FeedbackScoreMax itemFilter with max 0",
@@ -1367,7 +1370,7 @@ var (
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMax itemFilter with max -1",
@@ -1375,7 +1378,7 @@ var (
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains FeedbackScoreMin itemFilter with max 0",
@@ -1397,7 +1400,7 @@ var (
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin itemFilter with max -1",
@@ -1405,7 +1408,7 @@ var (
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 1 and min 0",
@@ -1469,7 +1472,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with unparsable min and max 0",
@@ -1479,7 +1482,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min -1",
@@ -1489,7 +1492,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min -1 and max 0",
@@ -1499,7 +1502,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min 1",
@@ -1509,7 +1512,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1520,7 +1523,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1531,7 +1534,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "10",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1542,7 +1545,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1553,7 +1556,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and unparsable max",
@@ -1563,7 +1566,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max -1 and min 0",
@@ -1573,7 +1576,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and max -1",
@@ -1583,7 +1586,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "FeedbackScoreMax", "FeedbackScoreMin"),
 		},
 		{
@@ -1606,7 +1609,7 @@ var (
 				"itemFilter.name":  "FreeShippingOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains HideDuplicateItems itemFilter.value=true",
@@ -1628,7 +1631,7 @@ var (
 				"itemFilter.name":  "HideDuplicateItems",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains ListedIn itemFilter with Global ID EBAY-AT",
@@ -1790,7 +1793,7 @@ var (
 				"itemFilter.name":  "ListedIn",
 				"itemFilter.value": "EBAY-ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidGlobalID, "EBAY-ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidGlobalID, "EBAY-ZZZ"),
 		},
 		{
 			Name: "can find items if params contains ListingType itemFilter with listing type Auction",
@@ -1840,7 +1843,7 @@ var (
 				"itemFilter.name":  "ListingType",
 				"itemFilter.value": "not a listing type",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidListingType, "not a listing type"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidListingType, "not a listing type"),
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with All and Auction listing types",
@@ -1849,7 +1852,7 @@ var (
 				"itemFilter.value(0)": "All",
 				"itemFilter.value(1)": "Auction",
 			},
-			ExpectedError: ebay.ErrInvalidAllListingType,
+			Err: ebay.ErrInvalidAllListingType,
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with StoreInventory and All listing types",
@@ -1858,7 +1861,7 @@ var (
 				"itemFilter.value(0)": "StoreInventory",
 				"itemFilter.value(1)": "All",
 			},
-			ExpectedError: ebay.ErrInvalidAllListingType,
+			Err: ebay.ErrInvalidAllListingType,
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with 2 Auction listing types",
@@ -1867,7 +1870,7 @@ var (
 				"itemFilter.value(0)": "Auction",
 				"itemFilter.value(1)": "Auction",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrDuplicateListingType, "Auction"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrDuplicateListingType, "Auction"),
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with 2 StoreInventory listing types",
@@ -1876,7 +1879,7 @@ var (
 				"itemFilter.value(0)": "StoreInventory",
 				"itemFilter.value(1)": "StoreInventory",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrDuplicateListingType, "StoreInventory"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrDuplicateListingType, "StoreInventory"),
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with Auction and AuctionWithBIN listing types",
@@ -1885,7 +1888,7 @@ var (
 				"itemFilter.value(0)": "Auction",
 				"itemFilter.value(1)": "AuctionWithBIN",
 			},
-			ExpectedError: ebay.ErrInvalidAuctionListingTypes,
+			Err: ebay.ErrInvalidAuctionListingTypes,
 		},
 		{
 			Name: "returns error if params contains ListingType itemFilters with AuctionWithBIN and Auction listing types",
@@ -1894,7 +1897,7 @@ var (
 				"itemFilter.value(0)": "AuctionWithBIN",
 				"itemFilter.value(1)": "Auction",
 			},
-			ExpectedError: ebay.ErrInvalidAuctionListingTypes,
+			Err: ebay.ErrInvalidAuctionListingTypes,
 		},
 		{
 			Name: "can find items if params contains LocalPickupOnly itemFilter.value=true",
@@ -1916,7 +1919,7 @@ var (
 				"itemFilter.name":  "LocalPickupOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains LocalSearchOnly itemFilter.value=true, buyerPostalCode, and MaxDistance",
@@ -1947,7 +1950,7 @@ var (
 				"itemFilter(1).name":  "MaxDistance",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "returns error if params contains LocalSearchOnly itemFilter but no buyerPostalCode",
@@ -1957,7 +1960,7 @@ var (
 				"itemFilter(1).name":  "MaxDistance",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: ebay.ErrBuyerPostalCodeMissing,
+			Err: ebay.ErrBuyerPostalCodeMissing,
 		},
 		{
 			Name: "returns error if params contains LocalSearchOnly itemFilter but no MaxDistance itemFilter",
@@ -1966,7 +1969,7 @@ var (
 				"itemFilter.name":  "LocalSearchOnly",
 				"itemFilter.value": "true",
 			},
-			ExpectedError: ebay.ErrMaxDistanceMissing,
+			Err: ebay.ErrMaxDistanceMissing,
 		},
 		{
 			Name: "can find items if params contains valid LocatedIn itemFilter",
@@ -1981,7 +1984,7 @@ var (
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "us",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "us"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "us"),
 		},
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with 1 uppercase character",
@@ -1989,7 +1992,7 @@ var (
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "U",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "U"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "U"),
 		},
 		{
 			Name: "returns error if params contains LocatedIn itemFilter with 3 uppercase character",
@@ -1997,7 +2000,7 @@ var (
 				"itemFilter.name":  "LocatedIn",
 				"itemFilter.value": "USA",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "USA"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCountryCode, "USA"),
 		},
 		{
 			Name: "can find items if params contains LocatedIn itemFilter with 25 country codes",
@@ -2061,7 +2064,7 @@ var (
 				"itemFilter.value(24)": "AY",
 				"itemFilter.value(25)": "AZ",
 			},
-			ExpectedError: ebay.ErrMaxLocatedIns,
+			Err: ebay.ErrMaxLocatedIns,
 		},
 		{
 			Name: "can find items if params contains LotsOnly itemFilter.value=true",
@@ -2083,7 +2086,7 @@ var (
 				"itemFilter.name":  "LotsOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains MaxBids itemFilter with max 0",
@@ -2105,7 +2108,7 @@ var (
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MaxBids itemFilter with max -1",
@@ -2113,7 +2116,7 @@ var (
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains MinBids itemFilter with max 0",
@@ -2135,7 +2138,7 @@ var (
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids itemFilter with max -1",
@@ -2143,7 +2146,7 @@ var (
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "can find items if params contains MinBids/MaxBids itemFilters with max 1 and min 0",
@@ -2207,7 +2210,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with unparsable min and max 0",
@@ -2217,7 +2220,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min -1",
@@ -2227,7 +2230,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min -1 and max 0",
@@ -2237,7 +2240,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min 1",
@@ -2247,7 +2250,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2258,7 +2261,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2269,7 +2272,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "10",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2280,7 +2283,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2291,7 +2294,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and unparsable max",
@@ -2301,7 +2304,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max -1 and min 0",
@@ -2311,7 +2314,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "-1", 0),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and max -1",
@@ -2321,7 +2324,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "-1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxBids", "MinBids"),
 		},
 		{
@@ -2347,7 +2350,7 @@ var (
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 5),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 5),
 		},
 		{
 			Name: "returns error if params contains MaxDistance itemFilter with max 4 and buyerPostalCode",
@@ -2356,7 +2359,7 @@ var (
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "4",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "4", 5),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "4", 5),
 		},
 		{
 			Name: "returns error if params contains MaxDistance itemFilter with max 5 but no buyerPostalCode",
@@ -2364,7 +2367,7 @@ var (
 				"itemFilter.name":  "MaxDistance",
 				"itemFilter.value": "5",
 			},
-			ExpectedError: ebay.ErrBuyerPostalCodeMissing,
+			Err: ebay.ErrBuyerPostalCodeMissing,
 		},
 		{
 			Name: "can find items if params contains MaxHandlingTime itemFilter with max 1",
@@ -2386,7 +2389,7 @@ var (
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MaxHandlingTime itemFilter with unparsable max",
@@ -2394,7 +2397,7 @@ var (
 				"itemFilter.name":  "MaxHandlingTime",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 1),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "not a maximum", 1),
 		},
 		{
 			Name: "can find items if params contains MaxPrice itemFilter with max 0.0",
@@ -2425,7 +2428,7 @@ var (
 				"itemFilter.name":  "MaxPrice",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max -1.0",
@@ -2433,7 +2436,7 @@ var (
 				"itemFilter.name":  "MaxPrice",
 				"itemFilter.value": "-1.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+			Err: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
 		},
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max 0.0, paramName NotCurrency, and paramValue EUR",
@@ -2443,7 +2446,7 @@ var (
 				"itemFilter.paramName":  "NotCurrency",
 				"itemFilter.paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "NotCurrency"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "NotCurrency"),
 		},
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
@@ -2453,7 +2456,7 @@ var (
 				"itemFilter.paramName":  "Currency",
 				"itemFilter.paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains MinPrice itemFilter with max 0.0",
@@ -2484,7 +2487,7 @@ var (
 				"itemFilter.name":  "MinPrice",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max -1.0",
@@ -2492,7 +2495,7 @@ var (
 				"itemFilter.name":  "MinPrice",
 				"itemFilter.value": "-1.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+			Err: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 0.0, paramName NotCurrency, and paramValue EUR",
@@ -2502,7 +2505,7 @@ var (
 				"itemFilter.paramName":  "NotCurrency",
 				"itemFilter.paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "NotCurrency"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "NotCurrency"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 0.0, paramName Currency, and paramValue ZZZ",
@@ -2512,7 +2515,7 @@ var (
 				"itemFilter.paramName":  "Currency",
 				"itemFilter.paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains MinPrice/MaxPrice itemFilters with max 1.0 and min 0.0",
@@ -2576,7 +2579,7 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with unparsable min and max 0.0",
@@ -2586,7 +2589,7 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "0.0",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and min -1.0",
@@ -2596,7 +2599,7 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "-1.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+			Err: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min -1.0 and max 0.0",
@@ -2606,7 +2609,7 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "0.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+			Err: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and min 1.0",
@@ -2616,7 +2619,7 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "1.0",
 			},
-			ExpectedError: ebay.ErrInvalidMaxPrice,
+			Err: ebay.ErrInvalidMaxPrice,
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 1.0 and max 0.0",
@@ -2626,7 +2629,7 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "0.0",
 			},
-			ExpectedError: ebay.ErrInvalidMaxPrice,
+			Err: ebay.ErrInvalidMaxPrice,
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 5.0 and min 10.0",
@@ -2636,7 +2639,7 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "10.0",
 			},
-			ExpectedError: ebay.ErrInvalidMaxPrice,
+			Err: ebay.ErrInvalidMaxPrice,
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 10.0 and max 5.0",
@@ -2646,7 +2649,7 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "5.0",
 			},
-			ExpectedError: ebay.ErrInvalidMaxPrice,
+			Err: ebay.ErrInvalidMaxPrice,
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with unparsable max and min 0.0",
@@ -2656,7 +2659,7 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "0.0",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 0.0 and unparsable max",
@@ -2666,7 +2669,7 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max -1.0 and min 0.0",
@@ -2676,7 +2679,7 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "0.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+			Err: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 0.0 and max -1.0",
@@ -2686,7 +2689,7 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "-1.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
+			Err: fmt.Errorf("%w: %f (minimum value: %f)", ebay.ErrInvalidPrice, -1.0, 0.0),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 10.0 and min 5.0, paramName Invalid",
@@ -2698,7 +2701,7 @@ var (
 				"itemFilter(1).paramName":  "Invalid",
 				"itemFilter(1).paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0, paramName Invalid and max 10.0",
@@ -2710,7 +2713,7 @@ var (
 				"itemFilter(1).name":       "MaxPrice",
 				"itemFilter(1).value":      "10.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 10.0 and min 5.0, paramValue ZZZ",
@@ -2722,7 +2725,7 @@ var (
 				"itemFilter(1).paramName":  "Currency",
 				"itemFilter(1).paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with min 5.0, paramValue ZZZ and max 10.0",
@@ -2734,7 +2737,7 @@ var (
 				"itemFilter(1).name":       "MaxPrice",
 				"itemFilter(1).value":      "10.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 10.0, paramName Invalid and min 5.0",
@@ -2746,7 +2749,7 @@ var (
 				"itemFilter(1).name":       "MinPrice",
 				"itemFilter(1).value":      "5.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 5.0 and max 10.0, paramName Invalid",
@@ -2758,7 +2761,7 @@ var (
 				"itemFilter(1).paramName":  "Invalid",
 				"itemFilter(1).paramValue": "EUR",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidPriceParamName, "Invalid"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max 10.0, paramValue ZZZ and min 5.0",
@@ -2770,7 +2773,7 @@ var (
 				"itemFilter(1).name":       "MinPrice",
 				"itemFilter(1).value":      "5.0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with min 5.0 and max 10.0, paramValue ZZZ",
@@ -2782,7 +2785,7 @@ var (
 				"itemFilter(1).paramName":  "Currency",
 				"itemFilter(1).paramValue": "ZZZ",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidCurrencyID, "ZZZ"),
 		},
 		{
 			Name: "can find items if params contains MaxQuantity itemFilter with max 1",
@@ -2804,7 +2807,7 @@ var (
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MaxQuantity itemFilter with max 0",
@@ -2812,7 +2815,7 @@ var (
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "can find items if params contains MinQuantity itemFilter with max 1",
@@ -2834,7 +2837,7 @@ var (
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity itemFilter with max 0",
@@ -2842,7 +2845,7 @@ var (
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "can find items if params contains MinQuantity/MaxQuantity itemFilters with max 2 and min 1",
@@ -2906,7 +2909,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "not a minimum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with unparsable min and max 1",
@@ -2916,7 +2919,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 1 and min 0",
@@ -2926,7 +2929,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 0 and max 1",
@@ -2936,7 +2939,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 1 and min 2",
@@ -2946,7 +2949,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "2",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -2957,7 +2960,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -2968,7 +2971,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "10",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -2979,7 +2982,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "5",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -2990,7 +2993,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 1 and unparsable max",
@@ -3000,7 +3003,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "not a maximum",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 0 and min 1",
@@ -3010,7 +3013,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
+			Err: fmt.Errorf("%w: %q (minimum value: %d)", ebay.ErrInvalidInteger, "0", 1),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 1 and max 0",
@@ -3020,7 +3023,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: fmt.Errorf("%w: %q must be greater than or equal to %q",
+			Err: fmt.Errorf("%w: %q must be greater than or equal to %q",
 				ebay.ErrInvalidNumericFilter, "MaxQuantity", "MinQuantity"),
 		},
 		{
@@ -3036,7 +3039,7 @@ var (
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains ModTimeFrom itemFilter with non-UTC timestamp",
@@ -3044,7 +3047,7 @@ var (
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(easternTime).Format(time.RFC3339)),
 		},
 		{
@@ -3053,7 +3056,7 @@ var (
 				"itemFilter.name":  "ModTimeFrom",
 				"itemFilter.value": time.Now().Add(5 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(5*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -3076,7 +3079,7 @@ var (
 				"itemFilter.name":  "ReturnsAcceptedOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains Seller itemFilter with seller ID 0",
@@ -3101,7 +3104,7 @@ var (
 				"itemFilter(1).name":  "ExcludeSeller",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: ebay.ErrSellerCannotBeUsedWithOtherSellers,
+			Err: ebay.ErrSellerCannotBeUsedWithOtherSellers,
 		},
 		{
 			Name: "returns error if params contains Seller and TopRatedSellerOnly itemFilters",
@@ -3111,16 +3114,16 @@ var (
 				"itemFilter(1).name":  "TopRatedSellerOnly",
 				"itemFilter(1).value": "true",
 			},
-			ExpectedError: ebay.ErrSellerCannotBeUsedWithOtherSellers,
+			Err: ebay.ErrSellerCannotBeUsedWithOtherSellers,
 		},
 		{
 			Name:   "can find items if params contains Seller itemFilter with 100 seller IDs",
 			Params: generateFilterParams("Seller", 100),
 		},
 		{
-			Name:          "returns error if params contains Seller itemFilter with 101 seller IDs",
-			Params:        generateFilterParams("Seller", 101),
-			ExpectedError: ebay.ErrMaxSellers,
+			Name:   "returns error if params contains Seller itemFilter with 101 seller IDs",
+			Params: generateFilterParams("Seller", 101),
+			Err:    ebay.ErrMaxSellers,
 		},
 		{
 			Name: "can find items if params contains SellerBusinessType itemFilter with Business type",
@@ -3142,7 +3145,7 @@ var (
 				"itemFilter.name":  "SellerBusinessType",
 				"itemFilter.value": "NotBusiness",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidSellerBusinessType, "NotBusiness"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidSellerBusinessType, "NotBusiness"),
 		},
 		{
 			Name: "returns error if params contains SellerBusinessType itemFilter with Business and Private types",
@@ -3151,7 +3154,7 @@ var (
 				"itemFilter.value(0)": "Business",
 				"itemFilter.value(1)": "Private",
 			},
-			ExpectedError: ebay.ErrMultipleSellerBusinessTypes,
+			Err: ebay.ErrMultipleSellerBusinessTypes,
 		},
 		{
 			Name: "can find items if params contains SoldItemsOnly itemFilter.value=true",
@@ -3173,7 +3176,7 @@ var (
 				"itemFilter.name":  "SoldItemsOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contains StartTimeFrom itemFilter with future timestamp",
@@ -3188,7 +3191,7 @@ var (
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains StartTimeFrom itemFilter with non-UTC timestamp",
@@ -3196,7 +3199,7 @@ var (
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(easternTime).Format(time.RFC3339)),
 		},
 		{
@@ -3205,7 +3208,7 @@ var (
 				"itemFilter.name":  "StartTimeFrom",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -3221,7 +3224,7 @@ var (
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": "not a timestamp",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidDateTime, "not a timestamp"),
 		},
 		{
 			Name: "returns error if params contains StartTimeTo itemFilter with non-UTC timestamp",
@@ -3229,7 +3232,7 @@ var (
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": time.Now().Add(1 * time.Second).In(easternTime).Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(1*time.Second).In(easternTime).Format(time.RFC3339)),
 		},
 		{
@@ -3238,7 +3241,7 @@ var (
 				"itemFilter.name":  "StartTimeTo",
 				"itemFilter.value": time.Now().Add(-1 * time.Second).UTC().Format(time.RFC3339),
 			},
-			ExpectedError: fmt.Errorf("%w: %q",
+			Err: fmt.Errorf("%w: %q",
 				ebay.ErrInvalidDateTime, time.Now().Add(-1*time.Second).UTC().Format(time.RFC3339)),
 		},
 		{
@@ -3261,7 +3264,7 @@ var (
 				"itemFilter.name":  "TopRatedSellerOnly",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "returns error if params contains TopRatedSellerOnly and Seller itemFilters",
@@ -3271,7 +3274,7 @@ var (
 				"itemFilter(1).name":  "Seller",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: ebay.ErrTopRatedSellerCannotBeUsedWithSellers,
+			Err: ebay.ErrTopRatedSellerCannotBeUsedWithSellers,
 		},
 		{
 			Name: "returns error if params contains TopRatedSellerOnly and ExcludeSeller itemFilters",
@@ -3281,7 +3284,7 @@ var (
 				"itemFilter(1).name":  "ExcludeSeller",
 				"itemFilter(1).value": "0",
 			},
-			ExpectedError: ebay.ErrTopRatedSellerCannotBeUsedWithSellers,
+			Err: ebay.ErrTopRatedSellerCannotBeUsedWithSellers,
 		},
 		{
 			Name: "can find items if params contains ValueBoxInventory itemFilter.value=1",
@@ -3303,7 +3306,7 @@ var (
 				"itemFilter.name":  "ValueBoxInventory",
 				"itemFilter.value": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidValueBoxInventory, "123"),
 		},
 		{
 			Name:   "can find items if params contains AspectHistogram outputSelector",
@@ -3342,9 +3345,9 @@ var (
 			Params: map[string]string{"outputSelector": "UnitPriceInfo"},
 		},
 		{
-			Name:          "returns error if params contains non-numbered, unsupported outputSelector name",
-			Params:        map[string]string{"outputSelector": "UnsupportedOutputSelector"},
-			ExpectedError: ebay.ErrInvalidOutputSelector,
+			Name:   "returns error if params contains non-numbered, unsupported outputSelector name",
+			Params: map[string]string{"outputSelector": "UnsupportedOutputSelector"},
+			Err:    ebay.ErrInvalidOutputSelector,
 		},
 		{
 			// outputSelector(1) will be ignored because indexing does not start at 0.
@@ -3360,7 +3363,7 @@ var (
 				"outputSelector":    "AspectHistogram",
 				"outputSelector(0)": "CategoryHistogram",
 			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidFilterSyntax,
 		},
 		{
 			Name:   "can find items by numbered outputSelector",
@@ -3374,9 +3377,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains numbered, unsupported outputSelector name",
-			Params:        map[string]string{"outputSelector(0)": "UnsupportedOutputSelector"},
-			ExpectedError: ebay.ErrInvalidOutputSelector,
+			Name:   "returns error if params contains numbered, unsupported outputSelector name",
+			Params: map[string]string{"outputSelector(0)": "UnsupportedOutputSelector"},
+			Err:    ebay.ErrInvalidOutputSelector,
 		},
 		{
 			Name: "returns error if params contains 1 supported, 1 unsupported outputSelector name",
@@ -3384,7 +3387,7 @@ var (
 				"outputSelector(0)": "AspectHistogram",
 				"outputSelector(1)": "UnsupportedOutputSelector",
 			},
-			ExpectedError: ebay.ErrInvalidOutputSelector,
+			Err: ebay.ErrInvalidOutputSelector,
 		},
 		{
 			Name:   "can find items if params contains affiliate.customId=1",
@@ -3395,9 +3398,9 @@ var (
 			Params: map[string]string{"affiliate.customId": generateStringWithLen(256, false)},
 		},
 		{
-			Name:          "returns error if params contains affiliate.customId of length 257",
-			Params:        map[string]string{"affiliate.customId": generateStringWithLen(257, false)},
-			ExpectedError: ebay.ErrInvalidCustomIDLength,
+			Name:   "returns error if params contains affiliate.customId of length 257",
+			Params: map[string]string{"affiliate.customId": generateStringWithLen(257, false)},
+			Err:    ebay.ErrInvalidCustomIDLength,
 		},
 		{
 			Name:   "can find items if params contains affiliate.geoTargeting=true",
@@ -3408,9 +3411,9 @@ var (
 			Params: map[string]string{"affiliate.geoTargeting": "false"},
 		},
 		{
-			Name:          "returns error if params contains affiliate.geoTargeting with non-boolean value",
-			Params:        map[string]string{"affiliate.geoTargeting": "123"},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Name:   "returns error if params contains affiliate.geoTargeting with non-boolean value",
+			Params: map[string]string{"affiliate.geoTargeting": "123"},
+			Err:    fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
 			Name: "can find items if params contain affiliate.networkId=2 and trackingId",
@@ -3434,14 +3437,14 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains affiliate.networkId but no trackingId",
-			Params:        map[string]string{"affiliate.networkId": "2"},
-			ExpectedError: ebay.ErrIncompleteAffiliateParams,
+			Name:   "returns error if params contains affiliate.networkId but no trackingId",
+			Params: map[string]string{"affiliate.networkId": "2"},
+			Err:    ebay.ErrIncompleteAffiliateParams,
 		},
 		{
-			Name:          "returns error if params contains affiliate.trackingId but no networkId",
-			Params:        map[string]string{"affiliate.trackingId": "1"},
-			ExpectedError: ebay.ErrIncompleteAffiliateParams,
+			Name:   "returns error if params contains affiliate.trackingId but no networkId",
+			Params: map[string]string{"affiliate.trackingId": "1"},
+			Err:    ebay.ErrIncompleteAffiliateParams,
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=abc and trackingId",
@@ -3449,7 +3452,7 @@ var (
 				"affiliate.networkId":  "abc",
 				"affiliate.trackingId": "1",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=1 and trackingId",
@@ -3457,7 +3460,7 @@ var (
 				"affiliate.networkId":  "1",
 				"affiliate.trackingId": "1",
 			},
-			ExpectedError: ebay.ErrInvalidNetworkID,
+			Err: ebay.ErrInvalidNetworkID,
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=10 and trackingId",
@@ -3465,7 +3468,7 @@ var (
 				"affiliate.networkId":  "10",
 				"affiliate.trackingId": "1",
 			},
-			ExpectedError: ebay.ErrInvalidNetworkID,
+			Err: ebay.ErrInvalidNetworkID,
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=9 and trackingId=abc",
@@ -3473,7 +3476,7 @@ var (
 				"affiliate.networkId":  "9",
 				"affiliate.trackingId": "abc",
 			},
-			ExpectedError: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=9 and trackingId=123456789",
@@ -3481,7 +3484,7 @@ var (
 				"affiliate.networkId":  "9",
 				"affiliate.trackingId": "123456789",
 			},
-			ExpectedError: ebay.ErrInvalidCampaignID,
+			Err: ebay.ErrInvalidCampaignID,
 		},
 		{
 			Name: "can find items if params contain affiliate.customId, geoTargeting, networkId, trackingId",
@@ -3505,9 +3508,9 @@ var (
 			Params: map[string]string{"buyerPostalCode": "Postal Code Here"},
 		},
 		{
-			Name:          "returns error if params contains buyerPostalCode=11",
-			Params:        map[string]string{"buyerPostalCode": "11"},
-			ExpectedError: ebay.ErrInvalidPostalCode,
+			Name:   "returns error if params contains buyerPostalCode=11",
+			Params: map[string]string{"buyerPostalCode": "11"},
+			Err:    ebay.ErrInvalidPostalCode,
 		},
 		{
 			Name:   "can find items if params contains paginationInput.entriesPerPage=1",
@@ -3522,14 +3525,14 @@ var (
 			Params: map[string]string{"paginationInput.entriesPerPage": "100"},
 		},
 		{
-			Name:          "returns error if params contains paginationInput.entriesPerPage=0",
-			Params:        map[string]string{"paginationInput.entriesPerPage": "0"},
-			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+			Name:   "returns error if params contains paginationInput.entriesPerPage=0",
+			Params: map[string]string{"paginationInput.entriesPerPage": "0"},
+			Err:    ebay.ErrInvalidEntriesPerPage,
 		},
 		{
-			Name:          "returns error if params contains paginationInput.entriesPerPage=101",
-			Params:        map[string]string{"paginationInput.entriesPerPage": "101"},
-			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+			Name:   "returns error if params contains paginationInput.entriesPerPage=101",
+			Params: map[string]string{"paginationInput.entriesPerPage": "101"},
+			Err:    ebay.ErrInvalidEntriesPerPage,
 		},
 		{
 			Name:   "can find items if params contains paginationInput.pageNumber=1",
@@ -3544,14 +3547,14 @@ var (
 			Params: map[string]string{"paginationInput.pageNumber": "100"},
 		},
 		{
-			Name:          "returns error if params contains paginationInput.pageNumber=0",
-			Params:        map[string]string{"paginationInput.pageNumber": "0"},
-			ExpectedError: ebay.ErrInvalidPageNumber,
+			Name:   "returns error if params contains paginationInput.pageNumber=0",
+			Params: map[string]string{"paginationInput.pageNumber": "0"},
+			Err:    ebay.ErrInvalidPageNumber,
 		},
 		{
-			Name:          "returns error if params contains paginationInput.pageNumber=101",
-			Params:        map[string]string{"paginationInput.pageNumber": "101"},
-			ExpectedError: ebay.ErrInvalidPageNumber,
+			Name:   "returns error if params contains paginationInput.pageNumber=101",
+			Params: map[string]string{"paginationInput.pageNumber": "101"},
+			Err:    ebay.ErrInvalidPageNumber,
 		},
 		{
 			Name: "can find items if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=1",
@@ -3573,7 +3576,7 @@ var (
 				"paginationInput.entriesPerPage": "0",
 				"paginationInput.pageNumber":     "1",
 			},
-			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPage,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=1",
@@ -3581,7 +3584,7 @@ var (
 				"paginationInput.entriesPerPage": "101",
 				"paginationInput.pageNumber":     "1",
 			},
-			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPage,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=0",
@@ -3589,7 +3592,7 @@ var (
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "0",
 			},
-			ExpectedError: ebay.ErrInvalidPageNumber,
+			Err: ebay.ErrInvalidPageNumber,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=101",
@@ -3597,7 +3600,7 @@ var (
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "101",
 			},
-			ExpectedError: ebay.ErrInvalidPageNumber,
+			Err: ebay.ErrInvalidPageNumber,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=0, paginationInput.pageNumber=0",
@@ -3605,7 +3608,7 @@ var (
 				"paginationInput.entriesPerPage": "0",
 				"paginationInput.pageNumber":     "0",
 			},
-			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPage,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=101",
@@ -3613,7 +3616,7 @@ var (
 				"paginationInput.entriesPerPage": "101",
 				"paginationInput.pageNumber":     "101",
 			},
-			ExpectedError: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPage,
 		},
 		{
 			Name: "can find items if params contains BestMatch sortOrder",
@@ -3630,9 +3633,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains BidCountFewest sortOrder but no Auction listing type",
-			Params:        map[string]string{"sortOrder": "BidCountFewest"},
-			ExpectedError: ebay.ErrAuctionListingMissing,
+			Name:   "returns error if params contains BidCountFewest sortOrder but no Auction listing type",
+			Params: map[string]string{"sortOrder": "BidCountFewest"},
+			Err:    ebay.ErrAuctionListingMissing,
 		},
 		{
 			Name: "can find items if params contains BidCountMost sortOrder and Auction listing type",
@@ -3643,9 +3646,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains BidCountMost sortOrder but no Auction listing type",
-			Params:        map[string]string{"sortOrder": "BidCountMost"},
-			ExpectedError: ebay.ErrAuctionListingMissing,
+			Name:   "returns error if params contains BidCountMost sortOrder but no Auction listing type",
+			Params: map[string]string{"sortOrder": "BidCountMost"},
+			Err:    ebay.ErrAuctionListingMissing,
 		},
 		{
 			Name:   "can find items if params contains CountryAscending sortOrder",
@@ -3667,9 +3670,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains DistanceNearest sortOrder but no buyerPostalCode",
-			Params:        map[string]string{"sortOrder": "DistanceNearest"},
-			ExpectedError: ebay.ErrBuyerPostalCodeMissing,
+			Name:   "returns error if params contains DistanceNearest sortOrder but no buyerPostalCode",
+			Params: map[string]string{"sortOrder": "DistanceNearest"},
+			Err:    ebay.ErrBuyerPostalCodeMissing,
 		},
 		{
 			Name:   "can find items if params contains EndTimeSoonest sortOrder",
@@ -3692,9 +3695,9 @@ var (
 			Params: map[string]string{"sortOrder": "WatchCountDecreaseSort"},
 		},
 		{
-			Name:          "returns error if params contains unsupported sortOrder name",
-			Params:        map[string]string{"sortOrder": "UnsupportedSortOrder"},
-			ExpectedError: ebay.ErrUnsupportedSortOrderType,
+			Name:   "returns error if params contains unsupported sortOrder name",
+			Params: map[string]string{"sortOrder": "UnsupportedSortOrder"},
+			Err:    ebay.ErrUnsupportedSortOrderType,
 		},
 	}
 	aspectFilterTestCases = []findItemsTestCase{
@@ -3714,9 +3717,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains aspectFilter.aspectName but not aspectValueName",
-			Params:        map[string]string{"aspectFilter.aspectName": "Size"},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
+			Name:   "returns error if params contains aspectFilter.aspectName but not aspectValueName",
+			Params: map[string]string{"aspectFilter.aspectName": "Size"},
+			Err:    fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
 		},
 		{
 			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
@@ -3725,7 +3728,7 @@ var (
 				"aspectFilter.aspectName":         "Size",
 				"aspectFilter.aspectValueName(1)": "10",
 			},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
+			Err: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter.aspectValueName"),
 		},
 		{
 			// aspectFilter.aspectValueName(1) will be ignored because indexing does not start at 0.
@@ -3750,7 +3753,7 @@ var (
 				"aspectFilter(0).aspectName":      "Running",
 				"aspectFilter(0).aspectValueName": "true",
 			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidFilterSyntax,
 		},
 		{
 			Name: "returns error if params contain aspectFilter.aspectName, aspectValueName, aspectValueName(0)",
@@ -3759,7 +3762,7 @@ var (
 				"aspectFilter.aspectValueName":    "10",
 				"aspectFilter.aspectValueName(0)": "11",
 			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidFilterSyntax,
 		},
 		{
 			Name: "returns error if params contain aspectFilter(0).aspectName, aspectValueName, aspectValueName(0)",
@@ -3768,7 +3771,7 @@ var (
 				"aspectFilter(0).aspectValueName":    "10",
 				"aspectFilter(0).aspectValueName(0)": "11",
 			},
-			ExpectedError: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidFilterSyntax,
 		},
 		{
 			Name: "can find items by aspectFilter(0).aspectName, aspectValueName",
@@ -3795,9 +3798,9 @@ var (
 			},
 		},
 		{
-			Name:          "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
-			Params:        map[string]string{"aspectFilter(0).aspectName": "Size"},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
+			Name:   "returns error if params contains aspectFilter(0).aspectName but not aspectValueName",
+			Params: map[string]string{"aspectFilter(0).aspectName": "Size"},
+			Err:    fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
 		},
 		{
 			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
@@ -3806,7 +3809,7 @@ var (
 				"aspectFilter(0).aspectName":         "Size",
 				"aspectFilter(0).aspectValueName(1)": "10",
 			},
-			ExpectedError: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
+			Err: fmt.Errorf("%w %q", ebay.ErrIncompleteFilterNameOnly, "aspectFilter(0).aspectValueName"),
 		},
 		{
 			// aspectFilter(0).aspectValueName(1) will be ignored because indexing does not start at 0.
@@ -3825,20 +3828,6 @@ var (
 		},
 	}
 )
-
-type MockFindingClient struct {
-	DoFunc func(req *http.Request) (*http.Response, error)
-}
-
-func (m *MockFindingClient) Do(req *http.Request) (*http.Response, error) {
-	return m.DoFunc(req)
-}
-
-type findItemsTestCase struct {
-	Name          string
-	Params        map[string]string
-	ExpectedError error
-}
 
 func TestFindItemsByCategories(t *testing.T) {
 	t.Parallel()
@@ -3878,15 +3867,14 @@ func TestFindItemsAdvanced(t *testing.T) {
 				"categoryId":        "1",
 				"descriptionSearch": "123",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrInvalidBooleanValue, "123"),
 		},
 		{
-			Name:          "returns error if params contains descriptionSearch but not categoryId or keywords",
-			Params:        map[string]string{"descriptionSearch": "true"},
-			ExpectedError: ebay.ErrCategoryIDKeywordsMissing,
+			Name:   "returns error if params contains descriptionSearch but not categoryId or keywords",
+			Params: map[string]string{"descriptionSearch": "true"},
+			Err:    ebay.ErrCategoryIDKeywordsMissing,
 		},
 	}
-
 	combinedTCs := combineTestCases(
 		t, findItemsAdvanced, categoryIDTCs, keywordsTCs, categoryIDKeywordsTCs, findItemsAdvancedTCs)
 	testFindItems(t, params, findItemsAdvanced, findItemsAdvancedResp, combinedTCs)
@@ -3900,14 +3888,14 @@ func TestFindItemsByProduct(t *testing.T) {
 	}
 	findItemsByProductTCs := []findItemsTestCase{
 		{
-			Name:          "returns error if params contains productId but not productId.@type",
-			Params:        map[string]string{"productId": "123"},
-			ExpectedError: ebay.ErrProductIDMissing,
+			Name:   "returns error if params contains productId but not productId.@type",
+			Params: map[string]string{"productId": "123"},
+			Err:    ebay.ErrProductIDMissing,
 		},
 		{
-			Name:          "returns error if params contains productId.@type but not productId",
-			Params:        map[string]string{"productId.@type": "ReferenceID"},
-			ExpectedError: ebay.ErrProductIDMissing,
+			Name:   "returns error if params contains productId.@type but not productId",
+			Params: map[string]string{"productId.@type": "ReferenceID"},
+			Err:    ebay.ErrProductIDMissing,
 		},
 		{
 			Name: "returns error if params contains productId.@type=UnsupportedProductID, productId=1",
@@ -3915,7 +3903,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "UnsupportedProductID",
 				"productId":       "1",
 			},
-			ExpectedError: fmt.Errorf("%w: %q", ebay.ErrUnsupportedProductIDType, "UnsupportedProductID"),
+			Err: fmt.Errorf("%w: %q", ebay.ErrUnsupportedProductIDType, "UnsupportedProductID"),
 		},
 		{
 			Name: "can find items if params contains productId.@type=ReferenceID, productId=1",
@@ -3932,9 +3920,9 @@ func TestFindItemsByProduct(t *testing.T) {
 			},
 		},
 		{
-			Name:          "returns error if params contains productId.@type=ReferenceID, empty productId",
-			Params:        map[string]string{"productId.@type": "ReferenceID", "productId": ""},
-			ExpectedError: ebay.ErrInvalidProductIDLength,
+			Name:   "returns error if params contains productId.@type=ReferenceID, empty productId",
+			Params: map[string]string{"productId.@type": "ReferenceID", "productId": ""},
+			Err:    ebay.ErrInvalidProductIDLength,
 		},
 		{
 			Name: "can find items if params contains productId.@type=ISBN, productId=0131103628",
@@ -4012,7 +4000,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "111111111",
 			},
-			ExpectedError: ebay.ErrInvalidISBNLength,
+			Err: ebay.ErrInvalidISBNLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=ISBN, productId of length 11",
@@ -4020,7 +4008,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "11111111111",
 			},
-			ExpectedError: ebay.ErrInvalidISBNLength,
+			Err: ebay.ErrInvalidISBNLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=ISBN, productId of length 12",
@@ -4028,7 +4016,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "111111111111",
 			},
-			ExpectedError: ebay.ErrInvalidISBNLength,
+			Err: ebay.ErrInvalidISBNLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=ISBN, productId of length 14",
@@ -4036,7 +4024,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "11111111111111",
 			},
-			ExpectedError: ebay.ErrInvalidISBNLength,
+			Err: ebay.ErrInvalidISBNLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-10 (invalid first digit)",
@@ -4044,7 +4032,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "886154142X",
 			},
-			ExpectedError: ebay.ErrInvalidISBN,
+			Err: ebay.ErrInvalidISBN,
 		},
 		{
 			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-13 (invalid first digit)",
@@ -4052,7 +4040,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "8780131158177",
 			},
-			ExpectedError: ebay.ErrInvalidISBN,
+			Err: ebay.ErrInvalidISBN,
 		},
 		{
 			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-10 (invalid last digit)",
@@ -4060,7 +4048,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "9861541429",
 			},
-			ExpectedError: ebay.ErrInvalidISBN,
+			Err: ebay.ErrInvalidISBN,
 		},
 		{
 			Name: "returns error if params contains productId.@type=ISBN, productId of invalid ISBN-13 (invalid last digit)",
@@ -4068,7 +4056,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "ISBN",
 				"productId":       "9780131158178",
 			},
-			ExpectedError: ebay.ErrInvalidISBN,
+			Err: ebay.ErrInvalidISBN,
 		},
 		{
 			Name: "can find items if params contains productId.@type=UPC, productId=036000291452",
@@ -4111,7 +4099,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "UPC",
 				"productId":       "11111111111",
 			},
-			ExpectedError: ebay.ErrInvalidUPCLength,
+			Err: ebay.ErrInvalidUPCLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=UPC, productId of length 13",
@@ -4119,7 +4107,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "UPC",
 				"productId":       "1111111111111",
 			},
-			ExpectedError: ebay.ErrInvalidUPCLength,
+			Err: ebay.ErrInvalidUPCLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=UPC, productId of invalid UPC (invalid first digit)",
@@ -4127,7 +4115,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "UPC",
 				"productId":       "294253407980",
 			},
-			ExpectedError: ebay.ErrInvalidUPC,
+			Err: ebay.ErrInvalidUPC,
 		},
 		{
 			Name: "returns error if params contains productId.@type=UPC, productId of invalid UPC (invalid last digit)",
@@ -4135,7 +4123,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "UPC",
 				"productId":       "194253407981",
 			},
-			ExpectedError: ebay.ErrInvalidUPC,
+			Err: ebay.ErrInvalidUPC,
 		},
 		{
 			Name: "can find items if params contains productId.@type=EAN, productId=73513537",
@@ -4213,7 +4201,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "1111111",
 			},
-			ExpectedError: ebay.ErrInvalidEANLength,
+			Err: ebay.ErrInvalidEANLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of length 9",
@@ -4221,7 +4209,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "111111111",
 			},
-			ExpectedError: ebay.ErrInvalidEANLength,
+			Err: ebay.ErrInvalidEANLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of length 10",
@@ -4229,7 +4217,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "1111111111",
 			},
-			ExpectedError: ebay.ErrInvalidEANLength,
+			Err: ebay.ErrInvalidEANLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of length 11",
@@ -4237,7 +4225,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "11111111111",
 			},
-			ExpectedError: ebay.ErrInvalidEANLength,
+			Err: ebay.ErrInvalidEANLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of length 12",
@@ -4245,7 +4233,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "111111111111",
 			},
-			ExpectedError: ebay.ErrInvalidEANLength,
+			Err: ebay.ErrInvalidEANLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of length 14",
@@ -4253,7 +4241,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "11111111111111",
 			},
-			ExpectedError: ebay.ErrInvalidEANLength,
+			Err: ebay.ErrInvalidEANLength,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-8 (invalid first digit)",
@@ -4261,7 +4249,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "50123455",
 			},
-			ExpectedError: ebay.ErrInvalidEAN,
+			Err: ebay.ErrInvalidEAN,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-13 (invalid first digit)",
@@ -4269,7 +4257,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "1194253373476",
 			},
-			ExpectedError: ebay.ErrInvalidEAN,
+			Err: ebay.ErrInvalidEAN,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-8 (invalid last digit)",
@@ -4277,7 +4265,7 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "40123456",
 			},
-			ExpectedError: ebay.ErrInvalidEAN,
+			Err: ebay.ErrInvalidEAN,
 		},
 		{
 			Name: "returns error if params contains productId.@type=EAN, productId of invalid EAN-13 (invalid last digit)",
@@ -4285,10 +4273,9 @@ func TestFindItemsByProduct(t *testing.T) {
 				"productId.@type": "EAN",
 				"productId":       "0194253373477",
 			},
-			ExpectedError: ebay.ErrInvalidEAN,
+			Err: ebay.ErrInvalidEAN,
 		},
 	}
-
 	combinedTCs := combineTestCases(t, findItemsByProduct, findItemsByProductTCs)
 	testFindItems(t, params, findItemsByProduct, findItemsByProductResp, combinedTCs)
 }
@@ -4302,18 +4289,18 @@ func TestFindItemsInEBayStores(t *testing.T) {
 			Params: map[string]string{"storeName": "a"},
 		},
 		{
-			Name:          "returns error if params contains empty storeName",
-			Params:        map[string]string{"storeName": ""},
-			ExpectedError: ebay.ErrInvalidStoreNameLength,
+			Name:   "returns error if params contains empty storeName",
+			Params: map[string]string{"storeName": ""},
+			Err:    ebay.ErrInvalidStoreNameLength,
 		},
 		{
 			Name:   "can find items if params contains storeName=Ben &amp; Jerry's",
 			Params: map[string]string{"storeName": "Ben &amp; Jerry's"},
 		},
 		{
-			Name:          "returns error if params contains storeName=Ben & Jerry's",
-			Params:        map[string]string{"storeName": "Ben & Jerry's"},
-			ExpectedError: ebay.ErrInvalidStoreNameAmpersand,
+			Name:   "returns error if params contains storeName=Ben & Jerry's",
+			Params: map[string]string{"storeName": "Ben & Jerry's"},
+			Err:    ebay.ErrInvalidStoreNameAmpersand,
 		},
 		{
 			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2, storeName of length 1",
@@ -4330,7 +4317,7 @@ func TestFindItemsInEBayStores(t *testing.T) {
 				"keywords":   generateStringWithLen(2, true),
 				"storeName":  "a",
 			},
-			ExpectedError: ebay.ErrInvalidCategoryIDLength,
+			Err: ebay.ErrInvalidCategoryIDLength,
 		},
 		{
 			Name: "returns error if params contains 4 categoryIds, keywords of length 2, storeName of length 1",
@@ -4339,7 +4326,7 @@ func TestFindItemsInEBayStores(t *testing.T) {
 				"keywords":   generateStringWithLen(2, true),
 				"storeName":  "a",
 			},
-			ExpectedError: ebay.ErrMaxCategoryIDs,
+			Err: ebay.ErrMaxCategoryIDs,
 		},
 		{
 			Name: "returns error if params contains 1 categoryId of length 1, empty keywords, storeName of length 1",
@@ -4348,7 +4335,7 @@ func TestFindItemsInEBayStores(t *testing.T) {
 				"keywords":   "",
 				"storeName":  "a",
 			},
-			ExpectedError: ebay.ErrInvalidKeywordsLength,
+			Err: ebay.ErrInvalidKeywordsLength,
 		},
 		{
 			Name: "returns error if params contains 1 categoryId of length 1, 1 keyword of length 99, storeName of length 1",
@@ -4357,7 +4344,7 @@ func TestFindItemsInEBayStores(t *testing.T) {
 				"keywords":   generateStringWithLen(99, false),
 				"storeName":  "a",
 			},
-			ExpectedError: ebay.ErrInvalidKeywordLength,
+			Err: ebay.ErrInvalidKeywordLength,
 		},
 		{
 			Name: "can find items if params contains 1 categoryId of length 1, keywords of length 2, &-escaped storeName",
@@ -4374,7 +4361,7 @@ func TestFindItemsInEBayStores(t *testing.T) {
 				"keywords":   generateStringWithLen(2, true),
 				"storeName":  "",
 			},
-			ExpectedError: ebay.ErrInvalidStoreNameLength,
+			Err: ebay.ErrInvalidStoreNameLength,
 		},
 		{
 			Name: "returns error if params contains 1 categoryId of length 1, keywords of length 2, storeName=Ben & Jerry's",
@@ -4383,384 +4370,350 @@ func TestFindItemsInEBayStores(t *testing.T) {
 				"keywords":   generateStringWithLen(2, true),
 				"storeName":  "Ben & Jerry's",
 			},
-			ExpectedError: ebay.ErrInvalidStoreNameAmpersand,
+			Err: ebay.ErrInvalidStoreNameAmpersand,
 		},
 	}
-
 	combinedTCs := combineTestCases(
 		t, findItemsInEBayStores, categoryIDTCs, keywordsTCs, categoryIDKeywordsTCs, findItemsInEBayStoresTCs)
 	testFindItems(t, params, findItemsInEBayStores, findItemsInEBayStoresResp, combinedTCs)
 }
 
+var findMethodConfigs = map[string]struct {
+	missingDesc string
+	searchErr   error
+	params      map[string]string
+}{
+	findItemsByCategories: {
+		missingDesc: "categoryId",
+		searchErr:   ebay.ErrCategoryIDMissing,
+		params:      map[string]string{"categoryId": "12345"},
+	},
+	findItemsByKeywords: {
+		missingDesc: "keywords",
+		searchErr:   ebay.ErrKeywordsMissing,
+		params:      map[string]string{"keywords": "marshmallows"},
+	},
+	findItemsAdvanced: {
+		missingDesc: "categoryId or keywords",
+		searchErr:   ebay.ErrCategoryIDKeywordsMissing,
+		params:      map[string]string{"categoryId": "12345"},
+	},
+	findItemsByProduct: {
+		missingDesc: "productId",
+		searchErr:   ebay.ErrProductIDMissing,
+		params:      map[string]string{"productId.@type": "ReferenceID", "productId": "123"},
+	},
+	findItemsInEBayStores: {
+		missingDesc: "categoryId, keywords, or storeName",
+		searchErr:   ebay.ErrCategoryIDKeywordsStoreNameMissing,
+		params:      map[string]string{"storeName": "Supplytronics"},
+	},
+}
+
 func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCase) []findItemsTestCase {
 	t.Helper()
-	var missingDesc string
-	var searchErr error
-	params := make(map[string]string)
-
-	switch findMethod {
-	case findItemsByCategories:
-		missingDesc = "categoryId"
-		searchErr = ebay.ErrCategoryIDMissing
-		params["categoryId"] = "12345"
-	case findItemsByKeywords:
-		missingDesc = "keywords"
-		searchErr = ebay.ErrKeywordsMissing
-		params["keywords"] = "marshmallows"
-	case findItemsAdvanced:
-		missingDesc = "categoryId or keywords"
-		searchErr = ebay.ErrCategoryIDKeywordsMissing
-		params["categoryId"] = "12345"
-	case findItemsByProduct:
-		missingDesc = "productId"
-		searchErr = ebay.ErrProductIDMissing
-		params["productId.@type"] = "ReferenceID"
-		params["productId"] = "123"
-	case findItemsInEBayStores:
-		missingDesc = "categoryId, keywords, or storeName"
-		searchErr = ebay.ErrCategoryIDKeywordsStoreNameMissing
-		params["storeName"] = "Supplytronics"
-	default:
-		t.Errorf("Unsupported findMethod: %s", findMethod)
-
-		return nil
+	config, ok := findMethodConfigs[findMethod]
+	if !ok {
+		t.Fatalf("unsupported findMethod: %s", findMethod)
 	}
-
 	missingParamTCs := append([]findItemsTestCase{}, missingSearchParamTCs...)
-	if findMethod != findItemsByProduct {
-		missingParamTCs = append(missingParamTCs, aspectFilterMissingSearchParamTCs...)
-	}
-	for i := range missingParamTCs {
-		missingParamTCs[i].Name += missingDesc
-		missingParamTCs[i].ExpectedError = searchErr
-	}
-
 	commonTCs := append([]findItemsTestCase{}, testCases...)
 	if findMethod != findItemsByProduct {
+		missingParamTCs = append(missingParamTCs, aspectFilterMissingSearchParamTCs...)
 		commonTCs = append(commonTCs, aspectFilterTestCases...)
+	}
+	for i := range missingParamTCs {
+		missingParamTCs[i].Name += config.missingDesc
+		missingParamTCs[i].Err = config.searchErr
 	}
 	for i := range commonTCs {
 		paramsCopy := make(map[string]string)
-		maps.Copy(paramsCopy, params)
+		maps.Copy(paramsCopy, config.params)
 		maps.Copy(paramsCopy, commonTCs[i].Params)
 		commonTCs[i].Params = paramsCopy
 	}
-
-	var combinedTCs []findItemsTestCase
+	combinedTCs := append([]findItemsTestCase{}, missingParamTCs...)
+	combinedTCs = append(combinedTCs, commonTCs...)
 	for _, cs := range tcs {
 		combinedTCs = append(combinedTCs, cs...)
 	}
-	combinedTCs = append(combinedTCs, missingParamTCs...)
-	combinedTCs = append(combinedTCs, commonTCs...)
-
 	return combinedTCs
 }
 
 func testFindItems(
-	t *testing.T, params map[string]string, findMethod string, expectedResp any, tcs []findItemsTestCase,
+	t *testing.T, params map[string]string, findMethod string, wantResp ebay.FindItems, tcs []findItemsTestCase,
 ) {
 	t.Helper()
 	t.Run(fmt.Sprintf("can find items by %s", findMethod), func(t *testing.T) {
 		t.Parallel()
-		client := &MockFindingClient{
-			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body, err := json.Marshal(expectedResp)
-				assertNoError(t, err)
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, err := json.Marshal(wantResp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.WriteHeader(http.StatusOK)
+			_, err = w.Write(body)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}))
+		defer ts.Close()
+		client := ts.Client()
+		fc := ebay.NewFindingClient(client, appID)
+		fc.BaseURL = ts.URL
 
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBuffer(body)),
-				}, nil
-			},
-		}
-		svr := ebay.NewFindingServer(client)
-		var resp any
+		var resp ebay.FindItems
 		var err error
-
 		switch findMethod {
 		case findItemsByCategories:
-			resp, err = svr.FindItemsByCategories(params, appID)
+			resp, err = fc.FindItemsByCategories(params)
 		case findItemsByKeywords:
-			resp, err = svr.FindItemsByKeywords(params, appID)
+			resp, err = fc.FindItemsByKeywords(params)
 		case findItemsAdvanced:
-			resp, err = svr.FindItemsAdvanced(params, appID)
+			resp, err = fc.FindItemsAdvanced(params)
 		case findItemsByProduct:
-			resp, err = svr.FindItemsByProduct(params, appID)
+			resp, err = fc.FindItemsByProduct(params)
 		case findItemsInEBayStores:
-			resp, err = svr.FindItemsInEBayStores(params, appID)
+			resp, err = fc.FindItemsInEBayStores(params)
 		default:
-			t.Errorf("Unsupported findMethod: %s", findMethod)
-
-			return
+			t.Fatalf("unsupported findMethod: %s", findMethod)
 		}
-
-		assertNoError(t, err)
-		if !reflect.DeepEqual(resp, expectedResp) {
-			t.Errorf("got %v, expected %v", resp, expectedResp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(resp, wantResp) {
+			t.Errorf("got %v, want %v", resp, wantResp)
 		}
 	})
 
 	t.Run("returns error if the client returns an error", func(t *testing.T) {
 		t.Parallel()
-		client := &MockFindingClient{
-			DoFunc: func(req *http.Request) (*http.Response, error) {
-				return nil, ErrClientFailure
-			},
-		}
-		svr := ebay.NewFindingServer(client)
-		var err error
+		fc := ebay.NewFindingClient(&http.Client{}, appID)
+		fc.BaseURL = "http://localhost"
 
+		var err error
 		switch findMethod {
 		case findItemsByCategories:
-			_, err = svr.FindItemsByCategories(params, appID)
+			_, err = fc.FindItemsByCategories(params)
 		case findItemsByKeywords:
-			_, err = svr.FindItemsByKeywords(params, appID)
+			_, err = fc.FindItemsByKeywords(params)
 		case findItemsAdvanced:
-			_, err = svr.FindItemsAdvanced(params, appID)
+			_, err = fc.FindItemsAdvanced(params)
 		case findItemsByProduct:
-			_, err = svr.FindItemsByProduct(params, appID)
+			_, err = fc.FindItemsByProduct(params)
 		case findItemsInEBayStores:
-			_, err = svr.FindItemsInEBayStores(params, appID)
+			_, err = fc.FindItemsInEBayStores(params)
 		default:
-			t.Errorf("Unsupported findMethod: %s", findMethod)
+			t.Fatalf("unsupported findMethod: %s", findMethod)
 		}
-		assertError(t, err)
-
-		expected := fmt.Sprintf("%v: %v", ebay.ErrFailedRequest, ErrClientFailure)
-		got := err.Error()
-		assertErrorEquals(t, got, expected)
-		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
+		if err == nil {
+			t.Fatal("err == nil; want != nil")
+		}
+		want := ebay.APIError{Err: ebay.ErrFailedRequest, StatusCode: http.StatusInternalServerError}
+		var got *ebay.APIError
+		if !errors.As(err, &got) {
+			t.Fatalf("error %v does not wrap ebay.APIError", err)
+		}
+		if !strings.HasPrefix(got.Error(), want.Error()) {
+			t.Errorf("expected error with prefix %q, got: %q", want.Error(), got.Error())
+		}
+		if got.StatusCode != want.StatusCode {
+			t.Errorf("got status %q, want %q", got.StatusCode, want.StatusCode)
+		}
 	})
+
+	badStatusCodes := []int{
+		http.StatusBadRequest,
+		http.StatusUnauthorized,
+		http.StatusPaymentRequired,
+		http.StatusForbidden,
+		http.StatusNotFound,
+		http.StatusMethodNotAllowed,
+		http.StatusNotAcceptable,
+		http.StatusProxyAuthRequired,
+		http.StatusRequestTimeout,
+		http.StatusConflict,
+		http.StatusGone,
+		http.StatusLengthRequired,
+		http.StatusPreconditionFailed,
+		http.StatusRequestEntityTooLarge,
+		http.StatusRequestURITooLong,
+		http.StatusUnsupportedMediaType,
+		http.StatusRequestedRangeNotSatisfiable,
+		http.StatusExpectationFailed,
+		http.StatusTeapot,
+		http.StatusMisdirectedRequest,
+		http.StatusUnprocessableEntity,
+		http.StatusLocked,
+		http.StatusFailedDependency,
+		http.StatusTooEarly,
+		http.StatusUpgradeRequired,
+		http.StatusPreconditionRequired,
+		http.StatusTooManyRequests,
+		http.StatusRequestHeaderFieldsTooLarge,
+		http.StatusUnavailableForLegalReasons,
+		http.StatusInternalServerError,
+		http.StatusNotImplemented,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout,
+		http.StatusHTTPVersionNotSupported,
+		http.StatusVariantAlsoNegotiates,
+		http.StatusInsufficientStorage,
+		http.StatusLoopDetected,
+		http.StatusNotExtended,
+		http.StatusNetworkAuthenticationRequired,
+	}
 
 	t.Run("returns error if the client request was not successful", func(t *testing.T) {
 		t.Parallel()
-		badStatusCodes := []int{
-			http.StatusBadRequest,
-			http.StatusUnauthorized,
-			http.StatusPaymentRequired,
-			http.StatusForbidden,
-			http.StatusNotFound,
-			http.StatusMethodNotAllowed,
-			http.StatusNotAcceptable,
-			http.StatusProxyAuthRequired,
-			http.StatusRequestTimeout,
-			http.StatusConflict,
-			http.StatusGone,
-			http.StatusLengthRequired,
-			http.StatusPreconditionFailed,
-			http.StatusRequestEntityTooLarge,
-			http.StatusRequestURITooLong,
-			http.StatusUnsupportedMediaType,
-			http.StatusRequestedRangeNotSatisfiable,
-			http.StatusExpectationFailed,
-			http.StatusTeapot,
-			http.StatusMisdirectedRequest,
-			http.StatusUnprocessableEntity,
-			http.StatusLocked,
-			http.StatusFailedDependency,
-			http.StatusTooEarly,
-			http.StatusUpgradeRequired,
-			http.StatusPreconditionRequired,
-			http.StatusTooManyRequests,
-			http.StatusRequestHeaderFieldsTooLarge,
-			http.StatusUnavailableForLegalReasons,
-			http.StatusInternalServerError,
-			http.StatusNotImplemented,
-			http.StatusBadGateway,
-			http.StatusServiceUnavailable,
-			http.StatusGatewayTimeout,
-			http.StatusHTTPVersionNotSupported,
-			http.StatusVariantAlsoNegotiates,
-			http.StatusInsufficientStorage,
-			http.StatusLoopDetected,
-			http.StatusNotExtended,
-			http.StatusNetworkAuthenticationRequired,
-		}
-
 		for _, statusCode := range badStatusCodes {
-			client := &MockFindingClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{StatusCode: statusCode}, nil
-				},
-			}
-			svr := ebay.NewFindingServer(client)
-			var err error
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(statusCode)
+			}))
+			defer ts.Close()
+			client := ts.Client()
+			fc := ebay.NewFindingClient(client, appID)
+			fc.BaseURL = ts.URL
 
+			var err error
 			switch findMethod {
 			case findItemsByCategories:
-				_, err = svr.FindItemsByCategories(params, appID)
+				_, err = fc.FindItemsByCategories(params)
 			case findItemsByKeywords:
-				_, err = svr.FindItemsByKeywords(params, appID)
+				_, err = fc.FindItemsByKeywords(params)
 			case findItemsAdvanced:
-				_, err = svr.FindItemsAdvanced(params, appID)
+				_, err = fc.FindItemsAdvanced(params)
 			case findItemsByProduct:
-				_, err = svr.FindItemsByProduct(params, appID)
+				_, err = fc.FindItemsByProduct(params)
 			case findItemsInEBayStores:
-				_, err = svr.FindItemsInEBayStores(params, appID)
+				_, err = fc.FindItemsInEBayStores(params)
 			default:
-				t.Errorf("Unsupported findMethod: %s", findMethod)
+				t.Fatalf("unsupported findMethod: %s", findMethod)
 			}
-			assertError(t, err)
-
-			expected := fmt.Sprintf("%v: %d", ebay.ErrInvalidStatus, statusCode)
-			got := err.Error()
-			assertErrorEquals(t, got, expected)
-			assertStatusCodeEquals(t, err, http.StatusInternalServerError)
+			want := fmt.Errorf("%w %d", ebay.ErrInvalidStatus, statusCode)
+			assertAPIError(t, err, want, http.StatusInternalServerError)
 		}
 	})
 
 	t.Run("returns error if the response cannot be parsed into find items response", func(t *testing.T) {
 		t.Parallel()
 		badData := `[123.1, 234.2]`
-		client := &MockFindingClient{
-			DoFunc: func(req *http.Request) (*http.Response, error) {
-				body := []byte(badData)
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte(badData))
+			if err != nil {
+				t.Fatal(err)
+			}
+		}))
+		defer ts.Close()
+		client := ts.Client()
+		fc := ebay.NewFindingClient(client, appID)
+		fc.BaseURL = ts.URL
 
-				return &http.Response{
-					StatusCode: http.StatusOK,
-					Body:       io.NopCloser(bytes.NewBuffer(body)),
-				}, nil
-			},
-		}
-		svr := ebay.NewFindingServer(client)
 		var err error
-		var expected string
-
 		switch findMethod {
 		case findItemsByCategories:
-			_, err = svr.FindItemsByCategories(params, appID)
-			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
-				ebay.ErrDecodeAPIResponse, findItemsByCategories)
+			_, err = fc.FindItemsByCategories(params)
 		case findItemsByKeywords:
-			_, err = svr.FindItemsByKeywords(params, appID)
-			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
-				ebay.ErrDecodeAPIResponse, findItemsByKeywords)
+			_, err = fc.FindItemsByKeywords(params)
 		case findItemsAdvanced:
-			_, err = svr.FindItemsAdvanced(params, appID)
-			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
-				ebay.ErrDecodeAPIResponse, findItemsAdvanced)
+			_, err = fc.FindItemsAdvanced(params)
 		case findItemsByProduct:
-			_, err = svr.FindItemsByProduct(params, appID)
-			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
-				ebay.ErrDecodeAPIResponse, findItemsByProduct)
+			_, err = fc.FindItemsByProduct(params)
 		case findItemsInEBayStores:
-			_, err = svr.FindItemsInEBayStores(params, appID)
-			expected = fmt.Sprintf("%v: json: cannot unmarshal array into Go value of type ebay.%sResponse",
-				ebay.ErrDecodeAPIResponse, findItemsInEBayStores)
+			_, err = fc.FindItemsInEBayStores(params)
 		default:
-			t.Errorf("Unsupported findMethod: %s", findMethod)
+			t.Fatalf("unsupported findMethod: %s", findMethod)
 		}
-		assertError(t, err)
-
-		got := err.Error()
-		assertErrorEquals(t, got, expected)
-		assertStatusCodeEquals(t, err, http.StatusInternalServerError)
+		want := fmt.Errorf("%w: json: cannot unmarshal array into Go value of type ebay.%sResponse",
+			ebay.ErrDecodeAPIResponse, findMethod)
+		assertAPIError(t, err, want, http.StatusInternalServerError)
 	})
 
 	for _, tc := range tcs {
 		testCase := tc
 		t.Run(testCase.Name, func(t *testing.T) {
 			t.Parallel()
-			client := &MockFindingClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					body, err := json.Marshal(expectedResp)
-					assertNoError(t, err)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := json.Marshal(wantResp)
+				if err != nil {
+					t.Fatal(err)
+				}
+				w.WriteHeader(http.StatusOK)
+				_, err = w.Write(body)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}))
+			defer ts.Close()
+			client := ts.Client()
+			fc := ebay.NewFindingClient(client, appID)
+			fc.BaseURL = ts.URL
 
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       io.NopCloser(bytes.NewBuffer(body)),
-					}, nil
-				},
-			}
-			svr := ebay.NewFindingServer(client)
-			var resp any
+			var resp ebay.FindItems
 			var err error
-
 			switch findMethod {
 			case findItemsByCategories:
-				resp, err = svr.FindItemsByCategories(testCase.Params, appID)
+				resp, err = fc.FindItemsByCategories(testCase.Params)
 			case findItemsByKeywords:
-				resp, err = svr.FindItemsByKeywords(testCase.Params, appID)
+				resp, err = fc.FindItemsByKeywords(testCase.Params)
 			case findItemsAdvanced:
-				resp, err = svr.FindItemsAdvanced(testCase.Params, appID)
+				resp, err = fc.FindItemsAdvanced(testCase.Params)
 			case findItemsByProduct:
-				resp, err = svr.FindItemsByProduct(testCase.Params, appID)
+				resp, err = fc.FindItemsByProduct(testCase.Params)
 			case findItemsInEBayStores:
-				resp, err = svr.FindItemsInEBayStores(testCase.Params, appID)
+				resp, err = fc.FindItemsInEBayStores(testCase.Params)
 			default:
-				t.Errorf("Unsupported findMethod: %s", findMethod)
-
-				return
+				t.Fatalf("unsupported findMethod: %s", findMethod)
 			}
-
-			if testCase.ExpectedError != nil {
-				assertError(t, err)
-				assertErrorEquals(t, err.Error(), testCase.ExpectedError.Error())
-				assertStatusCodeEquals(t, err, http.StatusBadRequest)
+			if testCase.Err != nil {
+				assertAPIError(t, err, testCase.Err, http.StatusBadRequest)
 			} else {
-				assertNoError(t, err)
-				if !reflect.DeepEqual(resp, expectedResp) {
-					t.Errorf("got %v, expected %v", resp, expectedResp)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(resp, wantResp) {
+					t.Errorf("got %v, want %v", resp, wantResp)
 				}
 			}
 		})
 	}
 }
 
-func assertError(tb testing.TB, err error) {
+func assertAPIError(tb testing.TB, got, wantErr error, wantStatusCode int) {
 	tb.Helper()
-	if err == nil {
-		tb.Fatal("expected an error but did not get one")
+	var gotAPIError *ebay.APIError
+	if !errors.As(got, &gotAPIError) {
+		tb.Fatalf("error %v does not wrap ebay.APIError", got)
 	}
-}
-
-func assertNoError(tb testing.TB, err error) {
-	tb.Helper()
-	if err != nil {
-		tb.Fatalf("did not expect error but got one, %v", err)
+	want := &ebay.APIError{Err: wantErr, StatusCode: wantStatusCode}
+	if gotAPIError.Err.Error() != want.Err.Error() {
+		tb.Errorf("got error %q, want %q", gotAPIError.Err.Error(), want.Err.Error())
 	}
-}
-
-func assertErrorEquals(tb testing.TB, got, expected string) {
-	tb.Helper()
-	if got != expected {
-		tb.Errorf("got %v, expected %v", got, expected)
-	}
-}
-
-func assertStatusCodeEquals(tb testing.TB, err error, expectedStatusCode int) {
-	tb.Helper()
-	var apiError *ebay.APIError
-	if !errors.As(err, &apiError) {
-		tb.Error("expected APIError")
-	} else if apiError.StatusCode != expectedStatusCode {
-		tb.Errorf("got status code %d, expected %d", apiError.StatusCode, expectedStatusCode)
+	if gotAPIError.StatusCode != want.StatusCode {
+		tb.Errorf("got status %q, want %q", gotAPIError.StatusCode, want.StatusCode)
 	}
 }
 
 func generateStringWithLen(length int, includeSpaces bool) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
 	var sbuilder strings.Builder
-
 	charSet := letters
 	if !includeSpaces {
 		charSet = letters[:len(letters)-1] // Exclude the space character
 	}
-
 	for i := 0; i < length; i++ {
 		sbuilder.WriteByte(charSet[i%len(charSet)])
 	}
-
 	return sbuilder.String()
 }
 
 func generateFilterParams(filterName string, count int) map[string]string {
 	params := make(map[string]string)
 	params["itemFilter.name"] = filterName
-
 	for i := 0; i < count; i++ {
 		params[fmt.Sprintf("itemFilter.value(%d)", i)] = strconv.Itoa(i)
 	}
-
 	return params
 }

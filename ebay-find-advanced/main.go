@@ -20,13 +20,13 @@ import (
 const findingHTTPTimeout = 5
 
 var (
-	stage         string
-	findingClient *http.Client
+	stage  string
+	client *http.Client
 )
 
 func init() {
 	stage = os.Getenv("STAGE")
-	findingClient = &http.Client{
+	client = &http.Client{
 		Timeout: time.Second * findingHTTPTimeout,
 	}
 }
@@ -39,8 +39,8 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return generateErrorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}
 
-	findingSvr := ebay.NewFindingServer(findingClient)
-	items, err := findingSvr.FindItemsAdvanced(request.QueryStringParameters, appID)
+	fc := ebay.NewFindingClient(client, appID)
+	items, err := fc.FindItemsAdvanced(request.QueryStringParameters)
 	if err != nil {
 		var ebayErr *ebay.APIError
 		if errors.As(err, &ebayErr) {

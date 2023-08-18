@@ -273,7 +273,7 @@ var (
 	// and the 'affiliate.trackingId' parameter is not a 10-digit number (eBay Partner Network's Campaign ID).
 	ErrInvalidCampaignID = errors.New("invalid affiliate Campaign ID length: must be a 10-digit number")
 
-	// ErrInvalidEntriesPerPage is returned when the 'buyerPostalCode' parameter contains an invalid postal code.
+	// ErrInvalidPostalCode is returned when the 'buyerPostalCode' parameter contains an invalid postal code.
 	ErrInvalidPostalCode = errors.New("invalid postal code")
 
 	minPaginationValue, maxPaginationValue = 1, 100
@@ -458,31 +458,22 @@ func (fp *findItemsByCategoryParams) validateParams(params map[string]string) er
 		return err
 	}
 	fp.categoryIDs = categoryID
-
-	aspectFilters, err := processAspectFilters(params)
+	fp.aspectFilters, err = processAspectFilters(params)
 	if err != nil {
 		return err
 	}
-	fp.aspectFilters = aspectFilters
-
-	itemFilters, err := processItemFilters(params)
+	fp.itemFilters, err = processItemFilters(params)
 	if err != nil {
 		return err
 	}
-	fp.itemFilters = itemFilters
-
-	outputSelectors, err := processOutputSelectors(params)
+	fp.outputSelectors, err = processOutputSelectors(params)
 	if err != nil {
 		return err
 	}
-	fp.outputSelectors = outputSelectors
-
-	affiliate, err := processAffiliate(params)
+	fp.affiliate, err = processAffiliate(params)
 	if err != nil {
 		return err
 	}
-	fp.affiliate = affiliate
-
 	buyerPostalCode, ok := params["buyerPostalCode"]
 	if ok {
 		if !isValidPostalCode(buyerPostalCode) {
@@ -490,13 +481,10 @@ func (fp *findItemsByCategoryParams) validateParams(params map[string]string) er
 		}
 		fp.buyerPostalCode = &buyerPostalCode
 	}
-
-	paginationInput, err := processPaginationInput(params)
+	fp.paginationInput, err = processPaginationInput(params)
 	if err != nil {
 		return err
 	}
-	fp.paginationInput = paginationInput
-
 	sortOrder, ok := params["sortOrder"]
 	if ok {
 		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
@@ -566,7 +554,6 @@ func (fp *findItemsByCategoryParams) createRequest(baseURL string) (*http.Reques
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
-
 	req.URL.RawQuery = qry.Encode()
 	return req, nil
 }
@@ -589,31 +576,22 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 		return err
 	}
 	fp.keywords = keywords
-
-	aspectFilters, err := processAspectFilters(params)
+	fp.aspectFilters, err = processAspectFilters(params)
 	if err != nil {
 		return err
 	}
-	fp.aspectFilters = aspectFilters
-
-	itemFilters, err := processItemFilters(params)
+	fp.itemFilters, err = processItemFilters(params)
 	if err != nil {
 		return err
 	}
-	fp.itemFilters = itemFilters
-
-	outputSelectors, err := processOutputSelectors(params)
+	fp.outputSelectors, err = processOutputSelectors(params)
 	if err != nil {
 		return err
 	}
-	fp.outputSelectors = outputSelectors
-
-	affiliate, err := processAffiliate(params)
+	fp.affiliate, err = processAffiliate(params)
 	if err != nil {
 		return err
 	}
-	fp.affiliate = affiliate
-
 	buyerPostalCode, ok := params["buyerPostalCode"]
 	if ok {
 		if !isValidPostalCode(buyerPostalCode) {
@@ -621,13 +599,10 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 		}
 		fp.buyerPostalCode = &buyerPostalCode
 	}
-
-	paginationInput, err := processPaginationInput(params)
+	fp.paginationInput, err = processPaginationInput(params)
 	if err != nil {
 		return err
 	}
-	fp.paginationInput = paginationInput
-
 	sortOrder, ok := params["sortOrder"]
 	if ok {
 		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
@@ -697,7 +672,6 @@ func (fp *findItemsByKeywordsParams) createRequest(baseURL string) (*http.Reques
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
-
 	req.URL.RawQuery = qry.Encode()
 	return req, nil
 }
@@ -736,13 +710,11 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		}
 		fp.keywords = &keywords
 	}
-
 	aspectFilters, err := processAspectFilters(params)
 	if err != nil {
 		return err
 	}
 	fp.aspectFilters = aspectFilters
-
 	ds, ok := params["descriptionSearch"]
 	if ok {
 		if ds != trueValue && ds != falseValue {
@@ -750,25 +722,18 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		}
 		fp.descriptionSearch = &ds
 	}
-
-	itemFilters, err := processItemFilters(params)
+	fp.itemFilters, err = processItemFilters(params)
 	if err != nil {
 		return err
 	}
-	fp.itemFilters = itemFilters
-
-	outputSelectors, err := processOutputSelectors(params)
+	fp.outputSelectors, err = processOutputSelectors(params)
 	if err != nil {
 		return err
 	}
-	fp.outputSelectors = outputSelectors
-
-	affiliate, err := processAffiliate(params)
+	fp.affiliate, err = processAffiliate(params)
 	if err != nil {
 		return err
 	}
-	fp.affiliate = affiliate
-
 	buyerPostalCode, ok := params["buyerPostalCode"]
 	if ok {
 		if !isValidPostalCode(buyerPostalCode) {
@@ -776,13 +741,10 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 		}
 		fp.buyerPostalCode = &buyerPostalCode
 	}
-
-	paginationInput, err := processPaginationInput(params)
+	fp.paginationInput, err = processPaginationInput(params)
 	if err != nil {
 		return err
 	}
-	fp.paginationInput = paginationInput
-
 	sortOrder, ok := params["sortOrder"]
 	if ok {
 		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
@@ -860,7 +822,6 @@ func (fp *findItemsAdvancedParams) createRequest(baseURL string) (*http.Request,
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
-
 	req.URL.RawQuery = qry.Encode()
 	return req, nil
 }
@@ -887,31 +848,23 @@ func (fp *findItemsByProductParams) validateParams(params map[string]string) err
 	if !ptOk || !pOk {
 		return ErrProductIDMissing
 	}
-	p := productID{idType: productIDType, value: productValue}
-	err := p.processProductID()
+	fp.product = productID{idType: productIDType, value: productValue}
+	err := fp.product.processProductID()
 	if err != nil {
 		return err
 	}
-	fp.product = p
-
-	itemFilters, err := processItemFilters(params)
+	fp.itemFilters, err = processItemFilters(params)
 	if err != nil {
 		return err
 	}
-	fp.itemFilters = itemFilters
-
-	outputSelectors, err := processOutputSelectors(params)
+	fp.outputSelectors, err = processOutputSelectors(params)
 	if err != nil {
 		return err
 	}
-	fp.outputSelectors = outputSelectors
-
-	affiliate, err := processAffiliate(params)
+	fp.affiliate, err = processAffiliate(params)
 	if err != nil {
 		return err
 	}
-	fp.affiliate = affiliate
-
 	buyerPostalCode, ok := params["buyerPostalCode"]
 	if ok {
 		if !isValidPostalCode(buyerPostalCode) {
@@ -919,13 +872,10 @@ func (fp *findItemsByProductParams) validateParams(params map[string]string) err
 		}
 		fp.buyerPostalCode = &buyerPostalCode
 	}
-
-	paginationInput, err := processPaginationInput(params)
+	fp.paginationInput, err = processPaginationInput(params)
 	if err != nil {
 		return err
 	}
-	fp.paginationInput = paginationInput
-
 	sortOrder, ok := params["sortOrder"]
 	if ok {
 		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
@@ -990,7 +940,6 @@ func (fp *findItemsByProductParams) createRequest(baseURL string) (*http.Request
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
-
 	req.URL.RawQuery = qry.Encode()
 	return req, nil
 }
@@ -1037,31 +986,23 @@ func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) 
 		}
 		fp.storeName = &storeName
 	}
-
 	aspectFilters, err := processAspectFilters(params)
 	if err != nil {
 		return err
 	}
 	fp.aspectFilters = aspectFilters
-
-	itemFilters, err := processItemFilters(params)
+	fp.itemFilters, err = processItemFilters(params)
 	if err != nil {
 		return err
 	}
-	fp.itemFilters = itemFilters
-
-	outputSelectors, err := processOutputSelectors(params)
+	fp.outputSelectors, err = processOutputSelectors(params)
 	if err != nil {
 		return err
 	}
-	fp.outputSelectors = outputSelectors
-
-	affiliate, err := processAffiliate(params)
+	fp.affiliate, err = processAffiliate(params)
 	if err != nil {
 		return err
 	}
-	fp.affiliate = affiliate
-
 	buyerPostalCode, ok := params["buyerPostalCode"]
 	if ok {
 		if !isValidPostalCode(buyerPostalCode) {
@@ -1069,13 +1010,10 @@ func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) 
 		}
 		fp.buyerPostalCode = &buyerPostalCode
 	}
-
-	paginationInput, err := processPaginationInput(params)
+	fp.paginationInput, err = processPaginationInput(params)
 	if err != nil {
 		return err
 	}
-	fp.paginationInput = paginationInput
-
 	sortOrder, ok := params["sortOrder"]
 	if ok {
 		err := validateSortOrder(sortOrder, fp.itemFilters, fp.buyerPostalCode != nil)
@@ -1153,7 +1091,6 @@ func (fp *findItemsInEBayStoresParams) createRequest(baseURL string) (*http.Requ
 	if fp.sortOrder != nil {
 		qry.Add("sortOrder", *fp.sortOrder)
 	}
-
 	req.URL.RawQuery = qry.Encode()
 	return req, nil
 }
@@ -1335,7 +1272,6 @@ func processNonNumberedAspectFilter(params map[string]string) ([]aspectFilter, e
 		return nil, err
 	}
 	filter := aspectFilter{
-		// No need to check aspectFilter.aspectName exists due to how this function is invoked from processAspectFilters.
 		aspectName:       params["aspectFilter.aspectName"],
 		aspectValueNames: filterValues,
 	}
@@ -1381,7 +1317,6 @@ func processNonNumberedItemFilter(params map[string]string) ([]itemFilter, error
 		return nil, err
 	}
 	filter := itemFilter{
-		// No need to check itemFilter.name exists due to how this function is invoked from processItemFilters.
 		name:   params["itemFilter.name"],
 		values: filterValues,
 	}

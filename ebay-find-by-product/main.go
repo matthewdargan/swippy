@@ -19,47 +19,31 @@ import (
 
 const findingHTTPTimeout = 5
 
-var (
-	stage  string
-	client *http.Client
-)
-
-func init() {
-	stage = os.Getenv("STAGE")
-	client = &http.Client{
-		Timeout: time.Second * findingHTTPTimeout,
-	}
-}
-
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	ssmClient := ssmClient()
-	appIDParamName := fmt.Sprintf("/%s/ebay-app-id", stage)
+	appIDParamName := fmt.Sprintf("/%s/ebay-app-id", os.Getenv("STAGE"))
 	appID, err := ssmParameterValue(ssmClient, appIDParamName)
 	if err != nil {
 		return generateErrorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}
-
-	fc := ebay.NewFindingClient(client, appID)
+	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, appID)
 	items, err := fc.FindItemsByProduct(request.QueryStringParameters)
 	if err != nil {
 		var ebayErr *ebay.APIError
 		if errors.As(err, &ebayErr) {
 			return generateErrorResponse(ebayErr.StatusCode, ebayErr)
 		}
-
 		return generateErrorResponse(http.StatusInternalServerError, err)
 	}
 	if err != nil {
 		return generateErrorResponse(
 			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items by product: %w", err))
 	}
-
 	body, err := json.Marshal(items)
 	if err != nil {
 		return generateErrorResponse(
 			http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay items response: %w", err))
 	}
-
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 		Headers:    map[string]string{"Content-Type": "application/json"},
@@ -72,7 +56,6 @@ func ssmClient() *ssm.SSM {
 	if err != nil {
 		log.Fatalf("failed to create AWS SDK session: %v", err)
 	}
-
 	return ssm.New(sess)
 }
 
@@ -84,7 +67,6 @@ func ssmParameterValue(ssmClient *ssm.SSM, paramName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve parameter value: %w", err)
 	}
-
 	return *output.Parameter.Value, nil
 }
 
@@ -97,7 +79,6 @@ func generateErrorResponse(statusCode int, err error) (events.APIGatewayProxyRes
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: statusCode}, fmt.Errorf("failed to marshal error response: %w", err)
 	}
-
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,
 		Headers:    map[string]string{"Content-Type": "application/json"},

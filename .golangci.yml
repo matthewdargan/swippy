@@ -7,7 +7,6 @@ linters:
     - exhaustruct
     - funlen
     - gochecknoglobals
-    - gochecknoinits
     - golint
     - ifshort
     - interfacer

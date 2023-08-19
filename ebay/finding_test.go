@@ -1,6 +1,7 @@
 package ebay_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -4466,15 +4467,15 @@ func testFindItems(
 		var err error
 		switch findMethod {
 		case findItemsByCategories:
-			resp, err = fc.FindItemsByCategories(params)
+			resp, err = fc.FindItemsByCategories(context.Background(), params)
 		case findItemsByKeywords:
-			resp, err = fc.FindItemsByKeywords(params)
+			resp, err = fc.FindItemsByKeywords(context.Background(), params)
 		case findItemsAdvanced:
-			resp, err = fc.FindItemsAdvanced(params)
+			resp, err = fc.FindItemsAdvanced(context.Background(), params)
 		case findItemsByProduct:
-			resp, err = fc.FindItemsByProduct(params)
+			resp, err = fc.FindItemsByProduct(context.Background(), params)
 		case findItemsInEBayStores:
-			resp, err = fc.FindItemsInEBayStores(params)
+			resp, err = fc.FindItemsInEBayStores(context.Background(), params)
 		default:
 			t.Fatalf("unsupported findMethod: %s", findMethod)
 		}
@@ -4494,15 +4495,15 @@ func testFindItems(
 		var err error
 		switch findMethod {
 		case findItemsByCategories:
-			_, err = fc.FindItemsByCategories(params)
+			_, err = fc.FindItemsByCategories(context.Background(), params)
 		case findItemsByKeywords:
-			_, err = fc.FindItemsByKeywords(params)
+			_, err = fc.FindItemsByKeywords(context.Background(), params)
 		case findItemsAdvanced:
-			_, err = fc.FindItemsAdvanced(params)
+			_, err = fc.FindItemsAdvanced(context.Background(), params)
 		case findItemsByProduct:
-			_, err = fc.FindItemsByProduct(params)
+			_, err = fc.FindItemsByProduct(context.Background(), params)
 		case findItemsInEBayStores:
-			_, err = fc.FindItemsInEBayStores(params)
+			_, err = fc.FindItemsInEBayStores(context.Background(), params)
 		default:
 			t.Fatalf("unsupported findMethod: %s", findMethod)
 		}
@@ -4579,15 +4580,15 @@ func testFindItems(
 			var err error
 			switch findMethod {
 			case findItemsByCategories:
-				_, err = fc.FindItemsByCategories(params)
+				_, err = fc.FindItemsByCategories(context.Background(), params)
 			case findItemsByKeywords:
-				_, err = fc.FindItemsByKeywords(params)
+				_, err = fc.FindItemsByKeywords(context.Background(), params)
 			case findItemsAdvanced:
-				_, err = fc.FindItemsAdvanced(params)
+				_, err = fc.FindItemsAdvanced(context.Background(), params)
 			case findItemsByProduct:
-				_, err = fc.FindItemsByProduct(params)
+				_, err = fc.FindItemsByProduct(context.Background(), params)
 			case findItemsInEBayStores:
-				_, err = fc.FindItemsInEBayStores(params)
+				_, err = fc.FindItemsInEBayStores(context.Background(), params)
 			default:
 				t.Fatalf("unsupported findMethod: %s", findMethod)
 			}
@@ -4614,15 +4615,15 @@ func testFindItems(
 		var err error
 		switch findMethod {
 		case findItemsByCategories:
-			_, err = fc.FindItemsByCategories(params)
+			_, err = fc.FindItemsByCategories(context.Background(), params)
 		case findItemsByKeywords:
-			_, err = fc.FindItemsByKeywords(params)
+			_, err = fc.FindItemsByKeywords(context.Background(), params)
 		case findItemsAdvanced:
-			_, err = fc.FindItemsAdvanced(params)
+			_, err = fc.FindItemsAdvanced(context.Background(), params)
 		case findItemsByProduct:
-			_, err = fc.FindItemsByProduct(params)
+			_, err = fc.FindItemsByProduct(context.Background(), params)
 		case findItemsInEBayStores:
-			_, err = fc.FindItemsInEBayStores(params)
+			_, err = fc.FindItemsInEBayStores(context.Background(), params)
 		default:
 			t.Fatalf("unsupported findMethod: %s", findMethod)
 		}
@@ -4655,15 +4656,15 @@ func testFindItems(
 			var err error
 			switch findMethod {
 			case findItemsByCategories:
-				resp, err = fc.FindItemsByCategories(testCase.Params)
+				resp, err = fc.FindItemsByCategories(context.Background(), testCase.Params)
 			case findItemsByKeywords:
-				resp, err = fc.FindItemsByKeywords(testCase.Params)
+				resp, err = fc.FindItemsByKeywords(context.Background(), testCase.Params)
 			case findItemsAdvanced:
-				resp, err = fc.FindItemsAdvanced(testCase.Params)
+				resp, err = fc.FindItemsAdvanced(context.Background(), testCase.Params)
 			case findItemsByProduct:
-				resp, err = fc.FindItemsByProduct(testCase.Params)
+				resp, err = fc.FindItemsByProduct(context.Background(), testCase.Params)
 			case findItemsInEBayStores:
-				resp, err = fc.FindItemsInEBayStores(testCase.Params)
+				resp, err = fc.FindItemsInEBayStores(context.Background(), testCase.Params)
 			default:
 				t.Fatalf("unsupported findMethod: %s", findMethod)
 			}

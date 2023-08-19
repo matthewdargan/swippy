@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,7 +28,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return generateErrorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}
 	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, appID)
-	items, err := fc.FindItemsByCategories(request.QueryStringParameters)
+	items, err := fc.FindItemsByCategories(context.Background(), request.QueryStringParameters)
 	if err != nil {
 		var ebayErr *ebay.APIError
 		if errors.As(err, &ebayErr) {

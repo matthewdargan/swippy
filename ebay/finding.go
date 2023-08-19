@@ -1,6 +1,7 @@
 package ebay
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -324,9 +325,11 @@ func (e *APIError) Error() string {
 
 // FindItemsByCategories searches the eBay Finding API using the provided category, additional parameters,
 // and a valid eBay application ID.
-func (c *FindingClient) FindItemsByCategories(params map[string]string) (FindItemsByCategoriesResponse, error) {
+func (c *FindingClient) FindItemsByCategories(
+	ctx context.Context, params map[string]string,
+) (FindItemsByCategoriesResponse, error) {
 	var findItems FindItemsByCategoriesResponse
-	err := c.findItems(params, &findItemsByCategoryParams{appID: c.AppID}, &findItems)
+	err := c.findItems(ctx, params, &findItemsByCategoryParams{appID: c.AppID}, &findItems)
 	if err != nil {
 		return findItems, err
 	}
@@ -335,9 +338,11 @@ func (c *FindingClient) FindItemsByCategories(params map[string]string) (FindIte
 
 // FindItemsByKeywords searches the eBay Finding API using the provided keywords, additional parameters,
 // and a valid eBay application ID.
-func (c *FindingClient) FindItemsByKeywords(params map[string]string) (FindItemsByKeywordsResponse, error) {
+func (c *FindingClient) FindItemsByKeywords(
+	ctx context.Context, params map[string]string,
+) (FindItemsByKeywordsResponse, error) {
 	var findItems FindItemsByKeywordsResponse
-	err := c.findItems(params, &findItemsByKeywordsParams{appID: c.AppID}, &findItems)
+	err := c.findItems(ctx, params, &findItemsByKeywordsParams{appID: c.AppID}, &findItems)
 	if err != nil {
 		return findItems, err
 	}
@@ -346,9 +351,11 @@ func (c *FindingClient) FindItemsByKeywords(params map[string]string) (FindItems
 
 // FindItemsAdvanced searches the eBay Finding API using the provided category and/or keywords, additional parameters,
 // and a valid eBay application ID.
-func (c *FindingClient) FindItemsAdvanced(params map[string]string) (FindItemsAdvancedResponse, error) {
+func (c *FindingClient) FindItemsAdvanced(
+	ctx context.Context, params map[string]string,
+) (FindItemsAdvancedResponse, error) {
 	var findItems FindItemsAdvancedResponse
-	err := c.findItems(params, &findItemsAdvancedParams{appID: c.AppID}, &findItems)
+	err := c.findItems(ctx, params, &findItemsAdvancedParams{appID: c.AppID}, &findItems)
 	if err != nil {
 		return findItems, err
 	}
@@ -357,9 +364,11 @@ func (c *FindingClient) FindItemsAdvanced(params map[string]string) (FindItemsAd
 
 // FindItemsByProduct searches the eBay Finding API using the provided product, additional parameters,
 // and a valid eBay application ID.
-func (c *FindingClient) FindItemsByProduct(params map[string]string) (FindItemsByProductResponse, error) {
+func (c *FindingClient) FindItemsByProduct(
+	ctx context.Context, params map[string]string,
+) (FindItemsByProductResponse, error) {
 	var findItems FindItemsByProductResponse
-	err := c.findItems(params, &findItemsByProductParams{appID: c.AppID}, &findItems)
+	err := c.findItems(ctx, params, &findItemsByProductParams{appID: c.AppID}, &findItems)
 	if err != nil {
 		return findItems, err
 	}
@@ -368,21 +377,25 @@ func (c *FindingClient) FindItemsByProduct(params map[string]string) (FindItemsB
 
 // FindItemsInEBayStores searches the eBay Finding API using the provided category, keywords, and/or store name,
 // additional parameters, and a valid eBay application ID.
-func (c *FindingClient) FindItemsInEBayStores(params map[string]string) (FindItemsInEBayStoresResponse, error) {
+func (c *FindingClient) FindItemsInEBayStores(
+	ctx context.Context, params map[string]string,
+) (FindItemsInEBayStoresResponse, error) {
 	var findItems FindItemsInEBayStoresResponse
-	err := c.findItems(params, &findItemsInEBayStoresParams{appID: c.AppID}, &findItems)
+	err := c.findItems(ctx, params, &findItemsInEBayStoresParams{appID: c.AppID}, &findItems)
 	if err != nil {
 		return findItems, err
 	}
 	return findItems, nil
 }
 
-func (c *FindingClient) findItems(params map[string]string, fParams findItemsParams, items FindItems) error {
+func (c *FindingClient) findItems(
+	ctx context.Context, params map[string]string, fParams findItemsParams, items FindItems,
+) error {
 	err := fParams.validateParams(params)
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusBadRequest}
 	}
-	req, err := fParams.createRequest(c.BaseURL)
+	req, err := fParams.newRequest(ctx, c.BaseURL)
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusInternalServerError}
 	}
@@ -409,7 +422,7 @@ func (c *FindingClient) findItems(params map[string]string, fParams findItemsPar
 
 type findItemsParams interface {
 	validateParams(params map[string]string) error
-	createRequest(baseURL string) (*http.Request, error)
+	newRequest(ctx context.Context, baseURL string) (*http.Request, error)
 }
 
 type findItemsByCategoryParams struct {
@@ -496,8 +509,8 @@ func (fp *findItemsByCategoryParams) validateParams(params map[string]string) er
 	return nil
 }
 
-func (fp *findItemsByCategoryParams) createRequest(baseURL string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, baseURL, nil)
+func (fp *findItemsByCategoryParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
 	}
@@ -614,8 +627,8 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 	return nil
 }
 
-func (fp *findItemsByKeywordsParams) createRequest(baseURL string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, baseURL, nil)
+func (fp *findItemsByKeywordsParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
 	}
@@ -756,8 +769,8 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	return nil
 }
 
-func (fp *findItemsAdvancedParams) createRequest(baseURL string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, baseURL, nil)
+func (fp *findItemsAdvancedParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
 	}
@@ -887,8 +900,8 @@ func (fp *findItemsByProductParams) validateParams(params map[string]string) err
 	return nil
 }
 
-func (fp *findItemsByProductParams) createRequest(baseURL string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, baseURL, nil)
+func (fp *findItemsByProductParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
 	}
@@ -1025,8 +1038,8 @@ func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) 
 	return nil
 }
 
-func (fp *findItemsInEBayStoresParams) createRequest(baseURL string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, baseURL, nil)
+func (fp *findItemsInEBayStoresParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ebay: %w", err)
 	}

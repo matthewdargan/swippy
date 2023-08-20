@@ -8,24 +8,39 @@ import (
 	"net/http"
 )
 
-// A FindingClient represents a client that interacts with the eBay Finding API.
+// A FindingClient is a client that interacts with the eBay Finding API.
 type FindingClient struct {
+	// Client is the HTTP client used to make requests to the eBay Finding API.
 	*http.Client
-	AppID   string
-	BaseURL string
+
+	// AppID is the eBay application ID.
+	//
+	// AppID must be a valid application ID requested from eBay. If the AppID is not valid,
+	// authentication to the eBay Finding API will fail.
+	// See https://developer.ebay.com/api-docs/static/gs_create-the-ebay-api-keysets.html.
+	AppID string
+
+	// URL specifies the eBay Finding API endpoint.
+	//
+	// URL defaults to the eBay Production API Gateway URI, but can be changed to
+	// the eBay Sandbox endpoint or localhost for testing purposes.
+	// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-making-a-call.html#Endpoints.
+	URL string
 }
 
 const findingURL = "https://svcs.ebay.com/services/search/FindingService/v1?REST-PAYLOAD"
 
 // NewFindingClient returns a new FindingClient given an HTTP client and a valid eBay application ID.
 func NewFindingClient(client *http.Client, appID string) *FindingClient {
-	return &FindingClient{Client: client, AppID: appID, BaseURL: findingURL}
+	return &FindingClient{Client: client, AppID: appID, URL: findingURL}
 }
 
-// An APIError is returned to represent a custom error that includes an error message
-// and an HTTP status code.
+// APIError represents an eBay Finding API call error.
 type APIError struct {
-	Err        error
+	// Err is the error that occurred during the call.
+	Err error
+
+	// StatusCode is the HTTP status code indicating why the call was bad.
 	StatusCode int
 }
 
@@ -36,8 +51,22 @@ func (e *APIError) Error() string {
 	return "ebay: API error occurred"
 }
 
-// FindItemsByCategories searches the eBay Finding API using the provided category, additional parameters,
-// and a valid eBay application ID.
+// FindItemsByCategories searches for items on eBay using specific eBay category ID numbers.
+// See
+// https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
+// for searching by category.
+//
+// The category IDs narrow down the search results. The provided parameters
+// contain additional query parameters for the search. If the FindingClient is configured with an invalid
+// AppID, the search call will fail to authenticate.
+//
+// An error of type [*APIError] is returned if the category IDs and/or additional parameters were not valid,
+// the request could not be created, the request or response could not be completed, or the response could not
+// be parsed into type [FindItemsByCategoriesResponse].
+//
+// If the returned error is nil, the [FindItemsByCategoriesResponse] will contain a non-nil ItemsResponse
+// containing search results.
+// See https://developer.ebay.com/devzone/finding/CallRef/findItemsByCategory.html.
 func (c *FindingClient) FindItemsByCategories(
 	ctx context.Context, params map[string]string,
 ) (FindItemsByCategoriesResponse, error) {
@@ -49,8 +78,20 @@ func (c *FindingClient) FindItemsByCategories(
 	return findItems, nil
 }
 
-// FindItemsByKeywords searches the eBay Finding API using the provided keywords, additional parameters,
-// and a valid eBay application ID.
+// FindItemsByKeywords searches for items on eBay by a keyword query.
+// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
+// for searching by keywords.
+//
+// The keywords narrow down the search results. The provided parameters contain additional query parameters
+// for the search. If the FindingClient is configured with an invalid AppID, the search call will fail to authenticate.
+//
+// An error of type [*APIError] is returned if the keywords and/or additional parameters were not valid,
+// the request could not be created, the request or response could not be completed, or the response could not
+// be parsed into type [FindItemsByKeywordsResponse].
+//
+// If the returned error is nil, the [FindItemsByKeywordsResponse] will contain a non-nil ItemsResponse
+// containing search results.
+// See https://developer.ebay.com/devzone/finding/CallRef/findItemsByKeywords.html.
 func (c *FindingClient) FindItemsByKeywords(
 	ctx context.Context, params map[string]string,
 ) (FindItemsByKeywordsResponse, error) {
@@ -62,8 +103,24 @@ func (c *FindingClient) FindItemsByKeywords(
 	return findItems, nil
 }
 
-// FindItemsAdvanced searches the eBay Finding API using the provided category and/or keywords, additional parameters,
-// and a valid eBay application ID.
+// FindItemsAdvanced searches for items on eBay by category and/or keyword.
+// See
+// https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
+// for searching by category.
+// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
+// for searching by keywords.
+//
+// The category IDs and keywords narrow down the search results. The provided parameters contain additional
+// query parameters for the search. If the FindingClient is configured with an invalid AppID,
+// the search call will fail to authenticate.
+//
+// An error of type [*APIError] is returned if the category IDs, keywords, and/or additional parameters were not valid,
+// the request could not be created, the request or response could not be completed, or the response could not
+// be parsed into type [FindItemsAdvancedResponse].
+//
+// If the returned error is nil, the [FindItemsAdvancedResponse] will contain a non-nil ItemsResponse
+// containing search results.
+// See https://developer.ebay.com/Devzone/finding/CallRef/findItemsAdvanced.html.
 func (c *FindingClient) FindItemsAdvanced(
 	ctx context.Context, params map[string]string,
 ) (FindItemsAdvancedResponse, error) {
@@ -75,8 +132,20 @@ func (c *FindingClient) FindItemsAdvanced(
 	return findItems, nil
 }
 
-// FindItemsByProduct searches the eBay Finding API using the provided product, additional parameters,
-// and a valid eBay application ID.
+// FindItemsByProduct searches for items on eBay using specific eBay product values.
+// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-product.html
+// for searching by product.
+//
+// The product ID narrows down the search results. The provided parameters contain additional query parameters
+// for the search. If the FindingClient is configured with an invalid AppID, the search call will fail to authenticate.
+//
+// An error of type [*APIError] is returned if the product ID and/or additional parameters were not valid,
+// the request could not be created, the request or response could not be completed, or the response could not
+// be parsed into type [FindItemsByProductResponse].
+//
+// If the returned error is nil, the [FindItemsByProductResponse] will contain a non-nil ItemsResponse
+// containing search results.
+// See https://developer.ebay.com/Devzone/finding/CallRef/findItemsByProduct.html.
 func (c *FindingClient) FindItemsByProduct(
 	ctx context.Context, params map[string]string,
 ) (FindItemsByProductResponse, error) {
@@ -88,8 +157,26 @@ func (c *FindingClient) FindItemsByProduct(
 	return findItems, nil
 }
 
-// FindItemsInEBayStores searches the eBay Finding API using the provided category, keywords, and/or store name,
-// additional parameters, and a valid eBay application ID.
+// FindItemsInEBayStores searches for items in the eBay store inventories. The search can utilize a combination of
+// store name, category IDs, and/or keywords. If a search includes keywords and/or category IDs but lacks a store name,
+// it will search for items across all eBay stores.
+// See
+// https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
+// for searching by category.
+// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
+// for searching by keywords.
+//
+// The store name, category IDs, and keywords narrow down the search results. The provided parameters contain
+// additional query parameters for the search. If the FindingClient is configured with an invalid AppID,
+// the search call will fail to authenticate.
+//
+// An error of type [*APIError] is returned if the store name, category IDs, keywords, and/or additional parameters
+// were not valid, the request could not be created, the request or response could not be completed,
+// or the response could not be parsed into type [FindItemsInEBayStoresResponse].
+//
+// If the returned error is nil, the [FindItemsInEBayStoresResponse] will contain a non-nil ItemsResponse
+// containing search results.
+// See https://developer.ebay.com/Devzone/finding/CallRef/findItemsIneBayStores.html.
 func (c *FindingClient) FindItemsInEBayStores(
 	ctx context.Context, params map[string]string,
 ) (FindItemsInEBayStoresResponse, error) {
@@ -119,7 +206,7 @@ func (c *FindingClient) findItems(
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusBadRequest}
 	}
-	req, err := fParams.newRequest(ctx, c.BaseURL)
+	req, err := fParams.newRequest(ctx, c.URL)
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusInternalServerError}
 	}

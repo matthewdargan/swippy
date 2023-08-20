@@ -270,7 +270,7 @@ func parseFilterValues(params map[string]string, filterAttr string) ([]string, e
 
 const (
 	// ItemFilterType enumeration values from the eBay documentation.
-	// See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html
+	// See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html.
 	authorizedSellerOnly  = "AuthorizedSellerOnly"
 	availableTo           = "AvailableTo"
 	bestOfferOnly         = "BestOfferOnly"
@@ -320,13 +320,13 @@ const (
 
 var (
 	// Valid Currency ID values from the eBay documentation.
-	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html
+	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html.
 	validCurrencyIDs = []string{
 		"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
 	}
 
 	// Valid Global ID values from the eBay documentation.
-	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html
+	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html.
 	validGlobalIDs = []string{
 		"EBAY-AT",
 		"EBAY-AU",
@@ -483,7 +483,7 @@ func isValidCountryCode(value string) bool {
 }
 
 // Valid Condition IDs from the eBay documentation.
-// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html#ConditionDefinitions
+// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html#ConditionDefinitions.
 var validConditionIDs = []int{1000, 1500, 1750, 2000, 2010, 2020, 2030, 2500, 2750, 3000, 4000, 5000, 6000, 7000}
 
 func isValidCondition(value string) bool {
@@ -492,7 +492,7 @@ func isValidCondition(value string) bool {
 		return slices.Contains(validConditionIDs, cID)
 	}
 	// Value is a condition name, refer to the eBay documentation for condition name definitions.
-	// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html
+	// See https://developer.ebay.com/Devzone/finding/CallRef/Enums/conditionIdList.html.
 	return true
 }
 
@@ -583,7 +583,7 @@ func isValidIntegerInRange(value string, min int) bool {
 }
 
 // Valid Listing Type values from the eBay documentation.
-// See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html#ListingType
+// See https://developer.ebay.com/devzone/finding/CallRef/types/ItemFilterType.html#ListingType.
 var validListingTypes = []string{"Auction", "AuctionWithBIN", "Classified", "FixedPrice", "StoreInventory", "All"}
 
 func validateListingTypes(values []string) error {

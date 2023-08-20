@@ -4550,7 +4550,7 @@ func testFindItems(
 		defer ts.Close()
 		client := ts.Client()
 		fc := ebay.NewFindingClient(client, appID)
-		fc.BaseURL = ts.URL
+		fc.URL = ts.URL
 
 		var resp ebay.FindItems
 		var err error
@@ -4579,7 +4579,7 @@ func testFindItems(
 	t.Run("returns error if the client returns an error", func(t *testing.T) {
 		t.Parallel()
 		fc := ebay.NewFindingClient(&http.Client{}, appID)
-		fc.BaseURL = "http://localhost"
+		fc.URL = "localhost"
 
 		var err error
 		switch findMethod {
@@ -4664,7 +4664,7 @@ func testFindItems(
 			defer ts.Close()
 			client := ts.Client()
 			fc := ebay.NewFindingClient(client, appID)
-			fc.BaseURL = ts.URL
+			fc.URL = ts.URL
 
 			var err error
 			switch findMethod {
@@ -4699,7 +4699,7 @@ func testFindItems(
 		defer ts.Close()
 		client := ts.Client()
 		fc := ebay.NewFindingClient(client, appID)
-		fc.BaseURL = ts.URL
+		fc.URL = ts.URL
 
 		var err error
 		switch findMethod {
@@ -4739,7 +4739,7 @@ func testFindItems(
 			defer ts.Close()
 			client := ts.Client()
 			fc := ebay.NewFindingClient(client, appID)
-			fc.BaseURL = ts.URL
+			fc.URL = ts.URL
 
 			var resp ebay.FindItems
 			var err error

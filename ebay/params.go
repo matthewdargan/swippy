@@ -191,7 +191,7 @@ var (
 
 type findItemsParams interface {
 	validateParams(params map[string]string) error
-	newRequest(ctx context.Context, baseURL string) (*http.Request, error)
+	newRequest(ctx context.Context, url string) (*http.Request, error)
 }
 
 type findItemsByCategoryParams struct {
@@ -279,8 +279,8 @@ func (fp *findItemsByCategoryParams) validateParams(params map[string]string) er
 	return nil
 }
 
-func (fp *findItemsByCategoryParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
+func (fp *findItemsByCategoryParams) newRequest(ctx context.Context, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
@@ -399,8 +399,8 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 	return nil
 }
 
-func (fp *findItemsByKeywordsParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
+func (fp *findItemsByKeywordsParams) newRequest(ctx context.Context, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
@@ -542,8 +542,8 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 	return nil
 }
 
-func (fp *findItemsAdvancedParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
+func (fp *findItemsAdvancedParams) newRequest(ctx context.Context, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
@@ -673,8 +673,8 @@ func (fp *findItemsByProductParams) validateParams(params map[string]string) err
 	return nil
 }
 
-func (fp *findItemsByProductParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
+func (fp *findItemsByProductParams) newRequest(ctx context.Context, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
@@ -812,8 +812,8 @@ func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) 
 	return nil
 }
 
-func (fp *findItemsInEBayStoresParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
+func (fp *findItemsInEBayStoresParams) newRequest(ctx context.Context, url string) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
@@ -942,7 +942,7 @@ func processKeywords(params map[string]string) (string, error) {
 }
 
 // Split keywords based on special characters acting as search operators.
-// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
+// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html.
 func splitKeywords(keywords string) []string {
 	const specialChars = ` ,()"-*@+`
 	return strings.FieldsFunc(keywords, func(r rune) bool {
@@ -952,7 +952,7 @@ func splitKeywords(keywords string) []string {
 
 const (
 	// Product ID type enumeration values from the eBay documentation.
-	// See https://developer.ebay.com/Devzone/finding/CallRef/types/ProductId.html
+	// See https://developer.ebay.com/Devzone/finding/CallRef/types/ProductId.html.
 	referenceID = "ReferenceID"
 	isbn        = "ISBN"
 	upc         = "UPC"
@@ -1066,7 +1066,7 @@ func processStoreName(storeName string) error {
 }
 
 // Valid OutputSelectorType values from the eBay documentation.
-// See https://developer.ebay.com/devzone/finding/callref/types/OutputSelectorType.html
+// See https://developer.ebay.com/devzone/finding/callref/types/OutputSelectorType.html.
 var validOutputSelectors = []string{
 	"AspectHistogram",
 	"CategoryHistogram",
@@ -1196,7 +1196,7 @@ func processPaginationInput(params map[string]string) (*paginationInput, error) 
 
 const (
 	// SortOrderType enumeration values from the eBay documentation.
-	// See https://developer.ebay.com/devzone/finding/CallRef/types/SortOrderType.html
+	// See https://developer.ebay.com/devzone/finding/CallRef/types/SortOrderType.html.
 	bestMatch                = "BestMatch"
 	bidCountFewest           = "BidCountFewest"
 	bidCountMost             = "BidCountMost"

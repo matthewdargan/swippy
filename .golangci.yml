@@ -1,15 +1,19 @@
 linters:
   enable-all: true
   disable:
+    - cyclop
     - deadcode
     - depguard
     - exhaustivestruct
     - exhaustruct
     - funlen
     - gochecknoglobals
+    - gocognit
+    - gocyclo
     - golint
     - ifshort
     - interfacer
+    - maintidx
     - maligned
     - nlreturn
     - nosnakecase
@@ -19,33 +23,3 @@ linters:
     - varcheck
     - varnamelen
     - wsl
-issues:
-  exclude-rules:
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function validateParams"
-    - path: ebay/finding.go
-      text: "newRequest"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function processProductID"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function isValidISBN"
-    - path: ebay/finding.go
-      text: "handleItemFilterType"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function validateNumericFilter"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function validateListingTypes"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function validatePriceRange"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function processAffiliate"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function processPaginationInput"
-    - path: ebay/finding.go
-      text: "calculated cyclomatic complexity for function validateSortOrder"
-    - path: ebay/finding_test.go
-      text: "TestFindItemsByProduct"
-    - path: ebay/finding_test.go
-      text: "calculated cyclomatic complexity for function combineTestCases"
-    - path: ebay/finding_test.go
-      text: "testFindItems"

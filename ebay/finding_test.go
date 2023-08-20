@@ -196,7 +196,7 @@ var (
 		{
 			Name:   "returns error if params contain numbered and non-numbered categoryId syntax types",
 			Params: map[string]string{"categoryId": "1", "categoryId(0)": "2"},
-			Err:    ebay.ErrInvalidFilterSyntax,
+			Err:    ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name:   "can find items by numbered categoryId",
@@ -724,7 +724,7 @@ var (
 				"itemFilter(0).name":  "MaxPrice",
 				"itemFilter(0).value": "5.0",
 			},
-			Err: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name: "returns error if params contain itemFilter.name, value, value(0)",
@@ -733,7 +733,7 @@ var (
 				"itemFilter.value":    "1",
 				"itemFilter.value(0)": "2",
 			},
-			Err: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name: "returns error if params contain itemFilter(0).name, value, value(0)",
@@ -742,7 +742,7 @@ var (
 				"itemFilter(0).value":    "1",
 				"itemFilter(0).value(0)": "2",
 			},
-			Err: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name: "can find items by itemFilter(0).name, value",
@@ -3440,7 +3440,7 @@ var (
 				"outputSelector":    "AspectHistogram",
 				"outputSelector(0)": "CategoryHistogram",
 			},
-			Err: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name:   "can find items by numbered outputSelector",
@@ -3840,7 +3840,7 @@ var (
 				"aspectFilter(0).aspectName":      "Running",
 				"aspectFilter(0).aspectValueName": "true",
 			},
-			Err: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name: "returns error if params contain aspectFilter.aspectName, aspectValueName, aspectValueName(0)",
@@ -3849,7 +3849,7 @@ var (
 				"aspectFilter.aspectValueName":    "10",
 				"aspectFilter.aspectValueName(0)": "11",
 			},
-			Err: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name: "returns error if params contain aspectFilter(0).aspectName, aspectValueName, aspectValueName(0)",
@@ -3858,7 +3858,7 @@ var (
 				"aspectFilter(0).aspectValueName":    "10",
 				"aspectFilter(0).aspectValueName(0)": "11",
 			},
-			Err: ebay.ErrInvalidFilterSyntax,
+			Err: ebay.ErrInvalidIndexSyntax,
 		},
 		{
 			Name: "can find items by aspectFilter(0).aspectName, aspectValueName",

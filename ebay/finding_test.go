@@ -176,7 +176,7 @@ var (
 		{
 			Name:   "returns error if params contains empty categoryId",
 			Params: map[string]string{"categoryId": ""},
-			Err:    ebay.ErrInvalidCategoryIDLength,
+			Err:    fmt.Errorf("%w: %s: %w", ebay.ErrInvalidCategoryID, `strconv.Atoi: parsing ""`, strconv.ErrSyntax),
 		},
 		{
 			Name:   "returns error if params contains categoryId of length 11",
@@ -184,50 +184,116 @@ var (
 			Err:    ebay.ErrInvalidCategoryIDLength,
 		},
 		{
+			Name:   "returns error if params contains non-numbered, invalid categoryId",
+			Params: map[string]string{"categoryId": "a"},
+			Err:    fmt.Errorf("%w: %s: %w", ebay.ErrInvalidCategoryID, `strconv.Atoi: parsing "a"`, strconv.ErrSyntax),
+		},
+		{
+			// categoryId(1) will be ignored because indexing does not start at 0.
+			Name:   "can find items if params contains categoryId, categoryId(1)",
+			Params: map[string]string{"categoryId": "1", "categoryId(1)": "2"},
+		},
+		{
+			Name:   "returns error if params contain numbered and non-numbered categoryId syntax types",
+			Params: map[string]string{"categoryId": "1", "categoryId(0)": "2"},
+			Err:    ebay.ErrInvalidFilterSyntax,
+		},
+		{
+			Name:   "can find items by numbered categoryId",
+			Params: map[string]string{"categoryId(0)": "1"},
+		},
+		{
 			Name:   "can find items if params contains 2 categoryIds of length 1",
-			Params: map[string]string{"categoryId": "1,2"},
+			Params: map[string]string{"categoryId(0)": "1", "categoryId(1)": "2"},
 		},
 		{
-			Name:   "can find items if params contains 2 categoryIds of length 10",
-			Params: map[string]string{"categoryId": "1234567890,9876543210"},
+			Name: "can find items if params contains 2 categoryIds of length 10",
+			Params: map[string]string{
+				"categoryId(0)": "1234567890",
+				"categoryId(1)": "9876543210",
+			},
 		},
 		{
-			Name:   "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
-			Params: map[string]string{"categoryId": "1,12345678901"},
-			Err:    ebay.ErrInvalidCategoryIDLength,
+			Name: "returns error if params contains 1 categoryId of length 1, 1 categoryId of length 11",
+			Params: map[string]string{
+				"categoryId(0)": "1",
+				"categoryId(1)": "12345678901",
+			},
+			Err: ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:   "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
-			Params: map[string]string{"categoryId": "12345678901,1"},
-			Err:    ebay.ErrInvalidCategoryIDLength,
+			Name: "returns error if params contains 1 categoryId of length 11, 1 categoryId of length 1",
+			Params: map[string]string{
+				"categoryId(0)": "12345678901",
+				"categoryId(1)": "1",
+			},
+			Err: ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:   "can find items if params contains 3 categoryIds of length 1",
-			Params: map[string]string{"categoryId": "1,2,3"},
+			Name: "can find items if params contains 3 categoryIds of length 1",
+			Params: map[string]string{
+				"categoryId(0)": "1",
+				"categoryId(1)": "2",
+				"categoryId(2)": "3",
+			},
 		},
 		{
-			Name:   "can find items if params contains 3 categoryIds of length 10",
-			Params: map[string]string{"categoryId": "1234567890,9876543210,8976543210"},
+			Name: "can find items if params contains 3 categoryIds of length 10",
+			Params: map[string]string{
+				"categoryId(0)": "1234567890",
+				"categoryId(1)": "9876543210",
+				"categoryId(2)": "8976543210",
+			},
 		},
 		{
-			Name:   "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
-			Params: map[string]string{"categoryId": "12345678901,1,2"},
-			Err:    ebay.ErrInvalidCategoryIDLength,
+			Name: "returns error if params contains 1 categoryId of length 11, 2 categoryIds of length 1",
+			Params: map[string]string{
+				"categoryId(0)": "12345678901",
+				"categoryId(1)": "1",
+				"categoryId(2)": "2",
+			},
+			Err: ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:   "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
-			Params: map[string]string{"categoryId": "1,12345678901,2"},
-			Err:    ebay.ErrInvalidCategoryIDLength,
+			Name: "returns error if params contains 2 categoryIds of length 1, 1 middle categoryId of length 11",
+			Params: map[string]string{
+				"categoryId(0)": "1",
+				"categoryId(1)": "12345678901",
+				"categoryId(2)": "2",
+			},
+			Err: ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:   "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
-			Params: map[string]string{"categoryId": "1,2,12345678901"},
-			Err:    ebay.ErrInvalidCategoryIDLength,
+			Name: "returns error if params contains 2 categoryIds of length 1, 1 categoryId of length 11",
+			Params: map[string]string{
+				"categoryId(0)": "1",
+				"categoryId(1)": "2",
+				"categoryId(2)": "12345678901",
+			},
+			Err: ebay.ErrInvalidCategoryIDLength,
 		},
 		{
-			Name:   "returns error if params contains 4 categoryIds",
-			Params: map[string]string{"categoryId": "1,2,3,4"},
-			Err:    ebay.ErrMaxCategoryIDs,
+			Name:   "returns error if params contains numbered, invalid categoryId",
+			Params: map[string]string{"categoryId(0)": "a"},
+			Err:    fmt.Errorf("%w: %s: %w", ebay.ErrInvalidCategoryID, `strconv.Atoi: parsing "a"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains 1 valid, 1 invalid categoryId",
+			Params: map[string]string{
+				"categoryId(0)": "1",
+				"categoryId(1)": "a",
+			},
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidCategoryID, `strconv.Atoi: parsing "a"`, strconv.ErrSyntax),
+		},
+		{
+			Name: "returns error if params contains 4 categoryIds",
+			Params: map[string]string{
+				"categoryId(0)": "1",
+				"categoryId(1)": "2",
+				"categoryId(2)": "3",
+				"categoryId(3)": "4",
+			},
+			Err: ebay.ErrMaxCategoryIDs,
 		},
 	}
 	keywordsTCs = []findItemsTestCase{
@@ -458,8 +524,9 @@ var (
 		{
 			Name: "can find items if params contains 2 categoryIds of length 1, keywords of length 2",
 			Params: map[string]string{
-				"categoryId": "1,2",
-				"keywords":   generateStringWithLen(2, true),
+				"categoryId(0)": "1",
+				"categoryId(1)": "2",
+				"keywords":      generateStringWithLen(2, true),
 			},
 		},
 		{
@@ -468,13 +535,16 @@ var (
 				"categoryId": "",
 				"keywords":   generateStringWithLen(2, true),
 			},
-			Err: ebay.ErrInvalidCategoryIDLength,
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidCategoryID, `strconv.Atoi: parsing ""`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains 4 categoryIds, keywords of length 2",
 			Params: map[string]string{
-				"categoryId": "1,2,3,4",
-				"keywords":   generateStringWithLen(2, true),
+				"categoryId(0)": "1",
+				"categoryId(1)": "2",
+				"categoryId(2)": "3",
+				"categoryId(3)": "4",
+				"keywords":      generateStringWithLen(2, true),
 			},
 			Err: ebay.ErrMaxCategoryIDs,
 		},
@@ -1371,7 +1441,7 @@ var (
 				"itemFilter.name":  "FeedbackScoreMax",
 				"itemFilter.value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMax itemFilter with max -1",
@@ -1401,7 +1471,7 @@ var (
 				"itemFilter.name":  "FeedbackScoreMin",
 				"itemFilter.value": "not a minimum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin itemFilter with max -1",
@@ -1473,7 +1543,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "not a minimum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with unparsable min and max 0",
@@ -1483,7 +1553,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "0",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max 0 and min -1",
@@ -1557,7 +1627,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMin",
 				"itemFilter(1).value": "0",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with min 0 and unparsable max",
@@ -1567,7 +1637,7 @@ var (
 				"itemFilter(1).name":  "FeedbackScoreMax",
 				"itemFilter(1).value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains FeedbackScoreMin/FeedbackScoreMax itemFilters with max -1 and min 0",
@@ -2109,7 +2179,7 @@ var (
 				"itemFilter.name":  "MaxBids",
 				"itemFilter.value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MaxBids itemFilter with max -1",
@@ -2139,7 +2209,7 @@ var (
 				"itemFilter.name":  "MinBids",
 				"itemFilter.value": "not a minimum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids itemFilter with max -1",
@@ -2211,7 +2281,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "not a minimum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with unparsable min and max 0",
@@ -2221,7 +2291,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "0",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max 0 and min -1",
@@ -2295,7 +2365,7 @@ var (
 				"itemFilter(1).name":  "MinBids",
 				"itemFilter(1).value": "0",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with min 0 and unparsable max",
@@ -2305,7 +2375,7 @@ var (
 				"itemFilter(1).name":  "MaxBids",
 				"itemFilter(1).value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinBids/MaxBids itemFilters with max -1 and min 0",
@@ -2429,7 +2499,8 @@ var (
 				"itemFilter.name":  "MaxPrice",
 				"itemFilter.value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w",
+				ebay.ErrInvalidPrice, `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MaxPrice itemFilter with max -1.0",
@@ -2488,7 +2559,8 @@ var (
 				"itemFilter.name":  "MinPrice",
 				"itemFilter.value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w",
+				ebay.ErrInvalidPrice, `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice itemFilter with max -1.0",
@@ -2580,7 +2652,8 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "not a minimum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w",
+				ebay.ErrInvalidPrice, `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with unparsable min and max 0.0",
@@ -2590,7 +2663,8 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "0.0",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w",
+				ebay.ErrInvalidPrice, `strconv.ParseFloat: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max 0.0 and min -1.0",
@@ -2660,7 +2734,8 @@ var (
 				"itemFilter(1).name":  "MinPrice",
 				"itemFilter(1).value": "0.0",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w",
+				ebay.ErrInvalidPrice, `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with min 0.0 and unparsable max",
@@ -2670,7 +2745,8 @@ var (
 				"itemFilter(1).name":  "MaxPrice",
 				"itemFilter(1).value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w",
+				ebay.ErrInvalidPrice, `strconv.ParseFloat: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinPrice/MaxPrice itemFilters with max -1.0 and min 0.0",
@@ -2808,7 +2884,7 @@ var (
 				"itemFilter.name":  "MaxQuantity",
 				"itemFilter.value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MaxQuantity itemFilter with max 0",
@@ -2838,7 +2914,7 @@ var (
 				"itemFilter.name":  "MinQuantity",
 				"itemFilter.value": "not a minimum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity itemFilter with max 0",
@@ -2910,7 +2986,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "not a minimum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with unparsable min and max 1",
@@ -2920,7 +2996,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "1",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a minimum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 1 and min 0",
@@ -2994,7 +3070,7 @@ var (
 				"itemFilter(1).name":  "MinQuantity",
 				"itemFilter(1).value": "1",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with min 1 and unparsable max",
@@ -3004,7 +3080,7 @@ var (
 				"itemFilter(1).name":  "MaxQuantity",
 				"itemFilter(1).value": "not a maximum",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidInteger, `strconv.Atoi: parsing "not a maximum"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains MinQuantity/MaxQuantity itemFilters with max 0 and min 1",
@@ -3453,7 +3529,7 @@ var (
 				"affiliate.networkId":  "abc",
 				"affiliate.trackingId": "1",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidNetworkID, `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=1 and trackingId",
@@ -3461,7 +3537,7 @@ var (
 				"affiliate.networkId":  "1",
 				"affiliate.trackingId": "1",
 			},
-			Err: ebay.ErrInvalidNetworkID,
+			Err: ebay.ErrInvalidNetworkIDRange,
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=10 and trackingId",
@@ -3469,7 +3545,7 @@ var (
 				"affiliate.networkId":  "10",
 				"affiliate.trackingId": "1",
 			},
-			Err: ebay.ErrInvalidNetworkID,
+			Err: ebay.ErrInvalidNetworkIDRange,
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=9 and trackingId=abc",
@@ -3477,7 +3553,7 @@ var (
 				"affiliate.networkId":  "9",
 				"affiliate.trackingId": "abc",
 			},
-			Err: fmt.Errorf("ebay: %s: %w", `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidTrackingID, `strconv.Atoi: parsing "abc"`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contain affiliate.networkId=9 and trackingId=123456789",
@@ -3526,14 +3602,19 @@ var (
 			Params: map[string]string{"paginationInput.entriesPerPage": "100"},
 		},
 		{
+			Name:   "returns error if params contains paginationInput.entriesPerPage=a",
+			Params: map[string]string{"paginationInput.entriesPerPage": "a"},
+			Err:    fmt.Errorf("%w: %s: %w", ebay.ErrInvalidEntriesPerPage, `strconv.Atoi: parsing "a"`, strconv.ErrSyntax),
+		},
+		{
 			Name:   "returns error if params contains paginationInput.entriesPerPage=0",
 			Params: map[string]string{"paginationInput.entriesPerPage": "0"},
-			Err:    ebay.ErrInvalidEntriesPerPage,
+			Err:    ebay.ErrInvalidEntriesPerPageRange,
 		},
 		{
 			Name:   "returns error if params contains paginationInput.entriesPerPage=101",
 			Params: map[string]string{"paginationInput.entriesPerPage": "101"},
-			Err:    ebay.ErrInvalidEntriesPerPage,
+			Err:    ebay.ErrInvalidEntriesPerPageRange,
 		},
 		{
 			Name:   "can find items if params contains paginationInput.pageNumber=1",
@@ -3548,14 +3629,19 @@ var (
 			Params: map[string]string{"paginationInput.pageNumber": "100"},
 		},
 		{
+			Name:   "returns error if params contains paginationInput.pageNumber=a",
+			Params: map[string]string{"paginationInput.pageNumber": "a"},
+			Err:    fmt.Errorf("%w: %s: %w", ebay.ErrInvalidPageNumber, `strconv.Atoi: parsing "a"`, strconv.ErrSyntax),
+		},
+		{
 			Name:   "returns error if params contains paginationInput.pageNumber=0",
 			Params: map[string]string{"paginationInput.pageNumber": "0"},
-			Err:    ebay.ErrInvalidPageNumber,
+			Err:    ebay.ErrInvalidPageNumberRange,
 		},
 		{
 			Name:   "returns error if params contains paginationInput.pageNumber=101",
 			Params: map[string]string{"paginationInput.pageNumber": "101"},
-			Err:    ebay.ErrInvalidPageNumber,
+			Err:    ebay.ErrInvalidPageNumberRange,
 		},
 		{
 			Name: "can find items if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=1",
@@ -3577,7 +3663,7 @@ var (
 				"paginationInput.entriesPerPage": "0",
 				"paginationInput.pageNumber":     "1",
 			},
-			Err: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPageRange,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=1",
@@ -3585,7 +3671,7 @@ var (
 				"paginationInput.entriesPerPage": "101",
 				"paginationInput.pageNumber":     "1",
 			},
-			Err: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPageRange,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=0",
@@ -3593,7 +3679,7 @@ var (
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "0",
 			},
-			Err: ebay.ErrInvalidPageNumber,
+			Err: ebay.ErrInvalidPageNumberRange,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=1, paginationInput.pageNumber=101",
@@ -3601,7 +3687,7 @@ var (
 				"paginationInput.entriesPerPage": "1",
 				"paginationInput.pageNumber":     "101",
 			},
-			Err: ebay.ErrInvalidPageNumber,
+			Err: ebay.ErrInvalidPageNumberRange,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=0, paginationInput.pageNumber=0",
@@ -3609,7 +3695,7 @@ var (
 				"paginationInput.entriesPerPage": "0",
 				"paginationInput.pageNumber":     "0",
 			},
-			Err: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPageRange,
 		},
 		{
 			Name: "returns if params contains paginationInput.entriesPerPage=101, paginationInput.pageNumber=101",
@@ -3617,7 +3703,7 @@ var (
 				"paginationInput.entriesPerPage": "101",
 				"paginationInput.pageNumber":     "101",
 			},
-			Err: ebay.ErrInvalidEntriesPerPage,
+			Err: ebay.ErrInvalidEntriesPerPageRange,
 		},
 		{
 			Name: "can find items if params contains BestMatch sortOrder",
@@ -4318,14 +4404,17 @@ func TestFindItemsInEBayStores(t *testing.T) {
 				"keywords":   generateStringWithLen(2, true),
 				"storeName":  "a",
 			},
-			Err: ebay.ErrInvalidCategoryIDLength,
+			Err: fmt.Errorf("%w: %s: %w", ebay.ErrInvalidCategoryID, `strconv.Atoi: parsing ""`, strconv.ErrSyntax),
 		},
 		{
 			Name: "returns error if params contains 4 categoryIds, keywords of length 2, storeName of length 1",
 			Params: map[string]string{
-				"categoryId": "1,2,3,4",
-				"keywords":   generateStringWithLen(2, true),
-				"storeName":  "a",
+				"categoryId(0)": "1",
+				"categoryId(1)": "2",
+				"categoryId(2)": "3",
+				"categoryId(3)": "4",
+				"keywords":      generateStringWithLen(2, true),
+				"storeName":     "a",
 			},
 			Err: ebay.ErrMaxCategoryIDs,
 		},

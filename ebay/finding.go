@@ -38,8 +38,7 @@ var (
 
 	// ErrCategoryIDKeywordsStoreNameMissing is returned when the 'categoryId', 'keywords', and 'storeName' parameters
 	// are missing in a findItemsIneBayStores request.
-	ErrCategoryIDKeywordsStoreNameMissing = errors.New(
-		"ebay: category ID, keywords, and store name parameters are missing")
+	ErrCategoryIDKeywordsStoreNameMissing = errors.New("category ID, keywords, and store name parameters are missing")
 
 	maxCategoryIDs = 3
 
@@ -51,7 +50,11 @@ var (
 	// ErrInvalidCategoryIDLength is returned when an individual category ID in the 'categoryId' parameter
 	// exceed the maximum length of 10 characters or is empty.
 	ErrInvalidCategoryIDLength = fmt.Errorf(
-		"ebay: invalid category ID length: must be between 1 and %d characters", maxCategoryIDLen)
+		"invalid category ID length: must be between 1 and %d characters", maxCategoryIDLen)
+
+	// ErrInvalidCategoryID is returned when an individual category ID in the 'categoryId' parameter
+	// contains an invalid category ID.
+	ErrInvalidCategoryID = errors.New("invalid category ID")
 
 	// ErrKeywordsMissing is returned when the 'keywords' parameter is missing.
 	ErrKeywordsMissing = errors.New("keywords parameter is missing")
@@ -61,7 +64,7 @@ var (
 	// ErrInvalidKeywordsLength is returned when the 'keywords' parameter as a whole
 	// exceeds the maximum length of 350 characters or has a length less than 2 characters.
 	ErrInvalidKeywordsLength = fmt.Errorf(
-		"ebay: invalid keywords length: must be between %d and %d characters", minKeywordsLen, maxKeywordsLen)
+		"invalid keywords length: must be between %d and %d characters", minKeywordsLen, maxKeywordsLen)
 
 	maxKeywordLen = 98
 
@@ -121,7 +124,7 @@ var (
 	// either the 'paramName' or 'paramValue' parameter, as both 'paramName' and 'paramValue'
 	// are required when either one is specified.
 	ErrIncompleteItemFilterParam = errors.New(
-		"ebay: incomplete item filter: both paramName and paramValue must be specified together")
+		"incomplete item filter: both paramName and paramValue must be specified together")
 
 	// ErrFailedRequest is returned when the eBay Finding API request fails.
 	ErrFailedRequest = errors.New("failed to perform eBay Finding API request")
@@ -165,7 +168,7 @@ var (
 	// ErrExcludeSellerCannotBeUsedWithSellers is returned when there is an attempt to use
 	// the ExcludeSeller item filter together with either the Seller or TopRatedSellerOnly item filters.
 	ErrExcludeSellerCannotBeUsedWithSellers = errors.New(
-		"ebay: ExcludeSeller item filter cannot be used together with either the Seller or TopRatedSellerOnly item filters")
+		"'ExcludeSeller' item filter cannot be used together with either the Seller or TopRatedSellerOnly item filters")
 
 	// ErrInvalidInteger is returned when an item filter 'values' parameter contains an invalid integer.
 	ErrInvalidInteger = errors.New("invalid integer")
@@ -213,7 +216,7 @@ var (
 
 	// ErrInvalidPriceParamName is returned when an item filter 'paramName' parameter
 	// contains anything other than "Currency".
-	ErrInvalidPriceParamName = errors.New(`ebay: invalid price parameter name, must be "Currency"`)
+	ErrInvalidPriceParamName = errors.New(`invalid price parameter name, must be "Currency"`)
 
 	// ErrInvalidMaxPrice is returned when an item filter 'values' parameter
 	// contains a maximum price less than a minimum price.
@@ -228,7 +231,7 @@ var (
 	// ErrSellerCannotBeUsedWithOtherSellers is returned when there is an attempt to use
 	// the Seller item filter together with either the ExcludeSeller or TopRatedSellerOnly item filters.
 	ErrSellerCannotBeUsedWithOtherSellers = errors.New(
-		"ebay: Seller item filter cannot be used together with either the ExcludeSeller or TopRatedSellerOnly item filters")
+		"'Seller' item filter cannot be used together with either the ExcludeSeller or TopRatedSellerOnly item filters")
 
 	// ErrMultipleSellerBusinessTypes is returned when an item filter 'values' parameter
 	// contains multiple seller business types.
@@ -241,7 +244,7 @@ var (
 	// ErrTopRatedSellerCannotBeUsedWithSellers is returned when there is an attempt to use
 	// the TopRatedSellerOnly item filter together with either the Seller or ExcludeSeller item filters.
 	ErrTopRatedSellerCannotBeUsedWithSellers = errors.New(
-		"ebay: TopRatedSellerOnly item filter cannot be used together with either the Seller or ExcludeSeller item filters")
+		"'TopRatedSellerOnly' item filter cannot be used together with either the Seller or ExcludeSeller item filters")
 
 	// ErrInvalidValueBoxInventory is returned when an item filter 'values' parameter
 	// contains an invalid value box inventory.
@@ -255,20 +258,28 @@ var (
 	// ErrInvalidCustomIDLength is returned when the 'affiliate.customId' parameter
 	// exceeds the maximum length of 256 characters.
 	ErrInvalidCustomIDLength = fmt.Errorf(
-		"ebay: invalid affiliate custom ID length: must be no more than %d characters", maxCustomIDLen)
+		"invalid affiliate custom ID length: must be no more than %d characters", maxCustomIDLen)
 
 	// ErrIncompleteAffiliateParams is returned when an affiliate is missing
 	// either the 'networkId' or 'trackingId' parameter, as both 'networkId' and 'trackingId'
 	// are required when either one is specified.
 	ErrIncompleteAffiliateParams = errors.New(
-		"ebay: incomplete affiliate: both network and tracking IDs must be specified together")
+		"incomplete affiliate: both network and tracking IDs must be specified together")
+
+	// ErrInvalidNetworkID is returned when the 'affiliate.networkId' parameter
+	// contains an invalid network ID.
+	ErrInvalidNetworkID = errors.New("invalid affiliate network ID")
 
 	beFreeID, ebayPartnerNetworkID = 2, 9
 
-	// ErrInvalidNetworkID is returned when the 'affiliate.networkId' parameter
+	// ErrInvalidNetworkIDRange is returned when the 'affiliate.networkId' parameter
 	// is outside the valid range of 2 (Be Free) and 9 (eBay Partner Network).
-	ErrInvalidNetworkID = fmt.Errorf("invalid affiliate network ID: must be between %d and %d",
+	ErrInvalidNetworkIDRange = fmt.Errorf("invalid affiliate network ID: must be between %d and %d",
 		beFreeID, ebayPartnerNetworkID)
+
+	// ErrInvalidTrackingID is returned when the 'affiliate.networkId' parameter is 9 (eBay Partner Network)
+	// and the 'affiliate.trackingId' parameter contains an invalid tracking ID.
+	ErrInvalidTrackingID = errors.New("invalid affiliate tracking ID")
 
 	// ErrInvalidCampaignID is returned when the 'affiliate.networkId' parameter is 9 (eBay Partner Network)
 	// and the 'affiliate.trackingId' parameter is not a 10-digit number (eBay Partner Network's Campaign ID).
@@ -277,16 +288,24 @@ var (
 	// ErrInvalidPostalCode is returned when the 'buyerPostalCode' parameter contains an invalid postal code.
 	ErrInvalidPostalCode = errors.New("invalid postal code")
 
+	// ErrInvalidEntriesPerPage is returned when the 'paginationInput.entriesPerPage' parameter
+	// contains an invalid entries value.
+	ErrInvalidEntriesPerPage = errors.New("invalid pagination entries per page")
+
 	minPaginationValue, maxPaginationValue = 1, 100
 
-	// ErrInvalidEntriesPerPage is returned when the 'paginationInput.entriesPerPage' parameter
+	// ErrInvalidEntriesPerPageRange is returned when the 'paginationInput.entriesPerPage' parameter
 	// is outside the valid range of 1 to 100.
-	ErrInvalidEntriesPerPage = fmt.Errorf("invalid pagination entries per page, must be between %d and %d",
+	ErrInvalidEntriesPerPageRange = fmt.Errorf("invalid pagination entries per page, must be between %d and %d",
 		minPaginationValue, maxPaginationValue)
 
 	// ErrInvalidPageNumber is returned when the 'paginationInput.pageNumber' parameter
+	// contains an invalid pages value.
+	ErrInvalidPageNumber = errors.New("invalid pagination page number")
+
+	// ErrInvalidPageNumberRange is returned when the 'paginationInput.pageNumber' parameter
 	// is outside the valid range of 1 to 100.
-	ErrInvalidPageNumber = fmt.Errorf("invalid pagination page number, must be between %d and %d",
+	ErrInvalidPageNumberRange = fmt.Errorf("invalid pagination page number, must be between %d and %d",
 		minPaginationValue, maxPaginationValue)
 
 	// ErrAuctionListingMissing is returned when the 'sortOrder' parameter BidCountFewest or BidCountMost,
@@ -428,7 +447,7 @@ type findItemsParams interface {
 type findItemsByCategoryParams struct {
 	appID           string
 	aspectFilters   []aspectFilter
-	categoryIDs     string
+	categoryIDs     []string
 	itemFilters     []itemFilter
 	outputSelectors []string
 	affiliate       *affiliate
@@ -462,15 +481,16 @@ type paginationInput struct {
 }
 
 func (fp *findItemsByCategoryParams) validateParams(params map[string]string) error {
-	categoryID, ok := params["categoryId"]
-	if !ok {
+	_, ok := params["categoryId"]
+	_, nOk := params["categoryId(0)"]
+	if !ok && !nOk {
 		return ErrCategoryIDMissing
 	}
-	err := processCategoryIDs(categoryID)
+	categoryIDs, err := processCategoryIDs(params)
 	if err != nil {
 		return err
 	}
-	fp.categoryIDs = categoryID
+	fp.categoryIDs = categoryIDs
 	fp.aspectFilters, err = processAspectFilters(params)
 	if err != nil {
 		return err
@@ -512,7 +532,7 @@ func (fp *findItemsByCategoryParams) validateParams(params map[string]string) er
 func (fp *findItemsByCategoryParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
+		return nil, err
 	}
 	qry := req.URL.Query()
 	qry.Add("OPERATION-NAME", findItemsByCategoryOperationName)
@@ -525,7 +545,9 @@ func (fp *findItemsByCategoryParams) newRequest(ctx context.Context, baseURL str
 			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", i, j), v)
 		}
 	}
-	qry.Add("categoryId", fp.categoryIDs)
+	for i := range fp.categoryIDs {
+		qry.Add(fmt.Sprintf("categoryId(%d)", i), fp.categoryIDs[i])
+	}
 	for i, f := range fp.itemFilters {
 		qry.Add(fmt.Sprintf("itemFilter(%d).name", i), f.name)
 		for j, v := range f.values {
@@ -630,7 +652,7 @@ func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) er
 func (fp *findItemsByKeywordsParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
+		return nil, err
 	}
 	qry := req.URL.Query()
 	qry.Add("OPERATION-NAME", findItemsByKeywordsOperationName)
@@ -692,7 +714,7 @@ func (fp *findItemsByKeywordsParams) newRequest(ctx context.Context, baseURL str
 type findItemsAdvancedParams struct {
 	appID             string
 	aspectFilters     []aspectFilter
-	categoryIDs       *string
+	categoryIDs       []string
 	descriptionSearch *string
 	itemFilters       []itemFilter
 	keywords          *string
@@ -704,17 +726,18 @@ type findItemsAdvancedParams struct {
 }
 
 func (fp *findItemsAdvancedParams) validateParams(params map[string]string) error {
-	categoryID, cOk := params["categoryId"]
+	_, cOk := params["categoryId"]
+	_, csOk := params["categoryId(0)"]
 	_, ok := params["keywords"]
-	if !cOk && !ok {
+	if !cOk && !csOk && !ok {
 		return ErrCategoryIDKeywordsMissing
 	}
-	if cOk {
-		err := processCategoryIDs(categoryID)
+	if cOk || csOk {
+		categoryIDs, err := processCategoryIDs(params)
 		if err != nil {
 			return err
 		}
-		fp.categoryIDs = &categoryID
+		fp.categoryIDs = categoryIDs
 	}
 	if ok {
 		keywords, err := processKeywords(params)
@@ -772,7 +795,7 @@ func (fp *findItemsAdvancedParams) validateParams(params map[string]string) erro
 func (fp *findItemsAdvancedParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
+		return nil, err
 	}
 	qry := req.URL.Query()
 	qry.Add("OPERATION-NAME", findItemsAdvancedOperationName)
@@ -785,8 +808,8 @@ func (fp *findItemsAdvancedParams) newRequest(ctx context.Context, baseURL strin
 			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", i, j), v)
 		}
 	}
-	if fp.categoryIDs != nil {
-		qry.Add("categoryId", *fp.categoryIDs)
+	for i := range fp.categoryIDs {
+		qry.Add(fmt.Sprintf("categoryId(%d)", i), fp.categoryIDs[i])
 	}
 	if fp.descriptionSearch != nil {
 		qry.Add("descriptionSearch", *fp.descriptionSearch)
@@ -903,7 +926,7 @@ func (fp *findItemsByProductParams) validateParams(params map[string]string) err
 func (fp *findItemsByProductParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
+		return nil, err
 	}
 	qry := req.URL.Query()
 	qry.Add("OPERATION-NAME", findItemsByProductOperationName)
@@ -960,7 +983,7 @@ func (fp *findItemsByProductParams) newRequest(ctx context.Context, baseURL stri
 type findItemsInEBayStoresParams struct {
 	appID           string
 	aspectFilters   []aspectFilter
-	categoryIDs     *string
+	categoryIDs     []string
 	itemFilters     []itemFilter
 	keywords        *string
 	outputSelectors []string
@@ -972,18 +995,19 @@ type findItemsInEBayStoresParams struct {
 }
 
 func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) error {
-	categoryID, cOk := params["categoryId"]
+	_, cOk := params["categoryId"]
+	_, csOk := params["categoryId(0)"]
 	_, kwOk := params["keywords"]
 	storeName, ok := params["storeName"]
-	if !cOk && !kwOk && !ok {
+	if !cOk && !csOk && !kwOk && !ok {
 		return ErrCategoryIDKeywordsStoreNameMissing
 	}
-	if cOk {
-		err := processCategoryIDs(categoryID)
+	if cOk || csOk {
+		categoryIDs, err := processCategoryIDs(params)
 		if err != nil {
 			return err
 		}
-		fp.categoryIDs = &categoryID
+		fp.categoryIDs = categoryIDs
 	}
 	if kwOk {
 		keywords, err := processKeywords(params)
@@ -1041,7 +1065,7 @@ func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) 
 func (fp *findItemsInEBayStoresParams) newRequest(ctx context.Context, baseURL string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
+		return nil, err
 	}
 	qry := req.URL.Query()
 	qry.Add("OPERATION-NAME", findItemsInEBayStoresOperationName)
@@ -1054,8 +1078,8 @@ func (fp *findItemsInEBayStoresParams) newRequest(ctx context.Context, baseURL s
 			qry.Add(fmt.Sprintf("aspectFilter(%d).aspectValueName(%d)", i, j), v)
 		}
 	}
-	if fp.categoryIDs != nil {
-		qry.Add("categoryId", *fp.categoryIDs)
+	for i := range fp.categoryIDs {
+		qry.Add(fmt.Sprintf("categoryId(%d)", i), fp.categoryIDs[i])
 	}
 	for i, f := range fp.itemFilters {
 		qry.Add(fmt.Sprintf("itemFilter(%d).name", i), f.name)
@@ -1108,19 +1132,44 @@ func (fp *findItemsInEBayStoresParams) newRequest(ctx context.Context, baseURL s
 	return req, nil
 }
 
-func processCategoryIDs(categoryID string) error {
-	if categoryID == "" {
+func processCategoryIDs(params map[string]string) ([]string, error) {
+	categoryID, nonNumberedExists := params["categoryId"]
+	_, numberedExists := params["categoryId(0)"]
+	if nonNumberedExists && numberedExists {
+		return nil, ErrInvalidFilterSyntax
+	}
+	if nonNumberedExists {
+		err := processCategoryID(categoryID)
+		if err != nil {
+			return nil, err
+		}
+		return []string{categoryID}, nil
+	}
+	var categoryIDs []string
+	for i := 0; ; i++ {
+		cID, ok := params[fmt.Sprintf("categoryId(%d)", i)]
+		if !ok {
+			break
+		}
+		err := processCategoryID(cID)
+		if err != nil {
+			return nil, err
+		}
+		categoryIDs = append(categoryIDs, cID)
+		if len(categoryIDs) > maxCategoryIDs {
+			return nil, ErrMaxCategoryIDs
+		}
+	}
+	return categoryIDs, nil
+}
+
+func processCategoryID(id string) error {
+	if len(id) > maxCategoryIDLen {
 		return ErrInvalidCategoryIDLength
 	}
-	categoryIDs := strings.Split(categoryID, ",")
-	if len(categoryIDs) > maxCategoryIDs {
-		return ErrMaxCategoryIDs
-	}
-	for i := range categoryIDs {
-		categoryIDs[i] = strings.TrimSpace(categoryIDs[i])
-		if len(categoryIDs[i]) > maxCategoryIDLen {
-			return ErrInvalidCategoryIDLength
-		}
+	_, err := strconv.Atoi(id)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidCategoryID, err)
 	}
 	return nil
 }
@@ -1267,7 +1316,6 @@ func processStoreName(storeName string) error {
 }
 
 func processAspectFilters(params map[string]string) ([]aspectFilter, error) {
-	// Check if both "aspectFilter.aspectName" and "aspectFilter(0).aspectName" syntax types occur in the params.
 	_, nonNumberedExists := params["aspectFilter.aspectName"]
 	_, numberedExists := params["aspectFilter(0).aspectName"]
 	if nonNumberedExists && numberedExists {
@@ -1312,7 +1360,6 @@ func processNumberedAspectFilters(params map[string]string) ([]aspectFilter, err
 }
 
 func processItemFilters(params map[string]string) ([]itemFilter, error) {
-	// Check if both "itemFilter.name" and "itemFilter(0).name" syntax types occur in the params.
 	_, nonNumberedExists := params["itemFilter.name"]
 	_, numberedExists := params["itemFilter(0).name"]
 	if nonNumberedExists && numberedExists {
@@ -1400,7 +1447,6 @@ func parseFilterValues(params map[string]string, filterAttr string) ([]string, e
 	if len(filterValues) == 0 {
 		return nil, fmt.Errorf("%w %q", ErrIncompleteFilterNameOnly, filterAttr)
 	}
-	// Check if both "filterAttr" and "filterAttr(0)" syntax types occur in the params.
 	_, nonNumberedExists := params[filterAttr]
 	_, numberedExists := params[filterAttr+"(0)"]
 	if nonNumberedExists && numberedExists {
@@ -1459,38 +1505,40 @@ const (
 	smallestMaxDistance = 5
 )
 
-// Valid Currency ID values from the eBay documentation.
-// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html
-var validCurrencyIDs = []string{
-	"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
-}
+var (
+	// Valid Currency ID values from the eBay documentation.
+	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html
+	validCurrencyIDs = []string{
+		"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
+	}
 
-// Valid Global ID values from the eBay documentation.
-// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html
-var validGlobalIDs = []string{
-	"EBAY-AT",
-	"EBAY-AU",
-	"EBAY-CH",
-	"EBAY-DE",
-	"EBAY-ENCA",
-	"EBAY-ES",
-	"EBAY-FR",
-	"EBAY-FRBE",
-	"EBAY-FRCA",
-	"EBAY-GB",
-	"EBAY-HK",
-	"EBAY-IE",
-	"EBAY-IN",
-	"EBAY-IT",
-	"EBAY-MOTOR",
-	"EBAY-MY",
-	"EBAY-NL",
-	"EBAY-NLBE",
-	"EBAY-PH",
-	"EBAY-PL",
-	"EBAY-SG",
-	"EBAY-US",
-}
+	// Valid Global ID values from the eBay documentation.
+	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html
+	validGlobalIDs = []string{
+		"EBAY-AT",
+		"EBAY-AU",
+		"EBAY-CH",
+		"EBAY-DE",
+		"EBAY-ENCA",
+		"EBAY-ES",
+		"EBAY-FR",
+		"EBAY-FRBE",
+		"EBAY-FRCA",
+		"EBAY-GB",
+		"EBAY-HK",
+		"EBAY-IE",
+		"EBAY-IN",
+		"EBAY-IT",
+		"EBAY-MOTOR",
+		"EBAY-MY",
+		"EBAY-NL",
+		"EBAY-NLBE",
+		"EBAY-PH",
+		"EBAY-PL",
+		"EBAY-SG",
+		"EBAY-US",
+	}
+)
 
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params map[string]string) error {
 	switch filter.name {
@@ -1682,7 +1730,7 @@ func validateNumericFilter(
 ) error {
 	v, err := strconv.Atoi(filter.values[0])
 	if err != nil {
-		return fmt.Errorf("ebay: %w", err)
+		return fmt.Errorf("%w: %w", ErrInvalidInteger, err)
 	}
 	if minAllowedValue > v {
 		return invalidIntegerError(filter.values[0], minAllowedValue)
@@ -1692,13 +1740,13 @@ func validateNumericFilter(
 		if f.name == filterA {
 			val, err := strconv.Atoi(f.values[0])
 			if err != nil {
-				return fmt.Errorf("ebay: %w", err)
+				return fmt.Errorf("%w: %w", ErrInvalidInteger, err)
 			}
 			filterAValue = &val
 		} else if f.name == filterB {
 			val, err := strconv.Atoi(f.values[0])
 			if err != nil {
-				return fmt.Errorf("ebay: %w", err)
+				return fmt.Errorf("%w: %w", ErrInvalidInteger, err)
 			}
 			filterBValue = &val
 		}
@@ -1817,7 +1865,7 @@ func parsePrice(filter *itemFilter) (float64, error) {
 	const minAllowedPrice float64 = 0.0
 	price, err := strconv.ParseFloat(filter.values[0], 64)
 	if err != nil {
-		return 0, fmt.Errorf("ebay: %w", err)
+		return 0, fmt.Errorf("%w: %w", ErrInvalidPrice, err)
 	}
 	if minAllowedPrice > price {
 		return 0, fmt.Errorf("%w: %f (minimum value: %f)", ErrInvalidPrice, price, minAllowedPrice)
@@ -1880,7 +1928,6 @@ var validOutputSelectors = []string{
 }
 
 func processOutputSelectors(params map[string]string) ([]string, error) {
-	// Check if both "outputSelector" and "outputSelector(0)" syntax types occur in the params.
 	outputSelector, nonNumberedExists := params["outputSelector"]
 	_, numberedExists := params["outputSelector(0)"]
 	if nonNumberedExists && numberedExists {
@@ -1890,7 +1937,6 @@ func processOutputSelectors(params map[string]string) ([]string, error) {
 		if !slices.Contains(validOutputSelectors, outputSelector) {
 			return nil, ErrInvalidOutputSelector
 		}
-
 		return []string{outputSelector}, nil
 	}
 	var os []string
@@ -1933,10 +1979,10 @@ func processAffiliate(params map[string]string) (*affiliate, error) {
 	}
 	nID, err := strconv.Atoi(networkID)
 	if err != nil {
-		return nil, fmt.Errorf("ebay: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidNetworkID, err)
 	}
 	if nID < beFreeID || nID > ebayPartnerNetworkID {
-		return nil, ErrInvalidNetworkID
+		return nil, ErrInvalidNetworkIDRange
 	}
 	if nID == ebayPartnerNetworkID {
 		err := validateTrackingID(trackingID)
@@ -1952,7 +1998,7 @@ func processAffiliate(params map[string]string) (*affiliate, error) {
 func validateTrackingID(trackingID string) error {
 	_, err := strconv.Atoi(trackingID)
 	if err != nil {
-		return fmt.Errorf("ebay: %w", err)
+		return fmt.Errorf("%w: %w", ErrInvalidTrackingID, err)
 	}
 	const maxCampIDLen = 10
 	if len(trackingID) != maxCampIDLen {
@@ -1976,20 +2022,20 @@ func processPaginationInput(params map[string]string) (*paginationInput, error) 
 	if eOk {
 		v, err := strconv.Atoi(entriesPerPage)
 		if err != nil {
-			return nil, fmt.Errorf("ebay: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrInvalidEntriesPerPage, err)
 		}
 		if v < minPaginationValue || v > maxPaginationValue {
-			return nil, ErrInvalidEntriesPerPage
+			return nil, ErrInvalidEntriesPerPageRange
 		}
 		pInput.entriesPerPage = &entriesPerPage
 	}
 	if pOk {
 		v, err := strconv.Atoi(pageNumber)
 		if err != nil {
-			return nil, fmt.Errorf("ebay: %w", err)
+			return nil, fmt.Errorf("%w: %w", ErrInvalidPageNumber, err)
 		}
 		if v < minPaginationValue || v > maxPaginationValue {
-			return nil, ErrInvalidPageNumber
+			return nil, ErrInvalidPageNumberRange
 		}
 		pInput.pageNumber = &pageNumber
 	}

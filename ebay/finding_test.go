@@ -4531,7 +4531,7 @@ func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCas
 }
 
 func testFindItems(
-	t *testing.T, params map[string]string, findMethod string, wantResp ebay.FindItems, tcs []findItemsTestCase,
+	t *testing.T, params map[string]string, findMethod string, wantResp ebay.FindResponder, tcs []findItemsTestCase,
 ) {
 	t.Helper()
 	t.Run(fmt.Sprintf("can find items by %s", findMethod), func(t *testing.T) {
@@ -4552,7 +4552,7 @@ func testFindItems(
 		fc := ebay.NewFindingClient(client, appID)
 		fc.URL = ts.URL
 
-		var resp ebay.FindItems
+		var resp ebay.FindResponder
 		var err error
 		switch findMethod {
 		case findItemsByCategories:
@@ -4741,7 +4741,7 @@ func testFindItems(
 			fc := ebay.NewFindingClient(client, appID)
 			fc.URL = ts.URL
 
-			var resp ebay.FindItems
+			var resp ebay.FindResponder
 			var err error
 			switch findMethod {
 			case findItemsByCategories:

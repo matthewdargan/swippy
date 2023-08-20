@@ -52,9 +52,7 @@ func (e *APIError) Error() string {
 }
 
 // FindItemsByCategories searches for items on eBay using specific eBay category ID numbers.
-// See
-// https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
-// for searching by category.
+// See [Searching and Browsing By Category] for searching by category.
 //
 // The category IDs narrow down the search results. The provided parameters
 // contain additional query parameters for the search. If the FindingClient is configured with an invalid
@@ -67,6 +65,8 @@ func (e *APIError) Error() string {
 // If the returned error is nil, the [FindItemsByCategoriesResponse] will contain a non-nil ItemsResponse
 // containing search results.
 // See https://developer.ebay.com/devzone/finding/CallRef/findItemsByCategory.html.
+//
+// [Searching and Browsing By Category]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
 func (c *FindingClient) FindItemsByCategories(
 	ctx context.Context, params map[string]string,
 ) (FindItemsByCategoriesResponse, error) {
@@ -79,8 +79,7 @@ func (c *FindingClient) FindItemsByCategories(
 }
 
 // FindItemsByKeywords searches for items on eBay by a keyword query.
-// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
-// for searching by keywords.
+// See [Searching by Keywords] for searching by keywords.
 //
 // The keywords narrow down the search results. The provided parameters contain additional query parameters
 // for the search. If the FindingClient is configured with an invalid AppID, the search call will fail to authenticate.
@@ -92,6 +91,8 @@ func (c *FindingClient) FindItemsByCategories(
 // If the returned error is nil, the [FindItemsByKeywordsResponse] will contain a non-nil ItemsResponse
 // containing search results.
 // See https://developer.ebay.com/devzone/finding/CallRef/findItemsByKeywords.html.
+//
+// [Searching by Keywords]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
 func (c *FindingClient) FindItemsByKeywords(
 	ctx context.Context, params map[string]string,
 ) (FindItemsByKeywordsResponse, error) {
@@ -104,11 +105,8 @@ func (c *FindingClient) FindItemsByKeywords(
 }
 
 // FindItemsAdvanced searches for items on eBay by category and/or keyword.
-// See
-// https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
-// for searching by category.
-// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
-// for searching by keywords.
+// See [Searching and Browsing By Category] for searching by category
+// and [Searching by Keywords] for searching by keywords.
 //
 // The category IDs and keywords narrow down the search results. The provided parameters contain additional
 // query parameters for the search. If the FindingClient is configured with an invalid AppID,
@@ -121,6 +119,9 @@ func (c *FindingClient) FindItemsByKeywords(
 // If the returned error is nil, the [FindItemsAdvancedResponse] will contain a non-nil ItemsResponse
 // containing search results.
 // See https://developer.ebay.com/Devzone/finding/CallRef/findItemsAdvanced.html.
+//
+// [Searching and Browsing By Category]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
+// [Searching by Keywords]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
 func (c *FindingClient) FindItemsAdvanced(
 	ctx context.Context, params map[string]string,
 ) (FindItemsAdvancedResponse, error) {
@@ -133,8 +134,7 @@ func (c *FindingClient) FindItemsAdvanced(
 }
 
 // FindItemsByProduct searches for items on eBay using specific eBay product values.
-// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-product.html
-// for searching by product.
+// See [Searching by Product] for searching by product.
 //
 // The product ID narrows down the search results. The provided parameters contain additional query parameters
 // for the search. If the FindingClient is configured with an invalid AppID, the search call will fail to authenticate.
@@ -146,6 +146,8 @@ func (c *FindingClient) FindItemsAdvanced(
 // If the returned error is nil, the [FindItemsByProductResponse] will contain a non-nil ItemsResponse
 // containing search results.
 // See https://developer.ebay.com/Devzone/finding/CallRef/findItemsByProduct.html.
+//
+// [Searching by Product]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-product.html
 func (c *FindingClient) FindItemsByProduct(
 	ctx context.Context, params map[string]string,
 ) (FindItemsByProductResponse, error) {
@@ -160,11 +162,8 @@ func (c *FindingClient) FindItemsByProduct(
 // FindItemsInEBayStores searches for items in the eBay store inventories. The search can utilize a combination of
 // store name, category IDs, and/or keywords. If a search includes keywords and/or category IDs but lacks a store name,
 // it will search for items across all eBay stores.
-// See
-// https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
-// for searching by category.
-// See https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
-// for searching by keywords.
+// See [Searching and Browsing By Category] for searching by category
+// and [Searching by Keywords] for searching by keywords.
 //
 // The store name, category IDs, and keywords narrow down the search results. The provided parameters contain
 // additional query parameters for the search. If the FindingClient is configured with an invalid AppID,
@@ -177,6 +176,9 @@ func (c *FindingClient) FindItemsByProduct(
 // If the returned error is nil, the [FindItemsInEBayStoresResponse] will contain a non-nil ItemsResponse
 // containing search results.
 // See https://developer.ebay.com/Devzone/finding/CallRef/findItemsIneBayStores.html.
+//
+// [Searching and Browsing By Category]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
+// [Searching by Keywords]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
 func (c *FindingClient) FindItemsInEBayStores(
 	ctx context.Context, params map[string]string,
 ) (FindItemsInEBayStoresResponse, error) {
@@ -200,7 +202,7 @@ var (
 )
 
 func (c *FindingClient) findItems(
-	ctx context.Context, params map[string]string, fParams findItemsParams, items FindItems,
+	ctx context.Context, params map[string]string, fParams findItemsParams, fr FindResponder,
 ) error {
 	err := fParams.validateParams(params)
 	if err != nil {
@@ -221,7 +223,7 @@ func (c *FindingClient) findItems(
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
-	err = json.NewDecoder(resp.Body).Decode(&items)
+	err = json.NewDecoder(resp.Body).Decode(&fr)
 	if err != nil {
 		return &APIError{
 			Err:        fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err),

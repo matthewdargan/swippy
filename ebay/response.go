@@ -61,19 +61,14 @@ type ErrorMessage struct {
 }
 
 type ErrorData struct {
-	Category    []string         `json:"category"`
-	Domain      []string         `json:"domain"`
-	ErrorID     []string         `json:"errorId"`
-	ExceptionID []string         `json:"exceptionId"`
-	Message     []string         `json:"message"`
-	Parameter   []ErrorParameter `json:"parameter"`
-	Severity    []string         `json:"severity"`
-	Subdomain   []string         `json:"subdomain"`
-}
-
-type ErrorParameter struct {
-	Name  string `json:"@name"`
-	Value string `json:"__value__"`
+	Category    []string `json:"category"`
+	Domain      []string `json:"domain"`
+	ErrorID     []string `json:"errorId"`
+	ExceptionID []string `json:"exceptionId"`
+	Message     []string `json:"message"`
+	Parameter   []string `json:"parameter"`
+	Severity    []string `json:"severity"`
+	Subdomain   []string `json:"subdomain"`
 }
 
 type PaginationOutput struct {

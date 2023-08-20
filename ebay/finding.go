@@ -202,13 +202,13 @@ var (
 )
 
 func (c *FindingClient) findItems(
-	ctx context.Context, params map[string]string, fParams findItemsParams, fr FindResponder,
+	ctx context.Context, params map[string]string, paramsValidator findParamsValidator, fr FindResponder,
 ) error {
-	err := fParams.validateParams(params)
+	err := paramsValidator.validate(params)
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusBadRequest}
 	}
-	req, err := fParams.newRequest(ctx, c.URL)
+	req, err := paramsValidator.newRequest(ctx, c.URL)
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusInternalServerError}
 	}

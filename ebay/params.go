@@ -189,8 +189,8 @@ var (
 	ErrInvalidRequest = errors.New("invalid request")
 )
 
-type findItemsParams interface {
-	validateParams(params map[string]string) error
+type findParamsValidator interface {
+	validate(params map[string]string) error
 	newRequest(ctx context.Context, url string) (*http.Request, error)
 }
 
@@ -230,7 +230,7 @@ type paginationInput struct {
 	pageNumber     *string
 }
 
-func (fp *findItemsByCategoryParams) validateParams(params map[string]string) error {
+func (fp *findItemsByCategoryParams) validate(params map[string]string) error {
 	_, ok := params["categoryId"]
 	_, nOk := params["categoryId(0)"]
 	if !ok && !nOk {
@@ -355,7 +355,7 @@ type findItemsByKeywordsParams struct {
 	sortOrder       *string
 }
 
-func (fp *findItemsByKeywordsParams) validateParams(params map[string]string) error {
+func (fp *findItemsByKeywordsParams) validate(params map[string]string) error {
 	keywords, err := processKeywords(params)
 	if err != nil {
 		return err
@@ -475,7 +475,7 @@ type findItemsAdvancedParams struct {
 	sortOrder         *string
 }
 
-func (fp *findItemsAdvancedParams) validateParams(params map[string]string) error {
+func (fp *findItemsAdvancedParams) validate(params map[string]string) error {
 	_, cOk := params["categoryId"]
 	_, csOk := params["categoryId(0)"]
 	_, ok := params["keywords"]
@@ -628,7 +628,7 @@ type productID struct {
 	value  string
 }
 
-func (fp *findItemsByProductParams) validateParams(params map[string]string) error {
+func (fp *findItemsByProductParams) validate(params map[string]string) error {
 	productIDType, ptOk := params["productId.@type"]
 	productValue, pOk := params["productId"]
 	if !ptOk || !pOk {
@@ -744,7 +744,7 @@ type findItemsInEBayStoresParams struct {
 	sortOrder       *string
 }
 
-func (fp *findItemsInEBayStoresParams) validateParams(params map[string]string) error {
+func (fp *findItemsInEBayStoresParams) validate(params map[string]string) error {
 	_, cOk := params["categoryId"]
 	_, csOk := params["categoryId(0)"]
 	_, kwOk := params["keywords"]

@@ -30,7 +30,7 @@ type FindingClient struct {
 
 const findingURL = "https://svcs.ebay.com/services/search/FindingService/v1?REST-PAYLOAD"
 
-// NewFindingClient returns a new FindingClient given an HTTP client and a valid eBay application ID.
+// NewFindingClient creates a new FindingClient with the given HTTP client and valid eBay application ID.
 func NewFindingClient(client *http.Client, appID string) *FindingClient {
 	return &FindingClient{Client: client, AppID: appID, URL: findingURL}
 }
@@ -67,9 +67,7 @@ func (e *APIError) Error() string {
 // See https://developer.ebay.com/devzone/finding/CallRef/findItemsByCategory.html.
 //
 // [Searching and Browsing By Category]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
-func (c *FindingClient) FindItemsByCategories(
-	ctx context.Context, params map[string]string,
-) (FindItemsByCategoriesResponse, error) {
+func (c *FindingClient) FindItemsByCategories(ctx context.Context, params map[string]string) (FindItemsByCategoriesResponse, error) {
 	var findItems FindItemsByCategoriesResponse
 	err := c.findItems(ctx, params, &findItemsByCategoryParams{appID: c.AppID}, &findItems)
 	if err != nil {
@@ -93,9 +91,7 @@ func (c *FindingClient) FindItemsByCategories(
 // See https://developer.ebay.com/devzone/finding/CallRef/findItemsByKeywords.html.
 //
 // [Searching by Keywords]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
-func (c *FindingClient) FindItemsByKeywords(
-	ctx context.Context, params map[string]string,
-) (FindItemsByKeywordsResponse, error) {
+func (c *FindingClient) FindItemsByKeywords(ctx context.Context, params map[string]string) (FindItemsByKeywordsResponse, error) {
 	var findItems FindItemsByKeywordsResponse
 	err := c.findItems(ctx, params, &findItemsByKeywordsParams{appID: c.AppID}, &findItems)
 	if err != nil {
@@ -122,9 +118,7 @@ func (c *FindingClient) FindItemsByKeywords(
 //
 // [Searching and Browsing By Category]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
 // [Searching by Keywords]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
-func (c *FindingClient) FindItemsAdvanced(
-	ctx context.Context, params map[string]string,
-) (FindItemsAdvancedResponse, error) {
+func (c *FindingClient) FindItemsAdvanced(ctx context.Context, params map[string]string) (FindItemsAdvancedResponse, error) {
 	var findItems FindItemsAdvancedResponse
 	err := c.findItems(ctx, params, &findItemsAdvancedParams{appID: c.AppID}, &findItems)
 	if err != nil {
@@ -148,9 +142,7 @@ func (c *FindingClient) FindItemsAdvanced(
 // See https://developer.ebay.com/Devzone/finding/CallRef/findItemsByProduct.html.
 //
 // [Searching by Product]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-product.html
-func (c *FindingClient) FindItemsByProduct(
-	ctx context.Context, params map[string]string,
-) (FindItemsByProductResponse, error) {
+func (c *FindingClient) FindItemsByProduct(ctx context.Context, params map[string]string) (FindItemsByProductResponse, error) {
 	var findItems FindItemsByProductResponse
 	err := c.findItems(ctx, params, &findItemsByProductParams{appID: c.AppID}, &findItems)
 	if err != nil {
@@ -179,9 +171,7 @@ func (c *FindingClient) FindItemsByProduct(
 //
 // [Searching and Browsing By Category]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-browsing-by-category.html
 // [Searching by Keywords]: https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide/finding-searching-by-keywords.html
-func (c *FindingClient) FindItemsInEBayStores(
-	ctx context.Context, params map[string]string,
-) (FindItemsInEBayStoresResponse, error) {
+func (c *FindingClient) FindItemsInEBayStores(ctx context.Context, params map[string]string) (FindItemsInEBayStoresResponse, error) {
 	var findItems FindItemsInEBayStoresResponse
 	err := c.findItems(ctx, params, &findItemsInEBayStoresParams{appID: c.AppID}, &findItems)
 	if err != nil {
@@ -201,14 +191,12 @@ var (
 	ErrDecodeAPIResponse = errors.New("failed to decode eBay Finding API response body")
 )
 
-func (c *FindingClient) findItems(
-	ctx context.Context, params map[string]string, paramsValidator findParamsValidator, resultProvider SearchResultProvider,
-) error {
-	err := paramsValidator.validate(params)
+func (c *FindingClient) findItems(ctx context.Context, params map[string]string, v findParamsValidator, res ResultProvider) error {
+	err := v.validate(params)
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusBadRequest}
 	}
-	req, err := paramsValidator.newRequest(ctx, c.URL)
+	req, err := v.newRequest(ctx, c.URL)
 	if err != nil {
 		return &APIError{Err: err, StatusCode: http.StatusInternalServerError}
 	}
@@ -223,7 +211,7 @@ func (c *FindingClient) findItems(
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
-	err = json.NewDecoder(resp.Body).Decode(&resultProvider)
+	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
 		return &APIError{
 			Err:        fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err),

@@ -10,8 +10,6 @@ import (
 )
 
 func ExampleFindingClient_FindItemsByCategories() {
-	const findingHTTPTimeout = 5
-	const aID = "super secret ID"
 	params := map[string]string{
 		"categoryId":            "9355",
 		"itemFilter.name":       "MaxPrice",
@@ -19,7 +17,7 @@ func ExampleFindingClient_FindItemsByCategories() {
 		"itemFilter.paramName":  "Currency",
 		"itemFilter.paramValue": "EUR",
 	}
-	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, aID)
+	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 5}, "your_app_id")
 	resp, err := fc.FindItemsByCategories(context.Background(), params)
 	if err != nil {
 		fmt.Println(err)
@@ -31,8 +29,6 @@ func ExampleFindingClient_FindItemsByCategories() {
 }
 
 func ExampleFindingClient_FindItemsByKeywords() {
-	const findingHTTPTimeout = 5
-	const aID = "super secret ID"
 	params := map[string]string{
 		"keywords":              "iphone",
 		"itemFilter.name":       "MaxPrice",
@@ -40,7 +36,7 @@ func ExampleFindingClient_FindItemsByKeywords() {
 		"itemFilter.paramName":  "Currency",
 		"itemFilter.paramValue": "EUR",
 	}
-	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, aID)
+	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 5}, "your_app_id")
 	resp, err := fc.FindItemsByKeywords(context.Background(), params)
 	if err != nil {
 		fmt.Println(err)
@@ -52,8 +48,6 @@ func ExampleFindingClient_FindItemsByKeywords() {
 }
 
 func ExampleFindingClient_FindItemsAdvanced() {
-	const findingHTTPTimeout = 5
-	const aID = "super secret ID"
 	params := map[string]string{
 		"categoryId":            "9355",
 		"keywords":              "iphone",
@@ -62,7 +56,7 @@ func ExampleFindingClient_FindItemsAdvanced() {
 		"itemFilter.paramName":  "Currency",
 		"itemFilter.paramValue": "EUR",
 	}
-	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, aID)
+	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 5}, "your_app_id")
 	resp, err := fc.FindItemsAdvanced(context.Background(), params)
 	if err != nil {
 		fmt.Println(err)
@@ -74,8 +68,6 @@ func ExampleFindingClient_FindItemsAdvanced() {
 }
 
 func ExampleFindingClient_FindItemsByProduct() {
-	const findingHTTPTimeout = 5
-	const aID = "super secret ID"
 	params := map[string]string{
 		"productId.@type":       "ISBN",
 		"productId":             "9780131101630",
@@ -84,7 +76,7 @@ func ExampleFindingClient_FindItemsByProduct() {
 		"itemFilter.paramName":  "Currency",
 		"itemFilter.paramValue": "EUR",
 	}
-	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, aID)
+	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 5}, "your_app_id")
 	resp, err := fc.FindItemsByProduct(context.Background(), params)
 	if err != nil {
 		fmt.Println(err)
@@ -96,8 +88,6 @@ func ExampleFindingClient_FindItemsByProduct() {
 }
 
 func ExampleFindingClient_FindItemsInEBayStores() {
-	const findingHTTPTimeout = 5
-	const aID = "super secret ID"
 	params := map[string]string{
 		"storeName":             "Supplytronics",
 		"itemFilter.name":       "MaxPrice",
@@ -105,7 +95,7 @@ func ExampleFindingClient_FindItemsInEBayStores() {
 		"itemFilter.paramName":  "Currency",
 		"itemFilter.paramValue": "EUR",
 	}
-	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, aID)
+	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 5}, "your_app_id")
 	resp, err := fc.FindItemsInEBayStores(context.Background(), params)
 	if err != nil {
 		fmt.Println(err)

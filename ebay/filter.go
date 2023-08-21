@@ -16,8 +16,7 @@ var (
 	// ErrIncompleteItemFilterParam is returned when an item filter is missing
 	// either the 'paramName' or 'paramValue' parameter, as both 'paramName' and 'paramValue'
 	// are required when either one is specified.
-	ErrIncompleteItemFilterParam = errors.New(
-		"incomplete item filter: both paramName and paramValue must be specified together")
+	ErrIncompleteItemFilterParam = errors.New("incomplete item filter: both paramName and paramValue must be specified together")
 
 	// ErrUnsupportedItemFilterType is returned when an item filter 'name' parameter has an unsupported type.
 	ErrUnsupportedItemFilterType = errors.New("unsupported item filter type")

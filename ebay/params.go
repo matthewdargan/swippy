@@ -48,8 +48,7 @@ var (
 
 	// ErrInvalidCategoryIDLength is returned when an individual category ID in the 'categoryId' parameter
 	// exceed the maximum length of 10 characters or is empty.
-	ErrInvalidCategoryIDLength = fmt.Errorf(
-		"invalid category ID length: must be between 1 and %d characters", maxCategoryIDLen)
+	ErrInvalidCategoryIDLength = fmt.Errorf("invalid category ID length: must be between 1 and %d characters", maxCategoryIDLen)
 
 	// ErrInvalidCategoryID is returned when an individual category ID in the 'categoryId' parameter
 	// contains an invalid category ID.
@@ -62,8 +61,7 @@ var (
 
 	// ErrInvalidKeywordsLength is returned when the 'keywords' parameter as a whole
 	// exceeds the maximum length of 350 characters or has a length less than 2 characters.
-	ErrInvalidKeywordsLength = fmt.Errorf(
-		"invalid keywords length: must be between %d and %d characters", minKeywordsLen, maxKeywordsLen)
+	ErrInvalidKeywordsLength = fmt.Errorf("invalid keywords length: must be between %d and %d characters", minKeywordsLen, maxKeywordsLen)
 
 	maxKeywordLen = 98
 
@@ -130,14 +128,12 @@ var (
 
 	// ErrInvalidCustomIDLength is returned when the 'affiliate.customId' parameter
 	// exceeds the maximum length of 256 characters.
-	ErrInvalidCustomIDLength = fmt.Errorf(
-		"invalid affiliate custom ID length: must be no more than %d characters", maxCustomIDLen)
+	ErrInvalidCustomIDLength = fmt.Errorf("invalid affiliate custom ID length: must be no more than %d characters", maxCustomIDLen)
 
 	// ErrIncompleteAffiliateParams is returned when an affiliate is missing
 	// either the 'networkId' or 'trackingId' parameter, as both 'networkId' and 'trackingId'
 	// are required when either one is specified.
-	ErrIncompleteAffiliateParams = errors.New(
-		"incomplete affiliate: both network and tracking IDs must be specified together")
+	ErrIncompleteAffiliateParams = errors.New("incomplete affiliate: both network and tracking IDs must be specified together")
 
 	// ErrInvalidNetworkID is returned when the 'affiliate.networkId' parameter
 	// contains an invalid network ID.
@@ -147,8 +143,7 @@ var (
 
 	// ErrInvalidNetworkIDRange is returned when the 'affiliate.networkId' parameter
 	// is outside the valid range of 2 (Be Free) and 9 (eBay Partner Network).
-	ErrInvalidNetworkIDRange = fmt.Errorf("invalid affiliate network ID: must be between %d and %d",
-		beFreeID, ebayPartnerNetworkID)
+	ErrInvalidNetworkIDRange = fmt.Errorf("invalid affiliate network ID: must be between %d and %d", beFreeID, ebayPartnerNetworkID)
 
 	// ErrInvalidTrackingID is returned when the 'affiliate.networkId' parameter is 9 (eBay Partner Network)
 	// and the 'affiliate.trackingId' parameter contains an invalid tracking ID.
@@ -169,8 +164,7 @@ var (
 
 	// ErrInvalidEntriesPerPageRange is returned when the 'paginationInput.entriesPerPage' parameter
 	// is outside the valid range of 1 to 100.
-	ErrInvalidEntriesPerPageRange = fmt.Errorf("invalid pagination entries per page, must be between %d and %d",
-		minPaginationValue, maxPaginationValue)
+	ErrInvalidEntriesPerPageRange = fmt.Errorf("invalid pagination entries per page, must be between %d and %d", minPaginationValue, maxPaginationValue)
 
 	// ErrInvalidPageNumber is returned when the 'paginationInput.pageNumber' parameter
 	// contains an invalid pages value.
@@ -178,8 +172,7 @@ var (
 
 	// ErrInvalidPageNumberRange is returned when the 'paginationInput.pageNumber' parameter
 	// is outside the valid range of 1 to 100.
-	ErrInvalidPageNumberRange = fmt.Errorf("invalid pagination page number, must be between %d and %d",
-		minPaginationValue, maxPaginationValue)
+	ErrInvalidPageNumberRange = fmt.Errorf("invalid pagination page number, must be between %d and %d", minPaginationValue, maxPaginationValue)
 
 	// ErrAuctionListingMissing is returned when the 'sortOrder' parameter BidCountFewest or BidCountMost,
 	// but a 'Auction' listing type is not specified in the item filters.

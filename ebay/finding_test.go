@@ -4627,9 +4627,7 @@ func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCas
 	return combinedTCs
 }
 
-func testFindItems(
-	t *testing.T, params map[string]string, findMethod string, wantResp ebay.SearchResultProvider, tcs []findItemsTestCase,
-) {
+func testFindItems(t *testing.T, params map[string]string, findMethod string, wantResp ebay.ResultProvider, tcs []findItemsTestCase) {
 	t.Helper()
 	t.Run(fmt.Sprintf("can find items by %s", findMethod), func(t *testing.T) {
 		t.Parallel()
@@ -4649,7 +4647,7 @@ func testFindItems(
 		fc := ebay.NewFindingClient(client, appID)
 		fc.URL = ts.URL
 
-		var resp ebay.SearchResultProvider
+		var resp ebay.ResultProvider
 		var err error
 		switch findMethod {
 		case findItemsByCategories:
@@ -4813,8 +4811,7 @@ func testFindItems(
 		default:
 			t.Fatalf("unsupported findMethod: %s", findMethod)
 		}
-		want := fmt.Errorf("%w: json: cannot unmarshal array into Go value of type ebay.%sResponse",
-			ebay.ErrDecodeAPIResponse, findMethod)
+		want := fmt.Errorf("%w: json: cannot unmarshal array into Go value of type ebay.%sResponse", ebay.ErrDecodeAPIResponse, findMethod)
 		assertAPIError(t, err, want, http.StatusInternalServerError)
 	})
 
@@ -4838,7 +4835,7 @@ func testFindItems(
 			fc := ebay.NewFindingClient(client, appID)
 			fc.URL = ts.URL
 
-			var resp ebay.SearchResultProvider
+			var resp ebay.ResultProvider
 			var err error
 			switch findMethod {
 			case findItemsByCategories:

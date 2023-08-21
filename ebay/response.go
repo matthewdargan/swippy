@@ -2,10 +2,10 @@ package ebay
 
 import "time"
 
-// A SearchResultProvider represents a response from eBay Finding API endpoints.
-type SearchResultProvider interface {
-	// SearchResults returns the search results from the eBay Finding API endpoint.
-	SearchResults() []FindItemsResponse
+// A ResultProvider represents results from eBay Finding API endpoints.
+type ResultProvider interface {
+	// Results returns results from the eBay Finding API endpoint.
+	Results() []FindItemsResponse
 }
 
 // FindItemsByCategoriesResponse represents the response from [FindingClient.FindItemsByCategories].
@@ -13,7 +13,7 @@ type FindItemsByCategoriesResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByCategoryResponse"`
 }
 
-func (r FindItemsByCategoriesResponse) SearchResults() []FindItemsResponse {
+func (r FindItemsByCategoriesResponse) Results() []FindItemsResponse {
 	return r.ItemsResponse
 }
 
@@ -22,7 +22,7 @@ type FindItemsByKeywordsResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByKeywordsResponse"`
 }
 
-func (r FindItemsByKeywordsResponse) SearchResults() []FindItemsResponse {
+func (r FindItemsByKeywordsResponse) Results() []FindItemsResponse {
 	return r.ItemsResponse
 }
 
@@ -31,7 +31,7 @@ type FindItemsAdvancedResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsAdvancedResponse"`
 }
 
-func (r FindItemsAdvancedResponse) SearchResults() []FindItemsResponse {
+func (r FindItemsAdvancedResponse) Results() []FindItemsResponse {
 	return r.ItemsResponse
 }
 
@@ -40,7 +40,7 @@ type FindItemsByProductResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByProductResponse"`
 }
 
-func (r FindItemsByProductResponse) SearchResults() []FindItemsResponse {
+func (r FindItemsByProductResponse) Results() []FindItemsResponse {
 	return r.ItemsResponse
 }
 
@@ -49,7 +49,7 @@ type FindItemsInEBayStoresResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsIneBayStoresResponse"`
 }
 
-func (r FindItemsInEBayStoresResponse) SearchResults() []FindItemsResponse {
+func (r FindItemsInEBayStoresResponse) Results() []FindItemsResponse {
 	return r.ItemsResponse
 }
 

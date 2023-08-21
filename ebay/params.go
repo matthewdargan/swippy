@@ -36,6 +36,9 @@ var (
 	// are missing in a findItemsIneBayStores request.
 	ErrCategoryIDKeywordsStoreNameMissing = errors.New("category ID, keywords, and store name parameters are missing")
 
+	// ErrInvalidIndexSyntax is returned when index and non-index syntax are used in the params.
+	ErrInvalidIndexSyntax = errors.New("invalid filter syntax: both index and non-index syntax are present")
+
 	maxCategoryIDs = 3
 
 	// ErrMaxCategoryIDs is returned when the 'categoryId' parameter contains more category IDs than the maximum allowed.
@@ -110,8 +113,8 @@ var (
 	// ErrInvalidStoreNameAmpersand is returned when the 'storeName' parameter contains unescaped '&' characters.
 	ErrInvalidStoreNameAmpersand = errors.New("storeName contains unescaped '&' characters")
 
-	// ErrInvalidIndexSyntax is returned when index and non-index syntax are used in the params.
-	ErrInvalidIndexSyntax = errors.New("invalid filter syntax: both index and non-index syntax are present")
+	// ErrInvalidGlobalID is returned when the 'Global-ID' or an item filter 'values' parameter contains an invalid global ID.
+	ErrInvalidGlobalID = errors.New("invalid global ID")
 
 	// ErrInvalidBooleanValue is returned when a parameter has an invalid boolean value.
 	ErrInvalidBooleanValue = errors.New("invalid boolean value, allowed values are true and false")
@@ -196,6 +199,7 @@ type findParamsValidator interface {
 
 type findItemsByCategoryParams struct {
 	appID           string
+	globalID        *string
 	aspectFilters   []aspectFilter
 	categoryIDs     []string
 	itemFilters     []itemFilter
@@ -241,6 +245,14 @@ func (fp *findItemsByCategoryParams) validate(params map[string]string) error {
 		return err
 	}
 	fp.categoryIDs = categoryIDs
+	globalID, ok := params["Global-ID"]
+	if ok {
+		err := validateGlobalID(globalID)
+		if err != nil {
+			return err
+		}
+		fp.globalID = &globalID
+	}
 	fp.aspectFilters, err = processAspectFilters(params)
 	if err != nil {
 		return err
@@ -285,6 +297,9 @@ func (fp *findItemsByCategoryParams) newRequest(ctx context.Context, url string)
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
 	qry := req.URL.Query()
+	if fp.globalID != nil {
+		qry.Add("Global-ID", *fp.globalID)
+	}
 	qry.Add("OPERATION-NAME", findItemsByCategoryOperationName)
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", fp.appID)
@@ -345,6 +360,7 @@ func (fp *findItemsByCategoryParams) newRequest(ctx context.Context, url string)
 
 type findItemsByKeywordsParams struct {
 	appID           string
+	globalID        *string
 	aspectFilters   []aspectFilter
 	itemFilters     []itemFilter
 	keywords        string
@@ -361,6 +377,14 @@ func (fp *findItemsByKeywordsParams) validate(params map[string]string) error {
 		return err
 	}
 	fp.keywords = keywords
+	globalID, ok := params["Global-ID"]
+	if ok {
+		err := validateGlobalID(globalID)
+		if err != nil {
+			return err
+		}
+		fp.globalID = &globalID
+	}
 	fp.aspectFilters, err = processAspectFilters(params)
 	if err != nil {
 		return err
@@ -405,6 +429,9 @@ func (fp *findItemsByKeywordsParams) newRequest(ctx context.Context, url string)
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
 	qry := req.URL.Query()
+	if fp.globalID != nil {
+		qry.Add("Global-ID", *fp.globalID)
+	}
 	qry.Add("OPERATION-NAME", findItemsByKeywordsOperationName)
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", fp.appID)
@@ -463,6 +490,7 @@ func (fp *findItemsByKeywordsParams) newRequest(ctx context.Context, url string)
 
 type findItemsAdvancedParams struct {
 	appID             string
+	globalID          *string
 	aspectFilters     []aspectFilter
 	categoryIDs       []string
 	descriptionSearch *string
@@ -495,6 +523,14 @@ func (fp *findItemsAdvancedParams) validate(params map[string]string) error {
 			return err
 		}
 		fp.keywords = &keywords
+	}
+	globalID, ok := params["Global-ID"]
+	if ok {
+		err := validateGlobalID(globalID)
+		if err != nil {
+			return err
+		}
+		fp.globalID = &globalID
 	}
 	aspectFilters, err := processAspectFilters(params)
 	if err != nil {
@@ -548,6 +584,9 @@ func (fp *findItemsAdvancedParams) newRequest(ctx context.Context, url string) (
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
 	qry := req.URL.Query()
+	if fp.globalID != nil {
+		qry.Add("Global-ID", *fp.globalID)
+	}
 	qry.Add("OPERATION-NAME", findItemsAdvancedOperationName)
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", fp.appID)
@@ -614,6 +653,7 @@ func (fp *findItemsAdvancedParams) newRequest(ctx context.Context, url string) (
 
 type findItemsByProductParams struct {
 	appID           string
+	globalID        *string
 	itemFilters     []itemFilter
 	outputSelectors []string
 	product         productID
@@ -638,6 +678,14 @@ func (fp *findItemsByProductParams) validate(params map[string]string) error {
 	err := fp.product.processProductID()
 	if err != nil {
 		return err
+	}
+	globalID, ok := params["Global-ID"]
+	if ok {
+		err := validateGlobalID(globalID)
+		if err != nil {
+			return err
+		}
+		fp.globalID = &globalID
 	}
 	fp.itemFilters, err = processItemFilters(params)
 	if err != nil {
@@ -679,6 +727,9 @@ func (fp *findItemsByProductParams) newRequest(ctx context.Context, url string) 
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
 	qry := req.URL.Query()
+	if fp.globalID != nil {
+		qry.Add("Global-ID", *fp.globalID)
+	}
 	qry.Add("OPERATION-NAME", findItemsByProductOperationName)
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", fp.appID)
@@ -732,6 +783,7 @@ func (fp *findItemsByProductParams) newRequest(ctx context.Context, url string) 
 
 type findItemsInEBayStoresParams struct {
 	appID           string
+	globalID        *string
 	aspectFilters   []aspectFilter
 	categoryIDs     []string
 	itemFilters     []itemFilter
@@ -767,11 +819,19 @@ func (fp *findItemsInEBayStoresParams) validate(params map[string]string) error 
 		fp.keywords = &keywords
 	}
 	if ok {
-		err := processStoreName(storeName)
+		err := validateStoreName(storeName)
 		if err != nil {
 			return err
 		}
 		fp.storeName = &storeName
+	}
+	globalID, ok := params["Global-ID"]
+	if ok {
+		err := validateGlobalID(globalID)
+		if err != nil {
+			return err
+		}
+		fp.globalID = &globalID
 	}
 	aspectFilters, err := processAspectFilters(params)
 	if err != nil {
@@ -818,6 +878,9 @@ func (fp *findItemsInEBayStoresParams) newRequest(ctx context.Context, url strin
 		return nil, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
 	qry := req.URL.Query()
+	if fp.globalID != nil {
+		qry.Add("Global-ID", *fp.globalID)
+	}
 	qry.Add("OPERATION-NAME", findItemsInEBayStoresOperationName)
 	qry.Add("SERVICE-VERSION", findingServiceVersion)
 	qry.Add("SECURITY-APPNAME", fp.appID)
@@ -889,7 +952,7 @@ func processCategoryIDs(params map[string]string) ([]string, error) {
 		return nil, ErrInvalidIndexSyntax
 	}
 	if nonNumberedExists {
-		err := processCategoryID(categoryID)
+		err := validateCategoryID(categoryID)
 		if err != nil {
 			return nil, err
 		}
@@ -901,7 +964,7 @@ func processCategoryIDs(params map[string]string) ([]string, error) {
 		if !ok {
 			break
 		}
-		err := processCategoryID(cID)
+		err := validateCategoryID(cID)
 		if err != nil {
 			return nil, err
 		}
@@ -913,7 +976,7 @@ func processCategoryIDs(params map[string]string) ([]string, error) {
 	return categoryIDs, nil
 }
 
-func processCategoryID(id string) error {
+func validateCategoryID(id string) error {
 	if len(id) > maxCategoryIDLen {
 		return ErrInvalidCategoryIDLength
 	}
@@ -1055,12 +1118,46 @@ func isValidEAN(ean string) bool {
 	return (sum+checkDigit)%10 == 0
 }
 
-func processStoreName(storeName string) error {
+func validateStoreName(storeName string) error {
 	if storeName == "" {
 		return ErrInvalidStoreNameLength
 	}
 	if strings.Contains(storeName, "&") && !strings.Contains(storeName, "&amp;") {
 		return ErrInvalidStoreNameAmpersand
+	}
+	return nil
+}
+
+// Valid Global ID values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html.
+var validGlobalIDs = []string{
+	"EBAY-AT",
+	"EBAY-AU",
+	"EBAY-CH",
+	"EBAY-DE",
+	"EBAY-ENCA",
+	"EBAY-ES",
+	"EBAY-FR",
+	"EBAY-FRBE",
+	"EBAY-FRCA",
+	"EBAY-GB",
+	"EBAY-HK",
+	"EBAY-IE",
+	"EBAY-IN",
+	"EBAY-IT",
+	"EBAY-MOTOR",
+	"EBAY-MY",
+	"EBAY-NL",
+	"EBAY-NLBE",
+	"EBAY-PH",
+	"EBAY-PL",
+	"EBAY-SG",
+	"EBAY-US",
+}
+
+func validateGlobalID(globalID string) error {
+	if !slices.Contains(validGlobalIDs, globalID) {
+		return fmt.Errorf("%w: %q", ErrInvalidGlobalID, globalID)
 	}
 	return nil
 }

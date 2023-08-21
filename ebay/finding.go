@@ -202,7 +202,7 @@ var (
 )
 
 func (c *FindingClient) findItems(
-	ctx context.Context, params map[string]string, paramsValidator findParamsValidator, fr FindResponder,
+	ctx context.Context, params map[string]string, paramsValidator findParamsValidator, resultProvider SearchResultProvider,
 ) error {
 	err := paramsValidator.validate(params)
 	if err != nil {
@@ -223,7 +223,7 @@ func (c *FindingClient) findItems(
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
-	err = json.NewDecoder(resp.Body).Decode(&fr)
+	err = json.NewDecoder(resp.Body).Decode(&resultProvider)
 	if err != nil {
 		return &APIError{
 			Err:        fmt.Errorf("%w: %w", ErrDecodeAPIResponse, err),

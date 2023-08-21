@@ -575,6 +575,10 @@ var (
 			Params: map[string]string{},
 		},
 		{
+			Name:   "returns error if params contains Global ID but not ",
+			Params: map[string]string{"Global-ID": "EBAY-AT"},
+		},
+		{
 			Name: "returns error if params contains non-numbered itemFilter but not ",
 			Params: map[string]string{
 				"itemFilter.name":  "BestOfferOnly",
@@ -635,6 +639,99 @@ var (
 	}
 	easternTime = time.FixedZone("EasternTime", -5*60*60)
 	testCases   = []findItemsTestCase{
+		{
+			Name:   "can find items if params contains Global ID EBAY-AT",
+			Params: map[string]string{"Global-ID": "EBAY-AT"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-AU",
+			Params: map[string]string{"Global-ID": "EBAY-AU"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-CH",
+			Params: map[string]string{"Global-ID": "EBAY-CH"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-DE",
+			Params: map[string]string{"Global-ID": "EBAY-DE"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-ENCA",
+			Params: map[string]string{"Global-ID": "EBAY-ENCA"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-ES",
+			Params: map[string]string{"Global-ID": "EBAY-ES"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-FR",
+			Params: map[string]string{"Global-ID": "EBAY-FR"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-FRBE",
+			Params: map[string]string{"Global-ID": "EBAY-FRBE"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-FRCA",
+			Params: map[string]string{"Global-ID": "EBAY-FRCA"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-GB",
+			Params: map[string]string{"Global-ID": "EBAY-GB"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-HK",
+			Params: map[string]string{"Global-ID": "EBAY-HK"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-IE",
+			Params: map[string]string{"Global-ID": "EBAY-IE"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-IN",
+			Params: map[string]string{"Global-ID": "EBAY-IN"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-IT",
+			Params: map[string]string{"Global-ID": "EBAY-IT"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-MOTOR",
+			Params: map[string]string{"Global-ID": "EBAY-MOTOR"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-MY",
+			Params: map[string]string{"Global-ID": "EBAY-MY"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-NL",
+			Params: map[string]string{"Global-ID": "EBAY-NL"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-NLBE",
+			Params: map[string]string{"Global-ID": "EBAY-NLBE"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-PH",
+			Params: map[string]string{"Global-ID": "EBAY-PH"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-PL",
+			Params: map[string]string{"Global-ID": "EBAY-PL"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-SG",
+			Params: map[string]string{"Global-ID": "EBAY-SG"},
+		},
+		{
+			Name:   "can find items if params contains Global ID EBAY-US",
+			Params: map[string]string{"Global-ID": "EBAY-US"},
+		},
+		{
+			Name:   "returns error if params contains Global ID EBAY-ZZZ",
+			Params: map[string]string{"Global-ID": "EBAY-ZZZ"},
+			Err:    fmt.Errorf("%w: %q", ebay.ErrInvalidGlobalID, "EBAY-ZZZ"),
+		},
 		{
 			Name: "can find items by itemFilter.name, value",
 			Params: map[string]string{
@@ -4531,7 +4628,7 @@ func combineTestCases(t *testing.T, findMethod string, tcs ...[]findItemsTestCas
 }
 
 func testFindItems(
-	t *testing.T, params map[string]string, findMethod string, wantResp ebay.FindResponder, tcs []findItemsTestCase,
+	t *testing.T, params map[string]string, findMethod string, wantResp ebay.SearchResultProvider, tcs []findItemsTestCase,
 ) {
 	t.Helper()
 	t.Run(fmt.Sprintf("can find items by %s", findMethod), func(t *testing.T) {
@@ -4552,7 +4649,7 @@ func testFindItems(
 		fc := ebay.NewFindingClient(client, appID)
 		fc.URL = ts.URL
 
-		var resp ebay.FindResponder
+		var resp ebay.SearchResultProvider
 		var err error
 		switch findMethod {
 		case findItemsByCategories:
@@ -4741,7 +4838,7 @@ func testFindItems(
 			fc := ebay.NewFindingClient(client, appID)
 			fc.URL = ts.URL
 
-			var resp ebay.FindResponder
+			var resp ebay.SearchResultProvider
 			var err error
 			switch findMethod {
 			case findItemsByCategories:

@@ -61,9 +61,6 @@ var (
 	// contains an invalid expedited shipping type.
 	ErrInvalidExpeditedShippingType = errors.New("invalid expedited shipping type")
 
-	// ErrInvalidGlobalID is returned when an item filter 'values' parameter contains an invalid global ID.
-	ErrInvalidGlobalID = errors.New("invalid global ID")
-
 	// ErrInvalidAllListingType is returned when an item filter 'values' parameter
 	// contains the 'All' listing type and other listing types.
 	ErrInvalidAllListingType = errors.New("'All' listing type cannot be combined with other listing types")
@@ -318,40 +315,11 @@ const (
 	smallestMaxDistance = 5
 )
 
-var (
-	// Valid Currency ID values from the eBay documentation.
-	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html.
-	validCurrencyIDs = []string{
-		"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
-	}
-
-	// Valid Global ID values from the eBay documentation.
-	// See https://developer.ebay.com/devzone/finding/CallRef/Enums/GlobalIdList.html.
-	validGlobalIDs = []string{
-		"EBAY-AT",
-		"EBAY-AU",
-		"EBAY-CH",
-		"EBAY-DE",
-		"EBAY-ENCA",
-		"EBAY-ES",
-		"EBAY-FR",
-		"EBAY-FRBE",
-		"EBAY-FRCA",
-		"EBAY-GB",
-		"EBAY-HK",
-		"EBAY-IE",
-		"EBAY-IN",
-		"EBAY-IT",
-		"EBAY-MOTOR",
-		"EBAY-MY",
-		"EBAY-NL",
-		"EBAY-NLBE",
-		"EBAY-PH",
-		"EBAY-PL",
-		"EBAY-SG",
-		"EBAY-US",
-	}
-)
+// Valid Currency ID values from the eBay documentation.
+// See https://developer.ebay.com/devzone/finding/CallRef/Enums/currencyIdList.html.
+var validCurrencyIDs = []string{
+	"AUD", "CAD", "CHF", "CNY", "EUR", "GBP", "HKD", "INR", "MYR", "PHP", "PLN", "SEK", "SGD", "TWD", "USD",
+}
 
 func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params map[string]string) error {
 	switch filter.name {
@@ -396,8 +364,9 @@ func handleItemFilterType(filter *itemFilter, itemFilters []itemFilter, params m
 			return err
 		}
 	case listedIn:
-		if !slices.Contains(validGlobalIDs, filter.values[0]) {
-			return fmt.Errorf("%w: %q", ErrInvalidGlobalID, filter.values[0])
+		err := validateGlobalID(filter.values[0])
+		if err != nil {
+			return err
 		}
 	case listingType:
 		err := validateListingTypes(filter.values)

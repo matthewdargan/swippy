@@ -4676,7 +4676,7 @@ func testFindItems(
 	t.Run("returns error if the client returns an error", func(t *testing.T) {
 		t.Parallel()
 		fc := ebay.NewFindingClient(&http.Client{}, appID)
-		fc.URL = "localhost"
+		fc.URL = "http://localhost"
 
 		var err error
 		switch findMethod {

@@ -28,7 +28,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		return generateErrorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}
 	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, appID)
-	items, err := fc.FindItemsByProduct(context.Background(), request.QueryStringParameters)
+	resp, err := fc.FindItemsByProduct(context.Background(), request.QueryStringParameters)
 	if err != nil {
 		var ebayErr *ebay.APIError
 		if errors.As(err, &ebayErr) {
@@ -36,14 +36,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}
 		return generateErrorResponse(http.StatusInternalServerError, err)
 	}
+	body, err := json.Marshal(resp)
 	if err != nil {
 		return generateErrorResponse(
-			http.StatusInternalServerError, fmt.Errorf("failed to find eBay items by product: %w", err))
-	}
-	body, err := json.Marshal(items)
-	if err != nil {
-		return generateErrorResponse(
-			http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay items response: %w", err))
+			http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay response: %w", err))
 	}
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,

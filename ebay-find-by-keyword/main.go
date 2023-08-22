@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/matthewdargan/swippy-api/ebay"
+	"github.com/matthewdargan/ebay"
 )
 
 const findingHTTPTimeout = 5
@@ -69,9 +69,7 @@ func ssmParameterValue(ssmClient *ssm.SSM, paramName string) (string, error) {
 
 func generateErrorResponse(statusCode int, err error) (events.APIGatewayProxyResponse, error) {
 	log.Printf("error: %v", err)
-	resp := map[string]string{
-		"error": err.Error(),
-	}
+	resp := map[string]string{"error": err.Error()}
 	body, err := json.Marshal(resp)
 	if err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: statusCode}, fmt.Errorf("failed to marshal error response: %w", err)

@@ -1,3 +1,6 @@
+// Copyright 2023 Matthew P. Dargan.
+// SPDX-License-Identifier: Apache-2.0
+
 /*
 Package ebay provides an eBay API client and endpoint wrappers
 that streamline the process of performing parameter validation,

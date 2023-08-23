@@ -12,34 +12,29 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/matthewdargan/ebay"
+	"github.com/matthewdargan/swippy-api/awsutil"
 )
 
-const findingHTTPTimeout = 5
-
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	ssmClient := ssmClient()
+	ssmClient := awsutil.SSMClient()
 	appIDParamName := fmt.Sprintf("/%s/ebay-app-id", os.Getenv("STAGE"))
-	appID, err := ssmParameterValue(ssmClient, appIDParamName)
+	appID, err := awsutil.SSMParameterValue(ssmClient, appIDParamName)
 	if err != nil {
-		return generateErrorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
+		return errorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}
-	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * findingHTTPTimeout}, appID)
+	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * awsutil.FindingHTTPTimeout}, appID)
 	resp, err := fc.FindItemsByProduct(context.Background(), request.QueryStringParameters)
 	if err != nil {
 		var ebayErr *ebay.APIError
 		if errors.As(err, &ebayErr) {
-			return generateErrorResponse(ebayErr.StatusCode, ebayErr)
+			return errorResponse(ebayErr.StatusCode, ebayErr)
 		}
-		return generateErrorResponse(http.StatusInternalServerError, err)
+		return errorResponse(http.StatusInternalServerError, err)
 	}
 	body, err := json.Marshal(resp)
 	if err != nil {
-		return generateErrorResponse(
-			http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay response: %w", err))
+		return errorResponse(http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay response: %w", err))
 	}
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
@@ -48,31 +43,12 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}, nil
 }
 
-func ssmClient() *ssm.SSM {
-	sess, err := session.NewSession()
-	if err != nil {
-		log.Fatalf("failed to create AWS SDK session: %v", err)
-	}
-	return ssm.New(sess)
-}
-
-func ssmParameterValue(ssmClient *ssm.SSM, paramName string) (string, error) {
-	output, err := ssmClient.GetParameter(&ssm.GetParameterInput{
-		Name:           aws.String(paramName),
-		WithDecryption: aws.Bool(true),
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve parameter value: %w", err)
-	}
-	return *output.Parameter.Value, nil
-}
-
-func generateErrorResponse(statusCode int, err error) (events.APIGatewayProxyResponse, error) {
+func errorResponse(statusCode int, err error) (events.APIGatewayProxyResponse, error) {
 	log.Printf("error: %v", err)
 	resp := map[string]string{"error": err.Error()}
 	body, err := json.Marshal(resp)
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: statusCode}, fmt.Errorf("failed to marshal error response: %w", err)
+		return events.APIGatewayProxyResponse{StatusCode: statusCode}, fmt.Errorf("failed to marshal error: %w", err)
 	}
 	return events.APIGatewayProxyResponse{
 		StatusCode: statusCode,

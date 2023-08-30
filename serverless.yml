@@ -3,13 +3,16 @@ frameworkVersion: "3"
 
 provider:
   name: aws
-  runtime: go1.x
+  runtime: provided.al2
+  architecture: arm64
   stage: dev
   region: us-east-1
 
 functions:
   ebay-find-by-category:
-    handler: bin/ebay-find-by-category
+    handler: bin/ebay-find-by-category/bootstrap
+    package:
+      artifact: bin/ebay-find-by-category.zip
     events:
       - httpApi:
           path: /ebay-find-by-category
@@ -19,7 +22,9 @@ functions:
     role: ebayFindFunctionRole
 
   ebay-find-by-keyword:
-    handler: bin/ebay-find-by-keyword
+    handler: bin/ebay-find-by-keyword/bootstrap
+    package:
+      artifact: bin/ebay-find-by-keyword.zip
     events:
       - httpApi:
           path: /ebay-find-by-keyword
@@ -29,7 +34,9 @@ functions:
     role: ebayFindFunctionRole
 
   ebay-find-advanced:
-    handler: bin/ebay-find-advanced
+    handler: bin/ebay-find-advanced/bootstrap
+    package:
+      artifact: bin/ebay-find-advanced.zip
     events:
       - httpApi:
           path: /ebay-find-advanced
@@ -39,7 +46,9 @@ functions:
     role: ebayFindFunctionRole
 
   ebay-find-by-product:
-    handler: bin/ebay-find-by-product
+    handler: bin/ebay-find-by-product/bootstrap
+    package:
+      artifact: bin/ebay-find-by-product.zip
     events:
       - httpApi:
           path: /ebay-find-by-product
@@ -49,7 +58,9 @@ functions:
     role: ebayFindFunctionRole
 
   ebay-find-in-ebay-stores:
-    handler: bin/ebay-find-in-ebay-stores
+    handler: bin/ebay-find-in-ebay-stores/bootstrap
+    package:
+      artifact: bin/ebay-find-in-ebay-stores.zip
     events:
       - httpApi:
           path: /ebay-find-in-ebay-stores
@@ -90,6 +101,7 @@ resources:
                   Resource: "arn:aws:ssm:${self:provider.region}:*:parameter/${self:provider.stage}/ebay-app-id"
 
 package:
+  individually: true
   patterns:
     - "!./**"
     - ./bin/**

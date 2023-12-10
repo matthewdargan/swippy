@@ -1,21 +1,24 @@
-.PHONY: build zip clean deploy
+.PHONY: build zip clean plan apply
 
 build:
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/ebay-find-by-category/bootstrap ebay-find-by-category/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/ebay-find-by-keyword/bootstrap ebay-find-by-keyword/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/ebay-find-advanced/bootstrap ebay-find-advanced/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/ebay-find-by-product/bootstrap ebay-find-by-product/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/ebay-find-in-ebay-stores/bootstrap ebay-find-in-ebay-stores/main.go
+	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-category/bootstrap find-by-category/main.go
+	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-keyword/bootstrap find-by-keyword/main.go
+	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-advanced/bootstrap find-advanced/main.go
+	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-product/bootstrap find-by-product/main.go
+	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-in-ebay-stores/bootstrap find-in-ebay-stores/main.go
 
-zip:
-	zip -j bin/ebay-find-by-category.zip bin/ebay-find-by-category/bootstrap
-	zip -j bin/ebay-find-by-keyword.zip bin/ebay-find-by-keyword/bootstrap
-	zip -j bin/ebay-find-advanced.zip bin/ebay-find-advanced/bootstrap
-	zip -j bin/ebay-find-by-product.zip bin/ebay-find-by-product/bootstrap
-	zip -j bin/ebay-find-in-ebay-stores.zip bin/ebay-find-in-ebay-stores/bootstrap
+zip: build
+	zip -j bin/find-by-category.zip bin/find-by-category/bootstrap
+	zip -j bin/find-by-keyword.zip bin/find-by-keyword/bootstrap
+	zip -j bin/find-advanced.zip bin/find-advanced/bootstrap
+	zip -j bin/find-by-product.zip bin/find-by-product/bootstrap
+	zip -j bin/find-in-ebay-stores.zip bin/find-in-ebay-stores/bootstrap
 
 clean:
 	rm -rf ./bin
 
-deploy: clean build zip
-	sls deploy --verbose
+plan: clean zip
+	tofu plan
+
+apply: clean zip plan
+	tofu apply

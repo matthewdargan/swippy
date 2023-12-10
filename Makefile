@@ -1,11 +1,11 @@
 .PHONY: build zip clean plan apply
 
 build:
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-category/bootstrap find-by-category/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-keyword/bootstrap find-by-keyword/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-advanced/bootstrap find-advanced/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-product/bootstrap find-by-product/main.go
-	env GOARCH=arm64 GOOS=linux go build -ldflags="-s -w" -o bin/find-in-ebay-stores/bootstrap find-in-ebay-stores/main.go
+	env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-category/bootstrap find-by-category/main.go
+	env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-keyword/bootstrap find-by-keyword/main.go
+	env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/find-advanced/bootstrap find-advanced/main.go
+	env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/find-by-product/bootstrap find-by-product/main.go
+	env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o bin/find-in-ebay-stores/bootstrap find-in-ebay-stores/main.go
 
 zip: build
 	zip -j bin/find-by-category.zip bin/find-by-category/bootstrap

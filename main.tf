@@ -1,23 +1,19 @@
 variable "aws_region" {
-  description = "The AWS region where the resources will be created."
+  description = "AWS Region"
   default     = "us-east-1"
-}
-
-variable "aws_account_id" {
-  description = "The AWS account ID that the resources will reside."
-}
-
-variable "ebay_app_id" {
-  description = "The eBay App ID."
 }
 
 provider "aws" {
   region = var.aws_region
 }
 
+variable "ebay_app_id" {
+  description = "eBay App ID"
+}
+
 resource "aws_ssm_parameter" "ebay_app_id" {
   name        = "ebay-app-id"
-  description = "Ebay App ID"
+  description = "eBay App ID"
   type        = "SecureString"
   value       = var.ebay_app_id
   key_id      = "alias/aws/ssm"
@@ -33,6 +29,10 @@ resource "aws_iam_role" "ebay_find_role" {
       Action    = "sts:AssumeRole",
     }]
   })
+}
+
+variable "aws_account_id" {
+  description = "AWS Account ID"
 }
 
 resource "aws_iam_role_policy" "ebay_find_policy" {
@@ -110,4 +110,93 @@ resource "aws_lambda_function" "find_in_ebay_stores" {
   source_code_hash = filebase64("bin/find-in-ebay-stores.zip")
   role             = aws_iam_role.ebay_find_role.arn
   tags             = { Project = "swippy-api" }
+}
+
+resource "aws_api_gateway_rest_api" "swippy_api" {
+  name        = "swippy-api"
+  description = "Swippy API Gateway"
+}
+
+resource "aws_api_gateway_resource" "root" {
+  rest_api_id = aws_api_gateway_rest_api.swippy_api.id
+  parent_id   = aws_api_gateway_rest_api.swippy_api.root_resource_id
+  path_part   = "{proxy+}"
+}
+
+resource "aws_api_gateway_method" "proxy" {
+  rest_api_id   = aws_api_gateway_rest_api.swippy_api.id
+  resource_id   = aws_api_gateway_resource.root.id
+  http_method   = "ANY"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "find_by_category_lambda" {
+  rest_api_id             = aws_api_gateway_rest_api.swippy_api.id
+  resource_id             = aws_api_gateway_resource.root.id
+  http_method             = aws_api_gateway_method.proxy.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.find_by_category.invoke_arn
+}
+
+resource "aws_api_gateway_integration" "find_by_keyword_lambda" {
+  rest_api_id             = aws_api_gateway_rest_api.swippy_api.id
+  resource_id             = aws_api_gateway_resource.root.id
+  http_method             = aws_api_gateway_method.proxy.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.find_by_keyword.invoke_arn
+}
+
+resource "aws_api_gateway_integration" "find_advanced_lambda" {
+  rest_api_id             = aws_api_gateway_rest_api.swippy_api.id
+  resource_id             = aws_api_gateway_resource.root.id
+  http_method             = aws_api_gateway_method.proxy.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.find_advanced.invoke_arn
+}
+
+resource "aws_api_gateway_integration" "find_by_product_lambda" {
+  rest_api_id             = aws_api_gateway_rest_api.swippy_api.id
+  resource_id             = aws_api_gateway_resource.root.id
+  http_method             = aws_api_gateway_method.proxy.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.find_by_product.invoke_arn
+}
+
+resource "aws_api_gateway_integration" "find_in_ebay_stores_lambda" {
+  rest_api_id             = aws_api_gateway_rest_api.swippy_api.id
+  resource_id             = aws_api_gateway_resource.root.id
+  http_method             = aws_api_gateway_method.proxy.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.find_in_ebay_stores.invoke_arn
+}
+
+resource "aws_lambda_permission" "allow_execution" {
+  count = length([
+    aws_lambda_function.find_by_category.function_name,
+    aws_lambda_function.find_by_keyword.function_name,
+    aws_lambda_function.find_advanced.function_name,
+    aws_lambda_function.find_by_product.function_name,
+    aws_lambda_function.find_in_ebay_stores.function_name,
+  ])
+  statement_id = "AllowExecutionFromAPIGateway"
+  action       = "lambda:InvokeFunction"
+  function_name = [
+    aws_lambda_function.find_by_category.function_name,
+    aws_lambda_function.find_by_keyword.function_name,
+    aws_lambda_function.find_advanced.function_name,
+    aws_lambda_function.find_by_product.function_name,
+    aws_lambda_function.find_in_ebay_stores.function_name,
+  ][count.index]
+  principal = "apigateway.amazonaws.com"
+}
+
+resource "aws_api_gateway_deployment" "deploy" {
+  depends_on  = [aws_lambda_permission.allow_execution]
+  rest_api_id = aws_api_gateway_rest_api.swippy_api.id
+  stage_name  = "dev"
 }

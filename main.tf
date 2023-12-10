@@ -1,11 +1,32 @@
+variable "aws_region" {
+  description = "The AWS region where the resources will be created."
+  default     = "us-east-1"
+}
+
+variable "aws_account_id" {
+  description = "The AWS account ID that the resources will reside."
+}
+
+variable "ebay_app_id" {
+  description = "The eBay App ID."
+}
+
 provider "aws" {
-  region = "us-east-1"
+  region = var.aws_region
+}
+
+resource "aws_ssm_parameter" "ebay_app_id" {
+  name        = "ebay-app-id"
+  description = "Ebay App ID"
+  type        = "SecureString"
+  value       = var.ebay_app_id
+  key_id      = "alias/aws/ssm"
 }
 
 resource "aws_iam_role" "ebay_find_role" {
-  name = "ebay-find-function-role"
+  name = "swippy-api-lambda-role"
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [{
       Effect    = "Allow",
       Principal = { Service = "lambda.amazonaws.com" },
@@ -15,7 +36,7 @@ resource "aws_iam_role" "ebay_find_role" {
 }
 
 resource "aws_iam_role_policy" "ebay_find_policy" {
-  name = "swippy-api-ebay-find-function-policy"
+  name = "swippy-api-lambda-policy"
   role = aws_iam_role.ebay_find_role.id
   policy = jsonencode({
     Version = "2012-10-17",
@@ -35,53 +56,58 @@ resource "aws_iam_role_policy" "ebay_find_policy" {
         Action = [
           "ssm:GetParameter",
         ],
-        Resource = "arn:aws:ssm::*:parameter/ebay-app-id",
+        Resource = "arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:parameter/ebay-app-id",
       },
     ],
   })
 }
 
-resource "aws_lambda_function" "ebay_find_by_category" {
-  function_name    = "ebay-find-by-category"
-  handler          = "bin/ebay-find-by-category/bootstrap"
+resource "aws_lambda_function" "find_by_category" {
+  function_name    = "find-by-category"
+  handler          = "bin/find-by-category/bootstrap"
   runtime          = "provided.al2"
-  filename         = "bin/ebay-find-by-category.zip"
-  source_code_hash = filebase64("bin/ebay-find-by-category.zip")
+  filename         = "bin/find-by-category.zip"
+  source_code_hash = filebase64("bin/find-by-category.zip")
   role             = aws_iam_role.ebay_find_role.arn
+  tags             = { Project = "swippy-api" }
 }
 
-resource "aws_lambda_function" "ebay_find_by_keyword" {
-  function_name    = "ebay-find-by-keyword"
-  handler          = "bin/ebay-find-by-keyword/bootstrap"
+resource "aws_lambda_function" "find_by_keyword" {
+  function_name    = "find-by-keyword"
+  handler          = "bin/find-by-keyword/bootstrap"
   runtime          = "provided.al2"
-  filename         = "bin/ebay-find-by-keyword.zip"
-  source_code_hash = filebase64("bin/ebay-find-by-keyword.zip")
+  filename         = "bin/find-by-keyword.zip"
+  source_code_hash = filebase64("bin/find-by-keyword.zip")
   role             = aws_iam_role.ebay_find_role.arn
+  tags             = { Project = "swippy-api" }
 }
 
-resource "aws_lambda_function" "ebay_find_advanced" {
-  function_name    = "ebay-find-advanced"
-  handler          = "bin/ebay-find-advanced/bootstrap"
+resource "aws_lambda_function" "find_advanced" {
+  function_name    = "find-advanced"
+  handler          = "bin/find-advanced/bootstrap"
   runtime          = "provided.al2"
-  filename         = "bin/ebay-find-advanced.zip"
-  source_code_hash = filebase64("bin/ebay-find-advanced.zip")
+  filename         = "bin/find-advanced.zip"
+  source_code_hash = filebase64("bin/find-advanced.zip")
   role             = aws_iam_role.ebay_find_role.arn
+  tags             = { Project = "swippy-api" }
 }
 
-resource "aws_lambda_function" "ebay_find_by_product" {
-  function_name    = "ebay-find-by-product"
-  handler          = "bin/ebay-find-by-product/bootstrap"
+resource "aws_lambda_function" "find_by_product" {
+  function_name    = "find-by-product"
+  handler          = "bin/find-by-product/bootstrap"
   runtime          = "provided.al2"
-  filename         = "bin/ebay-find-by-product.zip"
-  source_code_hash = filebase64("bin/ebay-find-by-product.zip")
+  filename         = "bin/find-by-product.zip"
+  source_code_hash = filebase64("bin/find-by-product.zip")
   role             = aws_iam_role.ebay_find_role.arn
+  tags             = { Project = "swippy-api" }
 }
 
-resource "aws_lambda_function" "ebay_find_in_ebay_stores" {
-  function_name    = "ebay-find-in-ebay-stores"
-  handler          = "bin/ebay-find-in-ebay-stores/bootstrap"
+resource "aws_lambda_function" "find_in_ebay_stores" {
+  function_name    = "find-in-ebay-stores"
+  handler          = "bin/find-in-ebay-stores/bootstrap"
   runtime          = "provided.al2"
-  filename         = "bin/ebay-find-in-ebay-stores.zip"
-  source_code_hash = filebase64("bin/ebay-find-in-ebay-stores.zip")
+  filename         = "bin/find-in-ebay-stores.zip"
+  source_code_hash = filebase64("bin/find-in-ebay-stores.zip")
   role             = aws_iam_role.ebay_find_role.arn
+  tags             = { Project = "swippy-api" }
 }

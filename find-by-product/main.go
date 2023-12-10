@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -18,8 +17,7 @@ import (
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	ssmClient := awsutil.SSMClient()
-	appIDParamName := fmt.Sprintf("/%s/ebay-app-id", os.Getenv("STAGE"))
-	appID, err := awsutil.SSMParameterValue(ssmClient, appIDParamName)
+	appID, err := awsutil.SSMParameterValue(ssmClient, "ebay-app-id")
 	if err != nil {
 		return errorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
 	}

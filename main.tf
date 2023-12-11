@@ -72,6 +72,10 @@ resource "aws_lambda_function" "find_by_category" {
   tags             = { Project = "swippy-api" }
 }
 
+resource "aws_cloudwatch_log_group" "find_by_category_logs" {
+  name = "/aws/lambda/${aws_lambda_function.find_by_category.function_name}"
+}
+
 resource "aws_lambda_function" "find_by_keyword" {
   function_name    = "find-by-keyword"
   handler          = "bin/find-by-keyword/bootstrap"
@@ -80,6 +84,10 @@ resource "aws_lambda_function" "find_by_keyword" {
   source_code_hash = filebase64("bin/find-by-keyword.zip")
   role             = aws_iam_role.ebay_find_role.arn
   tags             = { Project = "swippy-api" }
+}
+
+resource "aws_cloudwatch_log_group" "find_by_keyword_logs" {
+  name = "/aws/lambda/${aws_lambda_function.find_by_keyword.function_name}"
 }
 
 resource "aws_lambda_function" "find_advanced" {
@@ -92,6 +100,10 @@ resource "aws_lambda_function" "find_advanced" {
   tags             = { Project = "swippy-api" }
 }
 
+resource "aws_cloudwatch_log_group" "find_advanced_logs" {
+  name = "/aws/lambda/${aws_lambda_function.find_advanced.function_name}"
+}
+
 resource "aws_lambda_function" "find_by_product" {
   function_name    = "find-by-product"
   handler          = "bin/find-by-product/bootstrap"
@@ -102,6 +114,10 @@ resource "aws_lambda_function" "find_by_product" {
   tags             = { Project = "swippy-api" }
 }
 
+resource "aws_cloudwatch_log_group" "find_by_product_logs" {
+  name = "/aws/lambda/${aws_lambda_function.find_by_product.function_name}"
+}
+
 resource "aws_lambda_function" "find_in_ebay_stores" {
   function_name    = "find-in-ebay-stores"
   handler          = "bin/find-in-ebay-stores/bootstrap"
@@ -110,6 +126,10 @@ resource "aws_lambda_function" "find_in_ebay_stores" {
   source_code_hash = filebase64("bin/find-in-ebay-stores.zip")
   role             = aws_iam_role.ebay_find_role.arn
   tags             = { Project = "swippy-api" }
+}
+
+resource "aws_cloudwatch_log_group" "find_in_ebay_stores_logs" {
+  name = "/aws/lambda/${aws_lambda_function.find_in_ebay_stores.function_name}"
 }
 
 resource "aws_api_gateway_rest_api" "swippy_api" {
@@ -198,5 +218,4 @@ resource "aws_lambda_permission" "allow_execution" {
 resource "aws_api_gateway_deployment" "deploy" {
   depends_on  = [aws_lambda_permission.allow_execution]
   rest_api_id = aws_api_gateway_rest_api.swippy_api.id
-  stage_name  = "dev"
 }

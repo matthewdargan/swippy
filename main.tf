@@ -66,6 +66,7 @@ resource "aws_lambda_function" "find_by_category" {
   function_name    = "find-by-category"
   handler          = "bin/find-by-category/bootstrap"
   runtime          = "provided.al2"
+  architectures    = ["arm64"]
   filename         = "bin/find-by-category.zip"
   source_code_hash = filebase64("bin/find-by-category.zip")
   role             = aws_iam_role.ebay_find_role.arn
@@ -80,6 +81,7 @@ resource "aws_lambda_function" "find_by_keyword" {
   function_name    = "find-by-keyword"
   handler          = "bin/find-by-keyword/bootstrap"
   runtime          = "provided.al2"
+  architectures    = ["arm64"]
   filename         = "bin/find-by-keyword.zip"
   source_code_hash = filebase64("bin/find-by-keyword.zip")
   role             = aws_iam_role.ebay_find_role.arn
@@ -94,6 +96,7 @@ resource "aws_lambda_function" "find_advanced" {
   function_name    = "find-advanced"
   handler          = "bin/find-advanced/bootstrap"
   runtime          = "provided.al2"
+  architectures    = ["arm64"]
   filename         = "bin/find-advanced.zip"
   source_code_hash = filebase64("bin/find-advanced.zip")
   role             = aws_iam_role.ebay_find_role.arn
@@ -108,6 +111,7 @@ resource "aws_lambda_function" "find_by_product" {
   function_name    = "find-by-product"
   handler          = "bin/find-by-product/bootstrap"
   runtime          = "provided.al2"
+  architectures    = ["arm64"]
   filename         = "bin/find-by-product.zip"
   source_code_hash = filebase64("bin/find-by-product.zip")
   role             = aws_iam_role.ebay_find_role.arn
@@ -122,6 +126,7 @@ resource "aws_lambda_function" "find_in_ebay_stores" {
   function_name    = "find-in-ebay-stores"
   handler          = "bin/find-in-ebay-stores/bootstrap"
   runtime          = "provided.al2"
+  architectures    = ["arm64"]
   filename         = "bin/find-in-ebay-stores.zip"
   source_code_hash = filebase64("bin/find-in-ebay-stores.zip")
   role             = aws_iam_role.ebay_find_role.arn
@@ -218,4 +223,5 @@ resource "aws_lambda_permission" "allow_execution" {
 resource "aws_api_gateway_deployment" "deploy" {
   depends_on  = [aws_lambda_permission.allow_execution]
   rest_api_id = aws_api_gateway_rest_api.swippy_api.id
+  stage_name  = "dev"
 }

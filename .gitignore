@@ -1,7 +1,4 @@
-# Serverless directories
-.serverless
-
-# golang output binary directory
+# Go binaries
 bin
 
 # Binaries for programs and plugins

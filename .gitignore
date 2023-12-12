@@ -1,7 +1,4 @@
-# Serverless directories
-.serverless
-
-# golang output binary directory
+# Go binaries
 bin
 
 # Binaries for programs and plugins
@@ -16,3 +13,8 @@ bin
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# Ignore Terraform files
+.terraform.lock.hcl
+.terraform/
+terraform.tfstate*

@@ -2,8 +2,8 @@ package ebay
 
 import "time"
 
-// FindItemsByCategoriesResponse represents the response from [FindingClient.FindItemsByCategories].
-type FindItemsByCategoriesResponse struct {
+// FindItemsByCategoryResponse represents the response from [FindingClient.FindItemsByCategory].
+type FindItemsByCategoryResponse struct {
 	ItemsResponse []FindItemsResponse `json:"findItemsByCategoryResponse"`
 }
 

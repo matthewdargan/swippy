@@ -2,83 +2,58 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/matthewdargan/swippy-api/internal/ebay"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/matthewdargan/swippy-api/ebay"
 )
 
-var (
-	client = http.Client{Timeout: 10 * time.Second}
-	config = ebay.EBayConfig{
-		AppID:              "ebay-app-id",
-		BaseURL:            "https://svcs.ebay.com/services/search/FindingService/v1",
-		OperationName:      "findItemsAdvanced",
-		ServiceVersion:     "1.0.0",
-		ResponseDataFormat: "JSON",
-		ContentType:        "application/json",
-	}
-)
+const eBayParamName = "ebay-app-id"
 
-type apiError struct {
-	StatusCode int
-	Message    error
+var client = &http.Client{
+	Timeout: time.Second * 10,
 }
 
-func (e *apiError) Error() string {
-	return fmt.Sprintf("API request failed with status code %d: %v", e.StatusCode, e.Message)
-}
-
-func errorResponse(code int, err error) (events.APIGatewayProxyResponse, *apiError) {
-	if err == nil {
-		err = errors.New("unknown error")
-	}
-	return events.APIGatewayProxyResponse{
-		StatusCode: code,
-		Headers:    map[string]string{"Content-Type": config.ContentType},
-		Body:       err.Error(),
-	}, &apiError{StatusCode: code, Message: err}
-}
-
-// TODO: events.APIGatewayV2HTTPRequest and events.APIGatewayV2HTTPResponse
-func handleRequest(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	apiReq, err := config.APIRequest(ctx, req)
+func handleRequest(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	sess, err := session.NewSession()
 	if err != nil {
-		return errorResponse(http.StatusInternalServerError, err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to create AWS SDK session: %w", err)
 	}
-	resp, err := client.Do(apiReq)
+	ssmClient := ssm.New(sess)
+	output, err := ssmClient.GetParameter(&ssm.GetParameterInput{
+		Name:           aws.String(eBayParamName),
+		WithDecryption: aws.Bool(true),
+	})
 	if err != nil {
-		return errorResponse(resp.StatusCode, fmt.Errorf("failed to make eBay API request: %w", err))
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to retrieve parameter value: %w", err)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return errorResponse(resp.StatusCode, fmt.Errorf("eBay API request failed"))
-	}
-	var res ebay.FindItemsAdvancedResponse
-	if err = json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return errorResponse(http.StatusInternalServerError, fmt.Errorf("failed to unmarshal eBay API response: %w", err))
-	}
-	body, err := json.Marshal(res)
+	findingClient := ebay.NewFindingClient(client, *output.Parameter.Value)
+	resp, err := findingClient.FindItemsAdvanced(req.QueryStringParameters)
 	if err != nil {
-		return errorResponse(http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay API response: %w", err))
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
-	if len(res.ItemsResponse) > 0 && len(res.ItemsResponse[0].ErrorMessage) > 0 {
-		return events.APIGatewayProxyResponse{
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to marshal eBay API response: %w", err)
+	}
+	if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
+		return events.APIGatewayV2HTTPResponse{
 			StatusCode: http.StatusBadRequest,
-			Headers:    map[string]string{"Content-Type": config.ContentType},
-			Body:       string(body),
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       string(data),
 		}, nil
 	}
-	return events.APIGatewayProxyResponse{
-		StatusCode: resp.StatusCode,
-		Headers:    map[string]string{"Content-Type": config.ContentType},
-		Body:       string(body),
+	return events.APIGatewayV2HTTPResponse{
+		StatusCode: http.StatusOK,
+		Headers:    map[string]string{"Content-Type": "application/json"},
+		Body:       string(data),
 	}, nil
 }
 

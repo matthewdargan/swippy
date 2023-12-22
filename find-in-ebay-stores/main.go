@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ssm"
-	"github.com/matthewdargan/swippy-api/ebay"
+	"github.com/matthewdargan/ebay"
 )
 
 const eBayParamName = "ebay-app-id"
@@ -21,7 +22,7 @@ var client = &http.Client{
 	Timeout: time.Second * 10,
 }
 
-func handleRequest(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+func handleRequest(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	sess, err := session.NewSession()
 	if err != nil {
 		log.Println("failed to create AWS SDK session:", err)
@@ -37,7 +38,7 @@ func handleRequest(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPR
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 	findingClient := ebay.NewFindingClient(client, *output.Parameter.Value)
-	resp, err := findingClient.FindItemsInEBayStores(req.QueryStringParameters)
+	resp, err := findingClient.FindItemsInEBayStores(ctx, req.QueryStringParameters)
 	if err != nil {
 		log.Println("failed to execute eBay API request:", err)
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err

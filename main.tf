@@ -1,5 +1,7 @@
 variable "aws_region" {
-  default = "us-east-1"
+  default  = "us-east-1"
+  type     = string
+  nullable = false
 }
 
 provider "aws" {
@@ -48,7 +50,11 @@ terraform {
   }
 }
 
-variable "ebay_app_id" {}
+variable "ebay_app_id" {
+  type      = string
+  sensitive = true
+  nullable  = false
+}
 
 resource "aws_ssm_parameter" "ebay_app_id" {
   name   = "ebay-app-id"
@@ -69,7 +75,10 @@ resource "aws_iam_role" "ebay_find_role" {
   })
 }
 
-variable "aws_account_id" {}
+variable "aws_account_id" {
+  type     = number
+  nullable = false
+}
 
 resource "aws_iam_role_policy" "ebay_find_policy" {
   name = "swippy-api-lambda-policy"

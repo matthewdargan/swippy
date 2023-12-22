@@ -1,4 +1,4 @@
-// find-by-category is an AWS Lambda that requests the eBay Finding API findItemsByCategory endpoint.
+// find-by-keywords is an AWS Lambda that requests the eBay Finding API findItemsByKeywords endpoint.
 package main
 
 import (
@@ -35,7 +35,7 @@ func handleRequest(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPR
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to retrieve parameter value: %w", err)
 	}
 	findingClient := ebay.NewFindingClient(client, *output.Parameter.Value)
-	resp, err := findingClient.FindItemsByCategory(req.QueryStringParameters)
+	resp, err := findingClient.FindItemsByKeywords(req.QueryStringParameters)
 	if err != nil {
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}

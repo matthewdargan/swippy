@@ -1,60 +1,62 @@
+// find-by-product is an AWS Lambda that requests the eBay Finding API findItemsByProduct endpoint.
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/matthewdargan/ebay"
-	"github.com/matthewdargan/swippy-api/awsutil"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/matthewdargan/swippy-api/ebay"
 )
 
-func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	ssmClient := awsutil.SSMClient()
-	appID, err := awsutil.SSMParameterValue(ssmClient, "ebay-app-id")
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, fmt.Errorf("failed to retrieve app ID: %w", err))
-	}
-	fc := ebay.NewFindingClient(&http.Client{Timeout: time.Second * awsutil.FindingHTTPTimeout}, appID)
-	resp, err := fc.FindItemsByProduct(context.Background(), request.QueryStringParameters)
-	if err != nil {
-		var ebayErr *ebay.APIError
-		if errors.As(err, &ebayErr) {
-			return errorResponse(ebayErr.StatusCode, ebayErr)
-		}
-		return errorResponse(http.StatusInternalServerError, err)
-	}
-	body, err := json.Marshal(resp)
-	if err != nil {
-		return errorResponse(http.StatusInternalServerError, fmt.Errorf("failed to marshal eBay response: %w", err))
-	}
-	return events.APIGatewayProxyResponse{
-		StatusCode: http.StatusOK,
-		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       string(body),
-	}, nil
+const eBayParamName = "ebay-app-id"
+
+var client = &http.Client{
+	Timeout: time.Second * 10,
 }
 
-func errorResponse(statusCode int, err error) (events.APIGatewayProxyResponse, error) {
-	log.Printf("error: %v", err)
-	resp := map[string]string{"error": err.Error()}
-	body, err := json.Marshal(resp)
+func handleRequest(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	sess, err := session.NewSession()
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: statusCode}, fmt.Errorf("failed to marshal error: %w", err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to create AWS SDK session: %w", err)
 	}
-	return events.APIGatewayProxyResponse{
-		StatusCode: statusCode,
+	ssmClient := ssm.New(sess)
+	output, err := ssmClient.GetParameter(&ssm.GetParameterInput{
+		Name:           aws.String(eBayParamName),
+		WithDecryption: aws.Bool(true),
+	})
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to retrieve parameter value: %w", err)
+	}
+	findingClient := ebay.NewFindingClient(client, *output.Parameter.Value)
+	resp, err := findingClient.FindItemsByProduct(req.QueryStringParameters)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
+	}
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to marshal eBay API response: %w", err)
+	}
+	if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
+		return events.APIGatewayV2HTTPResponse{
+			StatusCode: http.StatusBadRequest,
+			Headers:    map[string]string{"Content-Type": "application/json"},
+			Body:       string(data),
+		}, nil
+	}
+	return events.APIGatewayV2HTTPResponse{
+		StatusCode: http.StatusOK,
 		Headers:    map[string]string{"Content-Type": "application/json"},
-		Body:       string(body),
+		Body:       string(data),
 	}, nil
 }
 
 func main() {
-	lambda.Start(handler)
+	lambda.Start(handleRequest)
 }

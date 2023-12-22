@@ -3,7 +3,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -24,7 +24,8 @@ var client = &http.Client{
 func handleRequest(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	sess, err := session.NewSession()
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to create AWS SDK session: %w", err)
+		log.Println("failed to create AWS SDK session:", err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 	ssmClient := ssm.New(sess)
 	output, err := ssmClient.GetParameter(&ssm.GetParameterInput{
@@ -32,16 +33,19 @@ func handleRequest(req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPR
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to retrieve parameter value: %w", err)
+		log.Println("failed to retrieve parameter value:", err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 	findingClient := ebay.NewFindingClient(client, *output.Parameter.Value)
 	resp, err := findingClient.FindItemsInEBayStores(req.QueryStringParameters)
 	if err != nil {
+		log.Println("failed to execute eBay API request:", err)
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 	data, err := json.Marshal(resp)
 	if err != nil {
-		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to marshal eBay API response: %w", err)
+		log.Println("failed to marshal eBay API response:", err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 	if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
 		return events.APIGatewayV2HTTPResponse{

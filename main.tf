@@ -110,7 +110,8 @@ resource "aws_lambda_function" "find_advanced" {
 }
 
 resource "aws_cloudwatch_log_group" "find_advanced_logs" {
-  name = "/aws/lambda/${aws_lambda_function.find_advanced.function_name}"
+  name              = "/aws/lambda/${aws_lambda_function.find_advanced.function_name}"
+  retention_in_days = 30
 }
 
 resource "aws_lambda_function" "find_by_category" {
@@ -125,7 +126,8 @@ resource "aws_lambda_function" "find_by_category" {
 }
 
 resource "aws_cloudwatch_log_group" "find_by_category_logs" {
-  name = "/aws/lambda/${aws_lambda_function.find_by_category.function_name}"
+  name              = "/aws/lambda/${aws_lambda_function.find_by_category.function_name}"
+  retention_in_days = 30
 }
 
 resource "aws_lambda_function" "find_by_keywords" {
@@ -140,7 +142,8 @@ resource "aws_lambda_function" "find_by_keywords" {
 }
 
 resource "aws_cloudwatch_log_group" "find_by_keywords_logs" {
-  name = "/aws/lambda/${aws_lambda_function.find_by_keywords.function_name}"
+  name              = "/aws/lambda/${aws_lambda_function.find_by_keywords.function_name}"
+  retention_in_days = 30
 }
 
 resource "aws_lambda_function" "find_by_product" {
@@ -155,7 +158,8 @@ resource "aws_lambda_function" "find_by_product" {
 }
 
 resource "aws_cloudwatch_log_group" "find_by_product_logs" {
-  name = "/aws/lambda/${aws_lambda_function.find_by_product.function_name}"
+  name              = "/aws/lambda/${aws_lambda_function.find_by_product.function_name}"
+  retention_in_days = 30
 }
 
 resource "aws_lambda_function" "find_in_ebay_stores" {
@@ -170,7 +174,8 @@ resource "aws_lambda_function" "find_in_ebay_stores" {
 }
 
 resource "aws_cloudwatch_log_group" "find_in_ebay_stores_logs" {
-  name = "/aws/lambda/${aws_lambda_function.find_in_ebay_stores.function_name}"
+  name              = "/aws/lambda/${aws_lambda_function.find_in_ebay_stores.function_name}"
+  retention_in_days = 30
 }
 
 resource "aws_apigatewayv2_api" "swippy_api_gw" {

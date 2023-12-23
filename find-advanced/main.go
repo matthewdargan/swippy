@@ -12,11 +12,15 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/matthewdargan/ebay"
 )
 
-const eBayParamName = "ebay-app-id"
+const (
+	eBayParamName = "ebay-app-id"
+	sqsQueueName  = "swippy-api-queue"
+)
 
 var client = &http.Client{
 	Timeout: time.Second * 10,
@@ -28,8 +32,8 @@ func handleRequest(ctx context.Context, req events.APIGatewayV2HTTPRequest) (eve
 		log.Println("failed to create AWS SDK session:", err)
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
-	ssmClient := ssm.New(sess)
-	output, err := ssmClient.GetParameter(&ssm.GetParameterInput{
+	ssmSvc := ssm.New(sess)
+	paramRes, err := ssmSvc.GetParameter(&ssm.GetParameterInput{
 		Name:           aws.String(eBayParamName),
 		WithDecryption: aws.Bool(true),
 	})
@@ -37,7 +41,7 @@ func handleRequest(ctx context.Context, req events.APIGatewayV2HTTPRequest) (eve
 		log.Println("failed to retrieve parameter value:", err)
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
-	findingClient := ebay.NewFindingClient(client, *output.Parameter.Value)
+	findingClient := ebay.NewFindingClient(client, *paramRes.Parameter.Value)
 	resp, err := findingClient.FindItemsAdvanced(ctx, req.QueryStringParameters)
 	if err != nil {
 		log.Println("failed to execute eBay API request:", err)
@@ -54,6 +58,22 @@ func handleRequest(ctx context.Context, req events.APIGatewayV2HTTPRequest) (eve
 			Headers:    map[string]string{"Content-Type": "application/json"},
 			Body:       string(data),
 		}, nil
+	}
+	sqsSvc := sqs.New(sess)
+	urlRes, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
+		QueueName: aws.String(sqsQueueName),
+	})
+	if err != nil {
+		log.Println("failed to retrieve SQS queue URL:", err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
+	}
+	_, err = sqsSvc.SendMessage(&sqs.SendMessageInput{
+		MessageBody: aws.String(string(data)),
+		QueueUrl:    urlRes.QueueUrl,
+	})
+	if err != nil {
+		log.Println("failed to send message to SQS queue:", err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 	return events.APIGatewayV2HTTPResponse{
 		StatusCode: http.StatusOK,

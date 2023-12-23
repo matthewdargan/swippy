@@ -71,11 +71,11 @@ resource "aws_sqs_queue" "swippy_api_queue" {
 variable "lambda_functions" {
   type = list(string)
   default = [
-    "find_advanced",
-    "find_by_category",
-    "find_by_keywords",
-    "find_by_product",
-    "find_in_ebay_stores",
+    "find-advanced",
+    "find-by-category",
+    "find-by-keywords",
+    "find-by-product",
+    "find-in-ebay-stores",
   ]
 }
 
@@ -140,8 +140,11 @@ resource "aws_iam_role_policy" "lambda_policies" {
         Resource = aws_ssm_parameter.ebay_app_id.arn,
       },
       {
-        Effect   = "Allow",
-        Action   = "sqs:SendMessage",
+        Effect = "Allow",
+        Action = [
+          "sqs:GetQueueUrl",
+          "sqs:SendMessage",
+        ]
         Resource = aws_sqs_queue.swippy_api_queue.arn,
       },
     ],

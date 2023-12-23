@@ -61,7 +61,7 @@ Clone this repository:
 git@github.com:matthewdargan/swippy-api.git
 ```
 
-Create a `terraform.tfvars` file at the root project directory with your specific values, including `aws_account_id`, `ebay_app_id`, and optionally `aws_region` (defaults to us-east-1).
+Create a `terraform.tfvars` file at the root project directory with your specific values, including `ebay_app_id` and optionally `aws_region` (defaults to us-east-1).
 
 Build and zip the Lambda functions, and initialize and apply the OpenTofu configuration:
 

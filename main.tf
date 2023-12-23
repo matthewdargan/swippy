@@ -63,8 +63,25 @@ resource "aws_ssm_parameter" "ebay_app_id" {
   key_id = "alias/aws/ssm"
 }
 
-resource "aws_iam_role" "ebay_find_role" {
-  name = "swippy-api-lambda-role"
+resource "aws_sqs_queue" "swippy_api_queue" {
+  name = "swippy-api-queue"
+  tags = { Project = "swippy-api" }
+}
+
+variable "lambda_functions" {
+  type = list(string)
+  default = [
+    "find_advanced",
+    "find_by_category",
+    "find_by_keywords",
+    "find_by_product",
+    "find_in_ebay_stores",
+  ]
+}
+
+resource "aws_iam_role" "lambda_roles" {
+  count = length(var.lambda_functions)
+  name  = "swippy-api-lambda-role-${var.lambda_functions[count.index]}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
@@ -75,121 +92,70 @@ resource "aws_iam_role" "ebay_find_role" {
   })
 }
 
-variable "aws_account_id" {
-  type     = number
-  nullable = false
+resource "aws_lambda_function" "lambda_functions" {
+  count            = length(var.lambda_functions)
+  function_name    = var.lambda_functions[count.index]
+  handler          = "bin/${var.lambda_functions[count.index]}/bootstrap"
+  runtime          = "provided.al2"
+  architectures    = ["arm64"]
+  filename         = "bin/${var.lambda_functions[count.index]}.zip"
+  source_code_hash = filebase64("bin/${var.lambda_functions[count.index]}.zip")
+  role             = aws_iam_role.lambda_roles[count.index].arn
+  tags             = { Project = "swippy-api" }
 }
 
-resource "aws_iam_role_policy" "ebay_find_policy" {
-  name = "swippy-api-lambda-policy"
-  role = aws_iam_role.ebay_find_role.id
+resource "aws_cloudwatch_log_group" "lambda_log_groups" {
+  count             = length(var.lambda_functions)
+  name              = "/aws/lambda/${aws_lambda_function.lambda_functions[count.index].function_name}"
+  retention_in_days = 30
+}
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy" "lambda_policies" {
+  count = length(var.lambda_functions)
+  name  = "swippy-api-lambda-policy-${var.lambda_functions[count.index]}"
+  role  = aws_iam_role.lambda_roles[count.index].name
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:TagResource",
-        ],
-        Resource = "*",
+        Effect   = "Allow",
+        Action   = "logs:CreateLogGroup",
+        Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*",
       },
       {
         Effect = "Allow",
         Action = [
-          "ssm:GetParameter",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
         ],
-        Resource = "arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:parameter/ebay-app-id",
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_functions[count.index]}:*",
+        ],
+      },
+      {
+        Effect   = "Allow",
+        Action   = "ssm:GetParameter",
+        Resource = aws_ssm_parameter.ebay_app_id.arn,
+      },
+      {
+        Effect   = "Allow",
+        Action   = "sqs:SendMessage",
+        Resource = aws_sqs_queue.swippy_api_queue.arn,
       },
     ],
   })
 }
 
-resource "aws_lambda_function" "find_advanced" {
-  function_name    = "find-advanced"
-  handler          = "bin/find-advanced/bootstrap"
-  runtime          = "provided.al2"
-  architectures    = ["arm64"]
-  filename         = "bin/find-advanced.zip"
-  source_code_hash = filebase64("bin/find-advanced.zip")
-  role             = aws_iam_role.ebay_find_role.arn
-  tags             = { Project = "swippy-api" }
-}
-
-resource "aws_cloudwatch_log_group" "find_advanced_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.find_advanced.function_name}"
-  retention_in_days = 30
-}
-
-resource "aws_lambda_function" "find_by_category" {
-  function_name    = "find-by-category"
-  handler          = "bin/find-by-category/bootstrap"
-  runtime          = "provided.al2"
-  architectures    = ["arm64"]
-  filename         = "bin/find-by-category.zip"
-  source_code_hash = filebase64("bin/find-by-category.zip")
-  role             = aws_iam_role.ebay_find_role.arn
-  tags             = { Project = "swippy-api" }
-}
-
-resource "aws_cloudwatch_log_group" "find_by_category_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.find_by_category.function_name}"
-  retention_in_days = 30
-}
-
-resource "aws_lambda_function" "find_by_keywords" {
-  function_name    = "find-by-keywords"
-  handler          = "bin/find-by-keywords/bootstrap"
-  runtime          = "provided.al2"
-  architectures    = ["arm64"]
-  filename         = "bin/find-by-keywords.zip"
-  source_code_hash = filebase64("bin/find-by-keywords.zip")
-  role             = aws_iam_role.ebay_find_role.arn
-  tags             = { Project = "swippy-api" }
-}
-
-resource "aws_cloudwatch_log_group" "find_by_keywords_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.find_by_keywords.function_name}"
-  retention_in_days = 30
-}
-
-resource "aws_lambda_function" "find_by_product" {
-  function_name    = "find-by-product"
-  handler          = "bin/find-by-product/bootstrap"
-  runtime          = "provided.al2"
-  architectures    = ["arm64"]
-  filename         = "bin/find-by-product.zip"
-  source_code_hash = filebase64("bin/find-by-product.zip")
-  role             = aws_iam_role.ebay_find_role.arn
-  tags             = { Project = "swippy-api" }
-}
-
-resource "aws_cloudwatch_log_group" "find_by_product_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.find_by_product.function_name}"
-  retention_in_days = 30
-}
-
-resource "aws_lambda_function" "find_in_ebay_stores" {
-  function_name    = "find-in-ebay-stores"
-  handler          = "bin/find-in-ebay-stores/bootstrap"
-  runtime          = "provided.al2"
-  architectures    = ["arm64"]
-  filename         = "bin/find-in-ebay-stores.zip"
-  source_code_hash = filebase64("bin/find-in-ebay-stores.zip")
-  role             = aws_iam_role.ebay_find_role.arn
-  tags             = { Project = "swippy-api" }
-}
-
-resource "aws_cloudwatch_log_group" "find_in_ebay_stores_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.find_in_ebay_stores.function_name}"
-  retention_in_days = 30
-}
-
 resource "aws_apigatewayv2_api" "swippy_api_gw" {
   name          = "swippy-api-gw"
   protocol_type = "HTTP"
+}
+
+resource "aws_cloudwatch_log_group" "swippy_api_gw_logs" {
+  name              = "/aws/api_gw/${aws_apigatewayv2_api.swippy_api_gw.name}"
+  retention_in_days = 30
 }
 
 resource "aws_apigatewayv2_stage" "dev" {
@@ -214,92 +180,25 @@ resource "aws_apigatewayv2_stage" "dev" {
   }
 }
 
-resource "aws_apigatewayv2_integration" "find_advanced_lambda" {
+resource "aws_apigatewayv2_integration" "lambda_integrations" {
+  count              = length(var.lambda_functions)
   api_id             = aws_apigatewayv2_api.swippy_api_gw.id
-  integration_uri    = aws_lambda_function.find_advanced.invoke_arn
+  integration_uri    = aws_lambda_function.lambda_functions[count.index].invoke_arn
   integration_type   = "AWS_PROXY"
   integration_method = "POST"
 }
 
-resource "aws_apigatewayv2_route" "find_advanced_lambda" {
+resource "aws_apigatewayv2_route" "lambda_routes" {
+  count     = length(var.lambda_functions)
   api_id    = aws_apigatewayv2_api.swippy_api_gw.id
-  route_key = "GET /find_advanced"
-  target    = "integrations/${aws_apigatewayv2_integration.find_advanced_lambda.id}"
-}
-
-resource "aws_apigatewayv2_integration" "find_by_category_lambda" {
-  api_id             = aws_apigatewayv2_api.swippy_api_gw.id
-  integration_uri    = aws_lambda_function.find_by_category.invoke_arn
-  integration_type   = "AWS_PROXY"
-  integration_method = "POST"
-}
-
-resource "aws_apigatewayv2_route" "find_by_category_lambda" {
-  api_id    = aws_apigatewayv2_api.swippy_api_gw.id
-  route_key = "GET /find_by_category"
-  target    = "integrations/${aws_apigatewayv2_integration.find_by_category_lambda.id}"
-}
-
-resource "aws_apigatewayv2_integration" "find_by_keywords_lambda" {
-  api_id             = aws_apigatewayv2_api.swippy_api_gw.id
-  integration_uri    = aws_lambda_function.find_by_keywords.invoke_arn
-  integration_type   = "AWS_PROXY"
-  integration_method = "POST"
-}
-
-resource "aws_apigatewayv2_route" "find_by_keywords_lambda" {
-  api_id    = aws_apigatewayv2_api.swippy_api_gw.id
-  route_key = "GET /find_by_keywords"
-  target    = "integrations/${aws_apigatewayv2_integration.find_by_keywords_lambda.id}"
-}
-
-resource "aws_apigatewayv2_integration" "find_by_product_lambda" {
-  api_id             = aws_apigatewayv2_api.swippy_api_gw.id
-  integration_uri    = aws_lambda_function.find_by_product.invoke_arn
-  integration_type   = "AWS_PROXY"
-  integration_method = "POST"
-}
-
-resource "aws_apigatewayv2_route" "find_by_product_lambda" {
-  api_id    = aws_apigatewayv2_api.swippy_api_gw.id
-  route_key = "GET /find_by_product"
-  target    = "integrations/${aws_apigatewayv2_integration.find_by_product_lambda.id}"
-}
-
-resource "aws_apigatewayv2_integration" "find_in_ebay_stores_lambda" {
-  api_id             = aws_apigatewayv2_api.swippy_api_gw.id
-  integration_uri    = aws_lambda_function.find_in_ebay_stores.invoke_arn
-  integration_type   = "AWS_PROXY"
-  integration_method = "POST"
-}
-
-resource "aws_apigatewayv2_route" "find_in_ebay_stores_lambda" {
-  api_id    = aws_apigatewayv2_api.swippy_api_gw.id
-  route_key = "GET /find_in_ebay_stores"
-  target    = "integrations/${aws_apigatewayv2_integration.find_in_ebay_stores_lambda.id}"
-}
-
-resource "aws_cloudwatch_log_group" "swippy_api_gw_logs" {
-  name              = "/aws/api_gw/${aws_apigatewayv2_api.swippy_api_gw.name}"
-  retention_in_days = 30
+  route_key = "GET /${var.lambda_functions[count.index]}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integrations[count.index].id}"
 }
 
 resource "aws_lambda_permission" "allow_execution" {
-  count = length([
-    aws_lambda_function.find_advanced.function_name,
-    aws_lambda_function.find_by_category.function_name,
-    aws_lambda_function.find_by_keywords.function_name,
-    aws_lambda_function.find_by_product.function_name,
-    aws_lambda_function.find_in_ebay_stores.function_name,
-  ])
-  statement_id = "AllowExecutionFromAPIGateway"
-  action       = "lambda:InvokeFunction"
-  function_name = [
-    aws_lambda_function.find_advanced.function_name,
-    aws_lambda_function.find_by_category.function_name,
-    aws_lambda_function.find_by_keywords.function_name,
-    aws_lambda_function.find_by_product.function_name,
-    aws_lambda_function.find_in_ebay_stores.function_name,
-  ][count.index]
-  principal = "apigateway.amazonaws.com"
+  count         = length(var.lambda_functions)
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda_functions[count.index].function_name
+  principal     = "apigateway.amazonaws.com"
 }

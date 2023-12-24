@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -60,7 +61,8 @@ type eBayEntry struct {
 func handleRequest(ctx context.Context, event events.SQSEvent) error {
 	sess, err := session.NewSession()
 	if err != nil {
-		return fmt.Errorf("failed to create AWS SDK session: %w", err)
+		log.Println("failed to create AWS SDK session:", err)
+		return err
 	}
 	ssmSvc := ssm.New(sess)
 	paramRes, err := ssmSvc.GetParameter(&ssm.GetParameterInput{
@@ -68,22 +70,26 @@ func handleRequest(ctx context.Context, event events.SQSEvent) error {
 		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to retrieve parameter value: %w", err)
+		log.Println("failed to retrieve parameter value:", err)
+		return err
 	}
 	conn, err := pgx.Connect(ctx, *paramRes.Parameter.Value)
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+		log.Println("failed to connect to database:", err)
+		return err
 	}
 	defer conn.Close(ctx)
 	for _, msg := range event.Records {
 		var resp ebay.FindItemsResponse
 		err := json.Unmarshal([]byte(msg.Body), &resp)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal eBay API response: %w", err)
+			log.Println("failed to unmarshal eBay API response:", err)
+			return err
 		}
 		eBayEntries, err := responseToEBayEntry(resp)
 		if err != nil {
-			return fmt.Errorf("failed to convert eBay API response to entries: %w", err)
+			log.Println("failed to convert eBay API response to entries:", err)
+			return err
 		}
 		_, err = conn.CopyFrom(
 			context.Background(),
@@ -113,7 +119,8 @@ func handleRequest(ctx context.Context, event events.SQSEvent) error {
 			}),
 		)
 		if err != nil {
-			return fmt.Errorf("failed to insert data: %w", err)
+			log.Println("failed to insert data:", err)
+			return err
 		}
 	}
 	return nil

@@ -6,7 +6,7 @@ Swippy API is a serverless application designed to interact with the [eBay Findi
 
 ![Architecture Diagram](docs/swippy_architecture.drawio.svg)
 
-The API is architected with AWS API Gateway, Lambda, SQS, and PostgreSQL.
+The API is architected with AWS API Gateway, Lambda, SQS, and PostgreSQL. The [OpenTofu](https://opentofu.org) configuration sets up the infrastructure for the Swippy API.
 
 ### Lambda Functions
 
@@ -32,19 +32,9 @@ This Lambda function handles requests to the [findItemsByProduct](https://develo
 
 This Lambda function handles requests to the [findItemsIneBayStores](https://developer.ebay.com/Devzone/finding/CallRef/findItemsIneBayStores.html) eBay Finding API endpoint.
 
-### OpenTofu Configuration
+#### db-insert
 
-The [OpenTofu](https://opentofu.org) configuration sets up the infrastructure for the Swippy API. It includes the following AWS resources:
-
-- S3 Bucket for OpenTofu State (aws_s3_bucket.tfstate)
-- DynamoDB Table for OpenTofu State Lock (aws_dynamodb_table.tflock)
-- Lambda Functions (aws_lambda_function)
-- IAM Lambda Execution Roles (aws_iam_role)
-- IAM Role Policies for Lambda Functions (aws_iam_role_policy)
-- CloudWatch Log Groups (aws_cloudwatch_log_group)
-- API Gateway (aws_apigatewayv2_api)
-- API Gateway Stage (aws_apigatewayv2_stage)
-- API Gateway Integrations and Routes for each Lambda function
+This Lambda function is triggered by the `swippy-api-queue` to insert eBay item data into the Swippy Database.
 
 ## Installation
 
@@ -61,7 +51,7 @@ Clone this repository:
 git@github.com:matthewdargan/swippy-api.git
 ```
 
-Create a `terraform.tfvars` file at the root project directory with your specific values, including `ebay_app_id` and optionally `aws_region` (defaults to us-east-1).
+Create a `terraform.tfvars` file at the root project directory with your specific values, including `ebay_app_id`, `swippy_db_url`, and optionally `aws_region` (defaults to us-east-1).
 
 Build and zip the Lambda functions, and initialize and apply the OpenTofu configuration:
 

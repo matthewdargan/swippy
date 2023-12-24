@@ -63,9 +63,88 @@ resource "aws_ssm_parameter" "ebay_app_id" {
   key_id = "alias/aws/ssm"
 }
 
+variable "swippy_db_url" {
+  type      = string
+  sensitive = true
+  nullable  = false
+}
+
+resource "aws_ssm_parameter" "swippy_db_url" {
+  name   = "swippy-db-url"
+  type   = "SecureString"
+  value  = var.swippy_db_url
+  key_id = "alias/aws/ssm"
+}
+
 resource "aws_sqs_queue" "swippy_api_queue" {
   name = "swippy-api-queue"
   tags = { Project = "swippy-api" }
+}
+
+resource "aws_iam_role" "db_insert_role" {
+  name = "swippy-api-lambda-role-db-insert"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = { Service = "lambda.amazonaws.com" },
+      Action    = "sts:AssumeRole",
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "db_insert_policy" {
+  name = "swippy-api-lambda-policy-db-insert"
+  role = aws_iam_role.db_insert_role.name
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+        ],
+        Resource = "${aws_cloudwatch_log_group.db_insert_lambda_log_group.arn}:*",
+      },
+      {
+        Effect   = "Allow",
+        Action   = "ssm:GetParameter",
+        Resource = aws_ssm_parameter.swippy_db_url.arn,
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ReceiveMessage",
+        ],
+        Resource = aws_sqs_queue.swippy_api_queue.arn,
+      },
+    ],
+  })
+}
+
+resource "aws_lambda_function" "db_insert_lambda_function" {
+  function_name    = "db-insert"
+  handler          = "bin/db-insert/bootstrap"
+  runtime          = "provided.al2"
+  architectures    = ["arm64"]
+  filename         = "bin/db-insert.zip"
+  source_code_hash = filebase64("bin/db-insert.zip")
+  role             = aws_iam_role.db_insert_role.arn
+  tags             = { Project = "swippy-api" }
+}
+
+resource "aws_cloudwatch_log_group" "db_insert_lambda_log_group" {
+  name              = "/aws/lambda/${aws_lambda_function.db_insert_lambda_function.function_name}"
+  retention_in_days = 30
+}
+
+resource "aws_lambda_event_source_mapping" "sqs_trigger" {
+  event_source_arn = aws_sqs_queue.swippy_api_queue.arn
+  function_name    = aws_lambda_function.db_insert_lambda_function.arn
 }
 
 variable "lambda_functions" {
@@ -110,8 +189,6 @@ resource "aws_cloudwatch_log_group" "lambda_log_groups" {
   retention_in_days = 30
 }
 
-data "aws_caller_identity" "current" {}
-
 resource "aws_iam_role_policy" "lambda_policies" {
   count = length(var.lambda_functions)
   name  = "swippy-api-lambda-policy-${var.lambda_functions[count.index]}"
@@ -120,19 +197,13 @@ resource "aws_iam_role_policy" "lambda_policies" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect   = "Allow",
-        Action   = "logs:CreateLogGroup",
-        Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*",
-      },
-      {
         Effect = "Allow",
         Action = [
+          "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
         ],
-        Resource = [
-          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.lambda_functions[count.index]}:*",
-        ],
+        Resource = "${aws_cloudwatch_log_group.lambda_log_groups[count.index].arn}:*",
       },
       {
         Effect   = "Allow",

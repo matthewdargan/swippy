@@ -59,6 +59,11 @@ func handleRequest(ctx context.Context, req events.APIGatewayV2HTTPRequest) (eve
 			Body:       string(data),
 		}, nil
 	}
+	itemsResponseData, err := json.Marshal(resp.ItemsResponse[0])
+	if err != nil {
+		log.Println("failed to marshal eBay API response item:", err)
+		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
+	}
 	sqsSvc := sqs.New(sess)
 	urlRes, err := sqsSvc.GetQueueUrl(&sqs.GetQueueUrlInput{
 		QueueName: aws.String(sqsQueueName),
@@ -68,7 +73,7 @@ func handleRequest(ctx context.Context, req events.APIGatewayV2HTTPRequest) (eve
 		return events.APIGatewayV2HTTPResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 	_, err = sqsSvc.SendMessage(&sqs.SendMessageInput{
-		MessageBody: aws.String(string(data)),
+		MessageBody: aws.String(string(itemsResponseData)),
 		QueueUrl:    urlRes.QueueUrl,
 	})
 	if err != nil {

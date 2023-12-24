@@ -16,7 +16,7 @@ linters-settings:
 
   errcheck:
     exclude-functions:
-      - (io.Closer).Close
+      - (*github.com/jackc/pgx/v5.Conn).Close
 
 issues:
   exclude-use-default: false

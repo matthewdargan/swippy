@@ -1,5 +1,10 @@
 # Swippy API
 
+[![GoDoc](https://godoc.org/github.com/matthewdargan/swippy-api?status.svg)](https://godoc.org/github.com/matthewdargan/swippy-api)
+[![Build Status](https://github.com/matthewdargan/swippy-api/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/matthewdargan/swippy-api/actions/workflows/go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/matthewdargan/swippy-api)](https://goreportcard.com/report/github.com/matthewdargan/swippy-api)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 Swippy API is a serverless application designed to interact with the [eBay Finding API](https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide-landing.html) to perform various searches, retrieve information about items, and save item data to a database.
 
 ## Architecture

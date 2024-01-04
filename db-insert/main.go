@@ -1,3 +1,6 @@
+// Copyright 2024 Matthew P. Dargan.
+// SPDX-License-Identifier: Apache-2.0
+
 // db-insert is an AWS Lambda that SQS triggers to insert eBay item data into a database.
 package main
 

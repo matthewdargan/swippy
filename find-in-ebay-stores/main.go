@@ -1,3 +1,6 @@
+// Copyright 2024 Matthew P. Dargan.
+// SPDX-License-Identifier: Apache-2.0
+
 // find-in-ebay-stores is an AWS Lambda that requests the eBay Finding API findItemsIneBayStores endpoint.
 package main
 

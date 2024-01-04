@@ -1,3 +1,6 @@
+// Copyright 2024 Matthew P. Dargan.
+// SPDX-License-Identifier: Apache-2.0
+
 // find-by-product is an AWS Lambda that requests the eBay Finding API findItemsByProduct endpoint.
 package main
 

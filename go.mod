@@ -1,12 +1,12 @@
 module github.com/matthewdargan/swippy-api
 
-go 1.21.6
+go 1.22.0
 
 require (
-	github.com/aws/aws-lambda-go v1.44.0
-	github.com/aws/aws-sdk-go v1.49.17
-	github.com/jackc/pgx/v5 v5.5.1
-	github.com/matthewdargan/ebay v0.2.2
+	github.com/aws/aws-lambda-go v1.46.0
+	github.com/aws/aws-sdk-go v1.50.12
+	github.com/jackc/pgx/v5 v5.5.3
+	github.com/matthewdargan/ebay v0.2.3
 )
 
 require (

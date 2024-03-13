@@ -5,41 +5,41 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/matthewdargan/swippy-api)](https://goreportcard.com/report/github.com/matthewdargan/swippy-api)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-Swippy API is a serverless application designed to interact with the [eBay Finding API](https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide-landing.html) to perform various searches, retrieve information about items, and save item data to a database.
+Swippy API is a serverless app designed to interact with the [eBay Finding API](https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide-landing.html) to perform various searches, retrieve information about items, and save item data to a database.
 
 ## Architecture
 
 ![Architecture Diagram](docs/swippy_architecture.drawio.svg)
 
-The API is architected with AWS API Gateway, Lambda, SQS, and PostgreSQL. The [OpenTofu](https://opentofu.org) configuration sets up the infrastructure for the Swippy API.
+The API architecture includes AWS API Gateway, Lambda, SQS, and PostgreSQL. The [OpenTofu](https://opentofu.org) configuration sets up the infrastructure for the Swippy API.
 
-### Lambda Functions
+### Lambda functions
 
 Each Lambda function uses [Go](https://go.dev) for its implementation.
 
-#### find-advanced
+#### Find-advanced
 
 This Lambda function handles requests to the [findItemsAdvanced](https://developer.ebay.com/Devzone/finding/CallRef/findItemsAdvanced.html) eBay Finding API endpoint.
 
-#### find-by-category
+#### Find-by-category
 
 This Lambda function handles requests to the [findItemsByCategory](https://developer.ebay.com/Devzone/finding/CallRef/findItemsByCategory.html) eBay Finding API endpoint.
 
-#### find-by-keywords
+#### Find-by-keywords
 
 This Lambda function handles requests to the [findItemsByKeywords](https://developer.ebay.com/Devzone/finding/CallRef/findItemsByKeywords.html) eBay Finding API endpoint.
 
-#### find-by-product
+#### Find-by-product
 
 This Lambda function handles requests to the [findItemsByProduct](https://developer.ebay.com/Devzone/finding/CallRef/findItemsByProduct.html) eBay Finding API endpoint.
 
-#### find-in-ebay-stores
+#### Find-in-ebay-stores
 
 This Lambda function handles requests to the [findItemsIneBayStores](https://developer.ebay.com/Devzone/finding/CallRef/findItemsIneBayStores.html) eBay Finding API endpoint.
 
-#### db-insert
+#### Db-insert
 
-This Lambda function is triggered by the `swippy-api-queue` to insert eBay item data into the Swippy Database.
+`swippy-api-queue` triggers this Lambda function to insert eBay item data into the Swippy Database.
 
 ## Installation
 
@@ -64,7 +64,7 @@ Build and zip the Lambda functions, and initialize and apply the OpenTofu config
 make apply
 ```
 
-Follow the prompts to confirm the changes. Once you finish this process, AWS will provision the Swippy API infrastructure.
+Follow the prompts to confirm the changes and provision the Swippy API infrastructure.
 
 ### Cleanup
 

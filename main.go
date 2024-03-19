@@ -32,7 +32,7 @@ func main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("/find/advanced", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /find/advanced", func(w http.ResponseWriter, r *http.Request) {
 		params, err := urlParams(r.URL.Query())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -63,7 +63,7 @@ func main() {
 			log.Printf("error writing response: %v", err)
 		}
 	})
-	mux.HandleFunc("/find/category", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /find/category", func(w http.ResponseWriter, r *http.Request) {
 		params, err := urlParams(r.URL.Query())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -94,7 +94,7 @@ func main() {
 			log.Printf("error writing response: %v", err)
 		}
 	})
-	mux.HandleFunc("/find/keywords", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /find/keywords", func(w http.ResponseWriter, r *http.Request) {
 		params, err := urlParams(r.URL.Query())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -125,7 +125,7 @@ func main() {
 			log.Printf("error writing response: %v", err)
 		}
 	})
-	mux.HandleFunc("/find/product", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /find/product", func(w http.ResponseWriter, r *http.Request) {
 		params, err := urlParams(r.URL.Query())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -156,7 +156,7 @@ func main() {
 			log.Printf("error writing response: %v", err)
 		}
 	})
-	mux.HandleFunc("/find/ebay-stores", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /find/ebay-stores", func(w http.ResponseWriter, r *http.Request) {
 		params, err := urlParams(r.URL.Query())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

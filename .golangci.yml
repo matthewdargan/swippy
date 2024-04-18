@@ -1,24 +1,20 @@
-output:
-  sort-results: true
-
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
 linters:
   enable:
     - gofumpt
     - nolintlint
     - paralleltest
     - revive
-
 linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-
   errcheck:
     exclude-functions:
       - (*github.com/jackc/pgx/v5.Conn).Close
-
-issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+  govet:
+    disable:
+      - fieldalignment
+    enable-all: true
+output:
+  sort-results: true

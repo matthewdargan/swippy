@@ -26,8 +26,7 @@ func main() {
 	log.SetPrefix("swippy-api: ")
 	c := &http.Client{Timeout: time.Second * 10}
 	findingClient := ebay.NewFindingClient(c, os.Getenv("EBAY_APP_ID"))
-	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, os.Getenv("SWIPPY_DB_URL"))
+	conn, err := pgx.Connect(context.Background(), os.Getenv("SWIPPY_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
@@ -38,7 +37,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		resp, err := findingClient.FindItemsAdvanced(ctx, params)
+		resp, err := findingClient.FindItemsAdvanced(context.Background(), params)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -56,7 +55,7 @@ func main() {
 			}
 			return
 		}
-		insertItemsResponse(ctx, conn, resp.ItemsResponse)
+		insertItemsResponse(conn, resp.ItemsResponse)
 		w.Header().Set("Content-Type", jsonContextType)
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(data); err != nil {
@@ -69,7 +68,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		resp, err := findingClient.FindItemsByCategory(ctx, params)
+		resp, err := findingClient.FindItemsByCategory(context.Background(), params)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -87,7 +86,7 @@ func main() {
 			}
 			return
 		}
-		insertItemsResponse(ctx, conn, resp.ItemsResponse)
+		insertItemsResponse(conn, resp.ItemsResponse)
 		w.Header().Set("Content-Type", jsonContextType)
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(data); err != nil {
@@ -100,7 +99,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		resp, err := findingClient.FindItemsByKeywords(ctx, params)
+		resp, err := findingClient.FindItemsByKeywords(context.Background(), params)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -118,7 +117,7 @@ func main() {
 			}
 			return
 		}
-		insertItemsResponse(ctx, conn, resp.ItemsResponse)
+		insertItemsResponse(conn, resp.ItemsResponse)
 		w.Header().Set("Content-Type", jsonContextType)
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(data); err != nil {
@@ -131,7 +130,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		resp, err := findingClient.FindItemsByProduct(ctx, params)
+		resp, err := findingClient.FindItemsByProduct(context.Background(), params)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -149,7 +148,7 @@ func main() {
 			}
 			return
 		}
-		insertItemsResponse(ctx, conn, resp.ItemsResponse)
+		insertItemsResponse(conn, resp.ItemsResponse)
 		w.Header().Set("Content-Type", jsonContextType)
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(data); err != nil {
@@ -162,7 +161,7 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		resp, err := findingClient.FindItemsInEBayStores(ctx, params)
+		resp, err := findingClient.FindItemsInEBayStores(context.Background(), params)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -180,7 +179,7 @@ func main() {
 			}
 			return
 		}
-		insertItemsResponse(ctx, conn, resp.ItemsResponse)
+		insertItemsResponse(conn, resp.ItemsResponse)
 		w.Header().Set("Content-Type", jsonContextType)
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write(data); err != nil {
@@ -241,7 +240,7 @@ type eBayEntry struct {
 	viewItemURL                                *string
 }
 
-func insertItemsResponse(ctx context.Context, conn *pgx.Conn, rs []ebay.FindItemsResponse) {
+func insertItemsResponse(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
 	for _, r := range rs {
 		eBayEntries, err := responseToEBayEntry(r)
 		if err != nil {
@@ -249,8 +248,8 @@ func insertItemsResponse(ctx context.Context, conn *pgx.Conn, rs []ebay.FindItem
 			continue
 		}
 		_, err = conn.CopyFrom(
-			ctx,
-			pgx.Identifier{"ebay_responses"},
+			context.Background(),
+			pgx.Identifier{"responses"},
 			[]string{
 				"timestamp", "version", "condition_display_name", "condition_id", "country", "gallery_url", "global_id", "is_multi_variation_listing", "item_id",
 				"listing_info_best_offer_enabled", "listing_info_buy_it_now_available", "listing_info_end_time", "listing_info_listing_type",

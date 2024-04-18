@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/jackc/pgx/v5 v5.5.5
-	github.com/matthewdargan/ebay v0.2.5
+	github.com/matthewdargan/ebay v0.2.6
 )
 
 require (

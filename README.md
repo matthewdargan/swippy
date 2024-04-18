@@ -1,7 +1,6 @@
 # Swippy API
 
 [![GoDoc](https://godoc.org/github.com/matthewdargan/swippy-api?status.svg)](https://godoc.org/github.com/matthewdargan/swippy-api)
-[![Build Status](https://github.com/matthewdargan/swippy-api/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/matthewdargan/swippy-api/actions/workflows/go.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/matthewdargan/swippy-api)](https://goreportcard.com/report/github.com/matthewdargan/swippy-api)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 

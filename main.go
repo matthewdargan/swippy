@@ -1,7 +1,7 @@
 // Copyright 2024 Matthew P. Dargan.
 // SPDX-License-Identifier: Apache-2.0
 
-// Package swippy-api provides an HTTP server for interacting with the eBay
+// Package swippy-api provides a RESTful API for interacting with the eBay
 // Finding API.
 package main
 
@@ -24,178 +24,97 @@ const jsonContextType = "application/json"
 
 func main() {
 	log.SetPrefix("swippy-api: ")
-	c := &http.Client{Timeout: time.Second * 10}
-	findingClient := ebay.NewFindingClient(c, os.Getenv("EBAY_APP_ID"))
+	c := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 10}, os.Getenv("EBAY_APP_ID"))
 	conn, err := pgx.Connect(context.Background(), os.Getenv("SWIPPY_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /find/advanced", func(w http.ResponseWriter, r *http.Request) {
-		params, err := urlParams(r.URL.Query())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		resp, err := findingClient.FindItemsAdvanced(context.Background(), params)
+	http.HandleFunc("GET /find/advanced", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
+		resp, err := c.FindItemsAdvanced(context.Background(), ps)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return nil
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, "swippy-api: failed to marshal eBay API response: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
-			w.Header().Set("Content-Type", jsonContextType)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write(data); err != nil {
-				log.Printf("error writing response: %v", err)
-			}
-			return
-		}
-		insertItemsResponse(conn, resp.ItemsResponse)
-		w.Header().Set("Content-Type", jsonContextType)
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write(data); err != nil {
-			log.Printf("error writing response: %v", err)
-		}
-	})
-	mux.HandleFunc("GET /find/category", func(w http.ResponseWriter, r *http.Request) {
-		params, err := urlParams(r.URL.Query())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		resp, err := findingClient.FindItemsByCategory(context.Background(), params)
+		return resp.ItemsResponse
+	}))
+	http.HandleFunc("GET /find/category", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
+		resp, err := c.FindItemsByCategory(context.Background(), ps)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return nil
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, "swippy-api: failed to marshal eBay API response: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
-			w.Header().Set("Content-Type", jsonContextType)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write(data); err != nil {
-				log.Printf("error writing response: %v", err)
-			}
-			return
-		}
-		insertItemsResponse(conn, resp.ItemsResponse)
-		w.Header().Set("Content-Type", jsonContextType)
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write(data); err != nil {
-			log.Printf("error writing response: %v", err)
-		}
-	})
-	mux.HandleFunc("GET /find/keywords", func(w http.ResponseWriter, r *http.Request) {
-		params, err := urlParams(r.URL.Query())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		resp, err := findingClient.FindItemsByKeywords(context.Background(), params)
+		return resp.ItemsResponse
+	}))
+	http.HandleFunc("GET /find/keywords", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
+		resp, err := c.FindItemsByKeywords(context.Background(), ps)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return nil
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, "swippy-api: failed to marshal eBay API response: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
-			w.Header().Set("Content-Type", jsonContextType)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write(data); err != nil {
-				log.Printf("error writing response: %v", err)
-			}
-			return
-		}
-		insertItemsResponse(conn, resp.ItemsResponse)
-		w.Header().Set("Content-Type", jsonContextType)
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write(data); err != nil {
-			log.Printf("error writing response: %v", err)
-		}
-	})
-	mux.HandleFunc("GET /find/product", func(w http.ResponseWriter, r *http.Request) {
-		params, err := urlParams(r.URL.Query())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		resp, err := findingClient.FindItemsByProduct(context.Background(), params)
+		return resp.ItemsResponse
+	}))
+	http.HandleFunc("GET /find/product", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
+		resp, err := c.FindItemsByProduct(context.Background(), ps)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return nil
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, "swippy-api: failed to marshal eBay API response: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
-			w.Header().Set("Content-Type", jsonContextType)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write(data); err != nil {
-				log.Printf("error writing response: %v", err)
-			}
-			return
-		}
-		insertItemsResponse(conn, resp.ItemsResponse)
-		w.Header().Set("Content-Type", jsonContextType)
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write(data); err != nil {
-			log.Printf("error writing response: %v", err)
-		}
-	})
-	mux.HandleFunc("GET /find/ebay-stores", func(w http.ResponseWriter, r *http.Request) {
-		params, err := urlParams(r.URL.Query())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		resp, err := findingClient.FindItemsInEBayStores(context.Background(), params)
+		return resp.ItemsResponse
+	}))
+	http.HandleFunc("GET /find/ebay-stores", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
+		resp, err := c.FindItemsAdvanced(context.Background(), ps)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return nil
 		}
-		data, err := json.Marshal(resp)
-		if err != nil {
-			http.Error(w, "swippy-api: failed to marshal eBay API response: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if len(resp.ItemsResponse) > 0 && len(resp.ItemsResponse[0].ErrorMessage) > 0 {
-			w.Header().Set("Content-Type", jsonContextType)
-			w.WriteHeader(http.StatusBadRequest)
-			if _, err := w.Write(data); err != nil {
-				log.Printf("error writing response: %v", err)
-			}
-			return
-		}
-		insertItemsResponse(conn, resp.ItemsResponse)
-		w.Header().Set("Content-Type", jsonContextType)
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write(data); err != nil {
-			log.Printf("error writing response: %v", err)
-		}
-	})
-	if err := http.ListenAndServe(":8080", mux); err != nil {
-		log.Fatalf("failed to start HTTP server: %v", err)
+		return resp.ItemsResponse
+	}))
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+type itemHandler func(http.ResponseWriter, map[string]string) []ebay.FindItemsResponse
+
+func makeHandler(conn *pgx.Conn, f itemHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		getItems(w, r, conn, f)
 	}
 }
 
-func urlParams(vs url.Values) (map[string]string, error) {
+func getItems(w http.ResponseWriter, r *http.Request, conn *pgx.Conn, f itemHandler) {
+	ps, err := params(r.URL.Query())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	is := f(w, ps)
+	data, err := json.Marshal(is)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("swippy-api: failed to marshal eBay API response: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if len(is) > 0 && len(is[0].ErrorMessage) > 0 {
+		w.Header().Set("Content-Type", jsonContextType)
+		w.WriteHeader(http.StatusBadRequest)
+		if _, err := w.Write(data); err != nil {
+			log.Printf("error writing response: %v", err)
+		}
+		return
+	}
+	w.Header().Set("Content-Type", jsonContextType)
+	w.WriteHeader(http.StatusOK)
+	if _, err := w.Write(data); err != nil {
+		log.Printf("error writing response: %v", err)
+	}
+	if len(is) > 0 {
+		insertItems(conn, is)
+	}
+}
+
+func params(vs url.Values) (map[string]string, error) {
 	m := make(map[string]string, len(vs))
 	for k, v := range vs {
 		if len(v) > 1 {
-			return nil, fmt.Errorf("swippy-api: query string parameter %s contains more than one value", k)
+			return nil, fmt.Errorf("swippy-api: parameter %q contains more than one value", k)
 		}
 		m[k] = v[0]
 	}
@@ -240,7 +159,7 @@ type eBayEntry struct {
 	viewItemURL                                *string
 }
 
-func insertItemsResponse(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
+func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
 	for _, r := range rs {
 		eBayEntries, err := responseToEBayEntry(r)
 		if err != nil {

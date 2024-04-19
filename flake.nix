@@ -28,7 +28,7 @@
         packages = {
           swippy-api = inputs'.nix-go.legacyPackages.buildGoModule {
             meta = with lib; {
-              description = "HTTP server for interacting with the eBay Finding API";
+              description = "RESTful API for interacting with the eBay Finding API";
               homepage = "https://github.com/matthewdargan/swippy-api";
               license = licenses.asl20;
               maintainers = with maintainers; [matthewdargan];

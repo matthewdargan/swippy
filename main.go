@@ -20,8 +20,6 @@ import (
 	"github.com/matthewdargan/ebay"
 )
 
-const jsonContextType = "application/json"
-
 func main() {
 	log.SetPrefix("swippy-api: ")
 	c := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 10}, os.Getenv("EBAY_APP_ID"))
@@ -80,6 +78,8 @@ func makeHandler(conn *pgx.Conn, f itemHandler) http.HandlerFunc {
 	}
 }
 
+const jsonContextType = "application/json"
+
 func getItems(w http.ResponseWriter, r *http.Request, conn *pgx.Conn, f itemHandler) {
 	ps, err := params(r.URL.Query())
 	if err != nil {
@@ -121,7 +121,7 @@ func params(vs url.Values) (map[string]string, error) {
 	return m, nil
 }
 
-type eBayEntry struct {
+type eBayItem struct {
 	timestamp                                  time.Time
 	version                                    string
 	conditionDisplayName                       string
@@ -161,14 +161,14 @@ type eBayEntry struct {
 
 func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
 	for _, r := range rs {
-		eBayEntries, err := responseToEBayEntry(r)
+		eBayItems, err := responseToEBayItem(r)
 		if err != nil {
 			log.Printf("failed to convert eBay API response to entries: %v", err)
 			continue
 		}
 		_, err = conn.CopyFrom(
 			context.Background(),
-			pgx.Identifier{"responses"},
+			pgx.Identifier{"items"},
 			[]string{
 				"timestamp", "version", "condition_display_name", "condition_id", "country", "gallery_url", "global_id", "is_multi_variation_listing", "item_id",
 				"listing_info_best_offer_enabled", "listing_info_buy_it_now_available", "listing_info_end_time", "listing_info_listing_type",
@@ -178,18 +178,18 @@ func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
 				"shipping_service_cost_currency", "shipping_service_cost_value", "shipping_type", "ship_to_locations", "subtitle", "title",
 				"top_rated_listing", "view_item_url",
 			},
-			pgx.CopyFromSlice(len(eBayEntries), func(i int) ([]any, error) {
+			pgx.CopyFromSlice(len(eBayItems), func(i int) ([]any, error) {
 				return []any{
-					eBayEntries[i].timestamp, eBayEntries[i].version, eBayEntries[i].conditionDisplayName, eBayEntries[i].conditionID, eBayEntries[i].country,
-					eBayEntries[i].galleryURL, eBayEntries[i].globalID, eBayEntries[i].isMultiVariationListing, eBayEntries[i].itemID,
-					eBayEntries[i].listingInfoBestOfferEnabled, eBayEntries[i].listingInfoBuyItNowAvailable, eBayEntries[i].listingInfoEndTime,
-					eBayEntries[i].listingInfoListingType, eBayEntries[i].listingInfoStartTime, eBayEntries[i].listingInfoWatchCount, eBayEntries[i].location,
-					eBayEntries[i].postalCode, eBayEntries[i].primaryCategoryID, eBayEntries[i].primaryCategoryName, eBayEntries[i].productIDType,
-					eBayEntries[i].productIDValue, eBayEntries[i].sellingStatusConvertedCurrentPriceCurrency, eBayEntries[i].sellingStatusConvertedCurrentPriceValue,
-					eBayEntries[i].sellingStatusCurrentPriceCurrency, eBayEntries[i].sellingStatusCurrentPriceValue, eBayEntries[i].sellingStatusSellingState,
-					eBayEntries[i].sellingStatusTimeLeft, eBayEntries[i].shippingServiceCostCurrency, eBayEntries[i].shippingServiceCostValue,
-					eBayEntries[i].shippingType, eBayEntries[i].shipToLocations, eBayEntries[i].subtitle, eBayEntries[i].title,
-					eBayEntries[i].topRatedListing, eBayEntries[i].viewItemURL,
+					eBayItems[i].timestamp, eBayItems[i].version, eBayItems[i].conditionDisplayName, eBayItems[i].conditionID, eBayItems[i].country,
+					eBayItems[i].galleryURL, eBayItems[i].globalID, eBayItems[i].isMultiVariationListing, eBayItems[i].itemID,
+					eBayItems[i].listingInfoBestOfferEnabled, eBayItems[i].listingInfoBuyItNowAvailable, eBayItems[i].listingInfoEndTime,
+					eBayItems[i].listingInfoListingType, eBayItems[i].listingInfoStartTime, eBayItems[i].listingInfoWatchCount, eBayItems[i].location,
+					eBayItems[i].postalCode, eBayItems[i].primaryCategoryID, eBayItems[i].primaryCategoryName, eBayItems[i].productIDType,
+					eBayItems[i].productIDValue, eBayItems[i].sellingStatusConvertedCurrentPriceCurrency, eBayItems[i].sellingStatusConvertedCurrentPriceValue,
+					eBayItems[i].sellingStatusCurrentPriceCurrency, eBayItems[i].sellingStatusCurrentPriceValue, eBayItems[i].sellingStatusSellingState,
+					eBayItems[i].sellingStatusTimeLeft, eBayItems[i].shippingServiceCostCurrency, eBayItems[i].shippingServiceCostValue,
+					eBayItems[i].shippingType, eBayItems[i].shipToLocations, eBayItems[i].subtitle, eBayItems[i].title,
+					eBayItems[i].topRatedListing, eBayItems[i].viewItemURL,
 				}, nil
 			}),
 		)
@@ -199,118 +199,122 @@ func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
 	}
 }
 
-func responseToEBayEntry(resp ebay.FindItemsResponse) ([]eBayEntry, error) {
-	eBayEntries := make([]eBayEntry, len(resp.SearchResult[0].Item))
-	for i := range eBayEntries {
-		entry, err := newEBayEntry(resp.SearchResult[0].Item[i])
+func responseToEBayItem(resp ebay.FindItemsResponse) ([]eBayItem, error) {
+	eBayItems := make([]eBayItem, len(resp.SearchResult[0].Item))
+	for i := range eBayItems {
+		it, err := item(resp.SearchResult[0].Item[i])
 		if err != nil {
 			return nil, err
 		}
-		entry.timestamp = resp.Timestamp[0]
-		entry.version = resp.Version[0]
-		eBayEntries[i] = *entry
+		it.timestamp = resp.Timestamp[0]
+		it.version = resp.Version[0]
+		eBayItems[i] = *it
 	}
-	return eBayEntries, nil
+	return eBayItems, nil
 }
 
-func newEBayEntry(item ebay.SearchItem) (*eBayEntry, error) {
-	conditionID, err := strconv.Atoi(item.Condition[0].ConditionID[0])
+func item(it ebay.SearchItem) (*eBayItem, error) {
+	conditionID, err := strconv.Atoi(it.Condition[0].ConditionID[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert conditionID to int: %w", err)
 	}
-	isMultiVariationListing, err := strconv.ParseBool(item.IsMultiVariationListing[0])
+	isMultiVariationListing, err := strconv.ParseBool(it.IsMultiVariationListing[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert isMultiVariationListing to bool: %w", err)
 	}
-	itemID, err := strconv.ParseInt(item.ItemID[0], 10, 64)
+	itemID, err := strconv.ParseInt(it.ItemID[0], 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert itemID to int64: %w", err)
 	}
-	bestOfferEnabled, err := strconv.ParseBool(item.ListingInfo[0].BestOfferEnabled[0])
+	bestOfferEnabled, err := strconv.ParseBool(it.ListingInfo[0].BestOfferEnabled[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert bestOfferEnabled to bool: %w", err)
 	}
-	buyItNowAvailable, err := strconv.ParseBool(item.ListingInfo[0].BuyItNowAvailable[0])
+	buyItNowAvailable, err := strconv.ParseBool(it.ListingInfo[0].BuyItNowAvailable[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert buyItNowAvailable to bool: %w", err)
 	}
 	var watchCount *int
-	if len(item.ListingInfo[0].WatchCount) > 0 {
-		v, cErr := strconv.Atoi(item.ListingInfo[0].WatchCount[0])
-		if cErr != nil {
-			return nil, fmt.Errorf("cannot convert watchCount to int: %w", cErr)
+	if len(it.ListingInfo[0].WatchCount) > 0 {
+		var v int
+		v, err = strconv.Atoi(it.ListingInfo[0].WatchCount[0])
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert watchCount to int: %w", err)
 		}
 		watchCount = &v
 	}
-	primaryCategoryID, err := strconv.ParseInt(item.PrimaryCategory[0].CategoryID[0], 10, 64)
+	primaryCategoryID, err := strconv.ParseInt(it.PrimaryCategory[0].CategoryID[0], 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert primaryCategoryID to int64: %w", err)
 	}
 	var productIDType *string
 	var productIDValue *int64
-	if len(item.ProductID) > 0 {
-		productIDType = &item.ProductID[0].Type
-		v, cErr := strconv.ParseInt(item.ProductID[0].Value, 10, 64)
-		if cErr != nil {
-			return nil, fmt.Errorf("cannot convert productID value to int64: %w", cErr)
+	if len(it.ProductID) > 0 {
+		productIDType = &it.ProductID[0].Type
+		var v int64
+		v, err = strconv.ParseInt(it.ProductID[0].Value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert productID value to int64: %w", err)
 		}
 		productIDValue = &v
 	}
 	var sellingStatusSellingState, sellingStatusTimeLeft *string
-	if len(item.SellingStatus[0].SellingState) > 0 {
-		sellingStatusSellingState = &item.SellingStatus[0].SellingState[0]
-		sellingStatusTimeLeft = &item.SellingStatus[0].TimeLeft[0]
+	if len(it.SellingStatus[0].SellingState) > 0 {
+		sellingStatusSellingState = &it.SellingStatus[0].SellingState[0]
+		sellingStatusTimeLeft = &it.SellingStatus[0].TimeLeft[0]
 	}
 	var sellingStatusPriceCurrency, sellingStatusConvertedPriceCurrency *string
 	var sellingStatusPriceValue, sellingStatusConvertedPriceValue *float64
-	if len(item.SellingStatus[0].CurrentPrice) > 0 {
-		sellingStatusPriceCurrency = &item.SellingStatus[0].CurrentPrice[0].CurrencyID
-		v, cErr := strconv.ParseFloat(item.SellingStatus[0].CurrentPrice[0].Value, 64)
-		if cErr != nil {
-			return nil, fmt.Errorf("cannot convert selling status current price value to float64: %w", cErr)
+	if len(it.SellingStatus[0].CurrentPrice) > 0 {
+		sellingStatusPriceCurrency = &it.SellingStatus[0].CurrentPrice[0].CurrencyID
+		var v float64
+		v, err = strconv.ParseFloat(it.SellingStatus[0].CurrentPrice[0].Value, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert selling status current price value to float64: %w", err)
 		}
 		sellingStatusPriceValue = &v
-		sellingStatusConvertedPriceCurrency = &item.SellingStatus[0].ConvertedCurrentPrice[0].CurrencyID
-		v, cErr = strconv.ParseFloat(item.SellingStatus[0].ConvertedCurrentPrice[0].Value, 64)
-		if cErr != nil {
-			return nil, fmt.Errorf("cannot convert selling status converted current price value to float64: %w", cErr)
+		sellingStatusConvertedPriceCurrency = &it.SellingStatus[0].ConvertedCurrentPrice[0].CurrencyID
+		v, err = strconv.ParseFloat(it.SellingStatus[0].ConvertedCurrentPrice[0].Value, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert selling status converted current price value to float64: %w", err)
 		}
 		sellingStatusConvertedPriceValue = &v
 	}
 	var shippingServiceCurrency, shippingType, shipToLocations *string
 	var shippingServiceValue *float64
-	if len(item.ShippingInfo[0].ShippingServiceCost) > 0 {
-		shippingServiceCurrency = &item.ShippingInfo[0].ShippingServiceCost[0].CurrencyID
-		v, cErr := strconv.ParseFloat(item.ShippingInfo[0].ShippingServiceCost[0].Value, 64)
-		if cErr != nil {
-			return nil, fmt.Errorf("cannot convert shipping service cost value to float64: %w", cErr)
+	if len(it.ShippingInfo[0].ShippingServiceCost) > 0 {
+		shippingServiceCurrency = &it.ShippingInfo[0].ShippingServiceCost[0].CurrencyID
+		var v float64
+		v, err = strconv.ParseFloat(it.ShippingInfo[0].ShippingServiceCost[0].Value, 64)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert shipping service cost value to float64: %w", err)
 		}
 		shippingServiceValue = &v
-		shippingType = &item.ShippingInfo[0].ShippingType[0]
-		shipToLocations = &item.ShippingInfo[0].ShipToLocations[0]
+		shippingType = &it.ShippingInfo[0].ShippingType[0]
+		shipToLocations = &it.ShippingInfo[0].ShipToLocations[0]
 	}
-	topRatedListing, err := strconv.ParseBool(item.TopRatedListing[0])
+	topRatedListing, err := strconv.ParseBool(it.TopRatedListing[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert topRatedListing to bool: %w", err)
 	}
-	return &eBayEntry{
-		conditionDisplayName:         item.Condition[0].ConditionDisplayName[0],
+	return &eBayItem{
+		conditionDisplayName:         it.Condition[0].ConditionDisplayName[0],
 		conditionID:                  conditionID,
-		country:                      item.Country[0],
-		galleryURL:                   firstElem(item.GalleryURL),
-		globalID:                     item.GlobalID[0],
+		country:                      it.Country[0],
+		galleryURL:                   firstElem(it.GalleryURL),
+		globalID:                     it.GlobalID[0],
 		isMultiVariationListing:      isMultiVariationListing,
 		itemID:                       itemID,
 		listingInfoBestOfferEnabled:  bestOfferEnabled,
 		listingInfoBuyItNowAvailable: buyItNowAvailable,
-		listingInfoEndTime:           item.ListingInfo[0].EndTime[0],
-		listingInfoListingType:       item.ListingInfo[0].ListingType[0],
-		listingInfoStartTime:         item.ListingInfo[0].StartTime[0],
+		listingInfoEndTime:           it.ListingInfo[0].EndTime[0],
+		listingInfoListingType:       it.ListingInfo[0].ListingType[0],
+		listingInfoStartTime:         it.ListingInfo[0].StartTime[0],
 		listingInfoWatchCount:        watchCount,
-		location:                     firstElem(item.Location),
-		postalCode:                   firstElem(item.PostalCode),
+		location:                     firstElem(it.Location),
+		postalCode:                   firstElem(it.PostalCode),
 		primaryCategoryID:            primaryCategoryID,
-		primaryCategoryName:          item.PrimaryCategory[0].CategoryName[0],
+		primaryCategoryName:          it.PrimaryCategory[0].CategoryName[0],
 		productIDType:                productIDType,
 		productIDValue:               productIDValue,
 		sellingStatusConvertedCurrentPriceCurrency: sellingStatusConvertedPriceCurrency,
@@ -323,10 +327,10 @@ func newEBayEntry(item ebay.SearchItem) (*eBayEntry, error) {
 		shippingServiceCostValue:                   shippingServiceValue,
 		shippingType:                               shippingType,
 		shipToLocations:                            shipToLocations,
-		subtitle:                                   firstElem(item.Subtitle),
-		title:                                      item.Title[0],
+		subtitle:                                   firstElem(it.Subtitle),
+		title:                                      it.Title[0],
 		topRatedListing:                            topRatedListing,
-		viewItemURL:                                firstElem(item.ViewItemURL),
+		viewItemURL:                                firstElem(it.ViewItemURL),
 	}, nil
 }
 

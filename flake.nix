@@ -40,6 +40,7 @@
           };
         };
         pre-commit = {
+          check.enable = false;
           settings = {
             hooks = {
               golangci-lint = {

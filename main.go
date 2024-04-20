@@ -160,57 +160,83 @@ type eBayItem struct {
 }
 
 func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
+	var eBayItems []eBayItem
 	for _, r := range rs {
-		eBayItems, err := responseToEBayItem(r)
+		items, err := responseToItems(r)
 		if err != nil {
-			log.Printf("failed to convert eBay API response to entries: %v", err)
+			log.Printf("failed to convert eBay API response to items: %v", err)
 			continue
 		}
-		_, err = conn.CopyFrom(
-			context.Background(),
-			pgx.Identifier{"items"},
-			[]string{
-				"timestamp", "version", "condition_display_name", "condition_id", "country", "gallery_url", "global_id", "is_multi_variation_listing", "item_id",
-				"listing_info_best_offer_enabled", "listing_info_buy_it_now_available", "listing_info_end_time", "listing_info_listing_type",
-				"listing_info_start_time", "listing_info_watch_count", "location", "postal_code", "primary_category_id", "primary_category_name",
-				"product_id_type", "product_id_value", "selling_status_converted_current_price_currency", "selling_status_converted_current_price_value",
-				"selling_status_current_price_currency", "selling_status_current_price_value", "selling_status_selling_state", "selling_status_time_left",
-				"shipping_service_cost_currency", "shipping_service_cost_value", "shipping_type", "ship_to_locations", "subtitle", "title",
-				"top_rated_listing", "view_item_url",
-			},
-			pgx.CopyFromSlice(len(eBayItems), func(i int) ([]any, error) {
-				return []any{
-					eBayItems[i].timestamp, eBayItems[i].version, eBayItems[i].conditionDisplayName, eBayItems[i].conditionID, eBayItems[i].country,
-					eBayItems[i].galleryURL, eBayItems[i].globalID, eBayItems[i].isMultiVariationListing, eBayItems[i].itemID,
-					eBayItems[i].listingInfoBestOfferEnabled, eBayItems[i].listingInfoBuyItNowAvailable, eBayItems[i].listingInfoEndTime,
-					eBayItems[i].listingInfoListingType, eBayItems[i].listingInfoStartTime, eBayItems[i].listingInfoWatchCount, eBayItems[i].location,
-					eBayItems[i].postalCode, eBayItems[i].primaryCategoryID, eBayItems[i].primaryCategoryName, eBayItems[i].productIDType,
-					eBayItems[i].productIDValue, eBayItems[i].sellingStatusConvertedCurrentPriceCurrency, eBayItems[i].sellingStatusConvertedCurrentPriceValue,
-					eBayItems[i].sellingStatusCurrentPriceCurrency, eBayItems[i].sellingStatusCurrentPriceValue, eBayItems[i].sellingStatusSellingState,
-					eBayItems[i].sellingStatusTimeLeft, eBayItems[i].shippingServiceCostCurrency, eBayItems[i].shippingServiceCostValue,
-					eBayItems[i].shippingType, eBayItems[i].shipToLocations, eBayItems[i].subtitle, eBayItems[i].title,
-					eBayItems[i].topRatedListing, eBayItems[i].viewItemURL,
-				}, nil
-			}),
-		)
-		if err != nil {
-			log.Printf("failed to insert data: %v", err)
-		}
+		eBayItems = append(eBayItems, items...)
+	}
+	_, err := conn.CopyFrom(
+		context.Background(), pgx.Identifier{"items"},
+		[]string{
+			"timestamp", "version", "condition_display_name", "condition_id",
+			"country", "gallery_url", "global_id",
+			"is_multi_variation_listing", "item_id",
+			"listing_info_best_offer_enabled",
+			"listing_info_buy_it_now_available", "listing_info_end_time",
+			"listing_info_listing_type",
+			"listing_info_start_time", "listing_info_watch_count", "location",
+			"postal_code", "primary_category_id", "primary_category_name",
+			"product_id_type", "product_id_value",
+			"selling_status_converted_current_price_currency",
+			"selling_status_converted_current_price_value",
+			"selling_status_current_price_currency",
+			"selling_status_current_price_value",
+			"selling_status_selling_state", "selling_status_time_left",
+			"shipping_service_cost_currency", "shipping_service_cost_value",
+			"shipping_type", "ship_to_locations", "subtitle", "title",
+			"top_rated_listing", "view_item_url",
+		},
+		pgx.CopyFromSlice(len(eBayItems), func(i int) ([]any, error) {
+			return []any{
+				eBayItems[i].timestamp, eBayItems[i].version,
+				eBayItems[i].conditionDisplayName, eBayItems[i].conditionID,
+				eBayItems[i].country, eBayItems[i].galleryURL,
+				eBayItems[i].globalID, eBayItems[i].isMultiVariationListing,
+				eBayItems[i].itemID,
+				eBayItems[i].listingInfoBestOfferEnabled,
+				eBayItems[i].listingInfoBuyItNowAvailable,
+				eBayItems[i].listingInfoEndTime,
+				eBayItems[i].listingInfoListingType,
+				eBayItems[i].listingInfoStartTime,
+				eBayItems[i].listingInfoWatchCount, eBayItems[i].location,
+				eBayItems[i].postalCode, eBayItems[i].primaryCategoryID,
+				eBayItems[i].primaryCategoryName, eBayItems[i].productIDType,
+				eBayItems[i].productIDValue,
+				eBayItems[i].sellingStatusConvertedCurrentPriceCurrency,
+				eBayItems[i].sellingStatusConvertedCurrentPriceValue,
+				eBayItems[i].sellingStatusCurrentPriceCurrency,
+				eBayItems[i].sellingStatusCurrentPriceValue,
+				eBayItems[i].sellingStatusSellingState,
+				eBayItems[i].sellingStatusTimeLeft,
+				eBayItems[i].shippingServiceCostCurrency,
+				eBayItems[i].shippingServiceCostValue,
+				eBayItems[i].shippingType, eBayItems[i].shipToLocations,
+				eBayItems[i].subtitle, eBayItems[i].title,
+				eBayItems[i].topRatedListing, eBayItems[i].viewItemURL,
+			}, nil
+		}),
+	)
+	if err != nil {
+		log.Printf("failed to insert data: %v", err)
 	}
 }
 
-func responseToEBayItem(resp ebay.FindItemsResponse) ([]eBayItem, error) {
-	eBayItems := make([]eBayItem, len(resp.SearchResult[0].Item))
-	for i := range eBayItems {
+func responseToItems(resp ebay.FindItemsResponse) ([]eBayItem, error) {
+	items := make([]eBayItem, len(resp.SearchResult[0].Item))
+	for i := range items {
 		it, err := item(resp.SearchResult[0].Item[i])
 		if err != nil {
 			return nil, err
 		}
 		it.timestamp = resp.Timestamp[0]
 		it.version = resp.Version[0]
-		eBayItems[i] = *it
+		items[i] = *it
 	}
-	return eBayItems, nil
+	return items, nil
 }
 
 func item(it ebay.SearchItem) (*eBayItem, error) {

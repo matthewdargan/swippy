@@ -23,7 +23,7 @@ import (
 func main() {
 	log.SetPrefix("swippy-api: ")
 	c := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 10}, os.Getenv("EBAY_APP_ID"))
-	conn, err := pgx.Connect(context.Background(), os.Getenv("SWIPPY_DB_URL"))
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
@@ -170,7 +170,7 @@ func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
 		eBayItems = append(eBayItems, items...)
 	}
 	_, err := conn.CopyFrom(
-		context.Background(), pgx.Identifier{"items"},
+		context.Background(), pgx.Identifier{"item"},
 		[]string{
 			"timestamp", "version", "condition_display_name", "condition_id",
 			"country", "gallery_url", "global_id",

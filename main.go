@@ -78,7 +78,7 @@ func makeHandler(conn *pgx.Conn, f itemHandler) http.HandlerFunc {
 	}
 }
 
-const jsonContextType = "application/json"
+const jsonContentType = "application/json"
 
 func getItems(w http.ResponseWriter, r *http.Request, conn *pgx.Conn, f itemHandler) {
 	ps, err := params(r.URL.Query())
@@ -93,14 +93,14 @@ func getItems(w http.ResponseWriter, r *http.Request, conn *pgx.Conn, f itemHand
 		return
 	}
 	if len(is) > 0 && len(is[0].ErrorMessage) > 0 {
-		w.Header().Set("Content-Type", jsonContextType)
+		w.Header().Set("Content-Type", jsonContentType)
 		w.WriteHeader(http.StatusBadRequest)
 		if _, err := w.Write(data); err != nil {
 			log.Printf("error writing response: %v", err)
 		}
 		return
 	}
-	w.Header().Set("Content-Type", jsonContextType)
+	w.Header().Set("Content-Type", jsonContentType)
 	w.WriteHeader(http.StatusOK)
 	if _, err := w.Write(data); err != nil {
 		log.Printf("error writing response: %v", err)

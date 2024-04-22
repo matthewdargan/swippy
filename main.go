@@ -1,124 +1,115 @@
 // Copyright 2024 Matthew P. Dargan.
 // SPDX-License-Identifier: Apache-2.0
 
-// Package swippy-api provides a RESTful API for interacting with the eBay
-// Finding API.
+// Swippy retrieves from the eBay Finding API and stores results in a
+// PostgreSQL database.
 package main
 
 import (
 	"context"
-	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/matthewdargan/ebay"
 )
 
+var (
+	method = flag.String("m", "", "eBay client method to call")
+	params = flag.String("p", "", "query parameters")
+	appID  = os.Getenv("EBAY_APP_ID")
+	dbURL  = os.Getenv("DB_URL")
+)
+
+func usage() {
+	fmt.Fprintf(os.Stderr, "usage: swippy -m method -p params\n")
+	os.Exit(2)
+}
+
 func main() {
-	log.SetPrefix("swippy-api: ")
-	c := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 10}, os.Getenv("EBAY_APP_ID"))
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DB_URL"))
+	log.SetPrefix("swippy: ")
+	log.SetFlags(0)
+	flag.Usage = usage
+	flag.Parse()
+	if *method == "" || *params == "" {
+		usage()
+	}
+	queryParams, err := parseParams(*params)
+	if err != nil {
+		log.Fatal(err)
+	}
+	c := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 10}, appID)
+	var resps []ebay.FindItemsResponse
+	switch *method {
+	case "advanced":
+		var r *ebay.FindItemsAdvancedResponse
+		r, err = c.FindItemsAdvanced(context.Background(), queryParams)
+		if err != nil {
+			log.Fatal(err)
+		}
+		resps = r.ItemsResponse
+	case "category":
+		var r *ebay.FindItemsByCategoryResponse
+		r, err = c.FindItemsByCategory(context.Background(), queryParams)
+		if err != nil {
+			log.Fatal(err)
+		}
+		resps = r.ItemsResponse
+	case "keywords":
+		var r *ebay.FindItemsByKeywordsResponse
+		r, err = c.FindItemsByKeywords(context.Background(), queryParams)
+		if err != nil {
+			log.Fatal(err)
+		}
+		resps = r.ItemsResponse
+	case "product":
+		var r *ebay.FindItemsByProductResponse
+		r, err = c.FindItemsByProduct(context.Background(), queryParams)
+		if err != nil {
+			log.Fatal(err)
+		}
+		resps = r.ItemsResponse
+	case "ebay-stores":
+		var r *ebay.FindItemsInEBayStoresResponse
+		r, err = c.FindItemsInEBayStores(context.Background(), queryParams)
+		if err != nil {
+			log.Fatal(err)
+		}
+		resps = r.ItemsResponse
+	default:
+		usage()
+	}
+	if len(resps) == 0 {
+		os.Exit(0)
+	}
+	if len(resps[0].ErrorMessage) > 0 {
+		log.Fatal(resps[0].ErrorMessage)
+	}
+	log.Print(resps)
+	conn, err := pgx.Connect(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	http.HandleFunc("GET /find/advanced", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
-		resp, err := c.FindItemsAdvanced(context.Background(), ps)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return nil
-		}
-		return resp.ItemsResponse
-	}))
-	http.HandleFunc("GET /find/category", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
-		resp, err := c.FindItemsByCategory(context.Background(), ps)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return nil
-		}
-		return resp.ItemsResponse
-	}))
-	http.HandleFunc("GET /find/keywords", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
-		resp, err := c.FindItemsByKeywords(context.Background(), ps)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return nil
-		}
-		return resp.ItemsResponse
-	}))
-	http.HandleFunc("GET /find/product", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
-		resp, err := c.FindItemsByProduct(context.Background(), ps)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return nil
-		}
-		return resp.ItemsResponse
-	}))
-	http.HandleFunc("GET /find/ebay-stores", makeHandler(conn, func(w http.ResponseWriter, ps map[string]string) []ebay.FindItemsResponse {
-		resp, err := c.FindItemsAdvanced(context.Background(), ps)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return nil
-		}
-		return resp.ItemsResponse
-	}))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	defer conn.Close(context.Background())
+	insertItems(conn, resps)
 }
 
-type itemHandler func(http.ResponseWriter, map[string]string) []ebay.FindItemsResponse
-
-func makeHandler(conn *pgx.Conn, f itemHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		getItems(w, r, conn, f)
-	}
-}
-
-const jsonContentType = "application/json"
-
-func getItems(w http.ResponseWriter, r *http.Request, conn *pgx.Conn, f itemHandler) {
-	ps, err := params(r.URL.Query())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	is := f(w, ps)
-	data, err := json.Marshal(is)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("swippy-api: failed to marshal eBay API response: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if len(is) > 0 && len(is[0].ErrorMessage) > 0 {
-		w.Header().Set("Content-Type", jsonContentType)
-		w.WriteHeader(http.StatusBadRequest)
-		if _, err := w.Write(data); err != nil {
-			log.Printf("error writing response: %v", err)
+func parseParams(ps string) (map[string]string, error) {
+	params := make(map[string]string)
+	for _, p := range strings.Split(ps, "&") {
+		parts := strings.Split(p, "=")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid parameter %q", p)
 		}
-		return
+		params[parts[0]] = parts[1]
 	}
-	w.Header().Set("Content-Type", jsonContentType)
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write(data); err != nil {
-		log.Printf("error writing response: %v", err)
-	}
-	if len(is) > 0 {
-		insertItems(conn, is)
-	}
-}
-
-func params(vs url.Values) (map[string]string, error) {
-	m := make(map[string]string, len(vs))
-	for k, v := range vs {
-		if len(v) > 1 {
-			return nil, fmt.Errorf("swippy-api: parameter %q contains more than one value", k)
-		}
-		m[k] = v[0]
-	}
-	return m, nil
+	return params, nil
 }
 
 type eBayItem struct {

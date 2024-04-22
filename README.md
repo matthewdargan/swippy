@@ -1,42 +1,33 @@
-# Swippy API
+# Swippy
 
-[![GoDoc](https://godoc.org/github.com/matthewdargan/swippy-api?status.svg)](https://godoc.org/github.com/matthewdargan/swippy-api)
-[![Go Report Card](https://goreportcard.com/badge/github.com/matthewdargan/swippy-api)](https://goreportcard.com/report/github.com/matthewdargan/swippy-api)
+[![GoDoc](https://godoc.org/github.com/matthewdargan/swippy?status.svg)](https://godoc.org/github.com/matthewdargan/swippy)
+[![Go Report Card](https://goreportcard.com/badge/github.com/matthewdargan/swippy)](https://goreportcard.com/report/github.com/matthewdargan/swippy)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-Swippy API is a RESTful API designed to interact with the
+Swippy retrieves from the
 [eBay Finding API](https://developer.ebay.com/api-docs/user-guides/static/finding-user-guide-landing.html)
-to perform various searches, retrieve information about items, and save item
-data to a database.
+and stores results in a PostgreSQL database.
 
-## Endpoints
+Usage:
 
-### `GET /find/advanced`
+    swippy -m method -p params
 
-Handles requests to the
-[findItemsAdvanced](https://developer.ebay.com/Devzone/finding/CallRef/findItemsAdvanced.html)
-eBay Finding API endpoint.
+The `-m` flag indicates the eBay Finding API method to call.
 
-### `GET /find/category`
+The `-p` flag specifies the query parameters for the eBay Finding API call.
 
-Handles requests to the
-[findItemsByCategory](https://developer.ebay.com/Devzone/finding/CallRef/findItemsByCategory.html)
-eBay Finding API endpoint.
+The `EBAY_APP_ID` and `DB_URL` environment variables are required.
 
-### `GET /find/keywords`
+## Examples
 
-Handles requests to the
-[findItemsByKeywords](https://developer.ebay.com/Devzone/finding/CallRef/findItemsByKeywords.html)
-eBay Finding API endpoint.
+Retrieve phones by keyword:
 
-### `GET /find/product`
+```sh
+swippy -m keyword -p 'keywords=phone'
+```
 
-Handles requests to the
-[findItemsByProduct](https://developer.ebay.com/Devzone/finding/CallRef/findItemsByProduct.html)
-eBay Finding API endpoint.
+Retrieve phones by category:
 
-### `GET /find/ebay-stores`
-
-Handles requests to the
-[findItemsIneBayStores](https://developer.ebay.com/Devzone/finding/CallRef/findItemsIneBayStores.html)
-eBay Finding API endpoint.
+```sh
+swippy -m category -p 'categoryId=9355'
+```

@@ -1,7 +1,7 @@
 # Swippy
 
-[![GoDoc](https://godoc.org/github.com/matthewdargan/swippy-api?status.svg)](https://godoc.org/github.com/matthewdargan/swippy-api)
-[![Go Report Card](https://goreportcard.com/badge/github.com/matthewdargan/swippy-api)](https://goreportcard.com/report/github.com/matthewdargan/swippy-api)
+[![GoDoc](https://godoc.org/github.com/matthewdargan/swippy?status.svg)](https://godoc.org/github.com/matthewdargan/swippy)
+[![Go Report Card](https://goreportcard.com/badge/github.com/matthewdargan/swippy)](https://goreportcard.com/report/github.com/matthewdargan/swippy)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Swippy retrieves from the

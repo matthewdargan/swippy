@@ -1,4 +1,4 @@
-module github.com/matthewdargan/swippy-api
+module github.com/matthewdargan/swippy
 
 go 1.22.2
 

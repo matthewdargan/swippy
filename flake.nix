@@ -28,8 +28,8 @@
         packages = {
           swippy = inputs'.nix-go.legacyPackages.buildGoModule {
             meta = with lib; {
-              description = "RESTful API for interacting with the eBay Finding API";
-              homepage = "https://github.com/matthewdargan/swippy-api";
+              description = "Retrieve from the eBay Finding API and store results in a PostgreSQL database";
+              homepage = "https://github.com/matthewdargan/swippy";
               license = licenses.asl20;
               maintainers = with maintainers; [matthewdargan];
             };

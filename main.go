@@ -3,6 +3,26 @@
 
 // Swippy retrieves from the eBay Finding API and stores results in a
 // PostgreSQL database.
+//
+// Usage:
+//
+//	swippy -m method -p params
+//
+// The -m flag indicates the eBay Finding API method to call.
+//
+// The -p flag specifies the query parameters for the eBay Finding API call.
+//
+// The “EBAY_APP_ID” and “DB_URL” environment variables are required.
+//
+// Examples:
+//
+// Retrieve phones by keyword:
+//
+//	$ swippy -m keyword -p 'keywords=phone'
+//
+// Retrieve phones by category:
+//
+//	$ swippy -m category -p 'categoryId=9355'
 package main
 
 import (
@@ -61,7 +81,7 @@ func main() {
 			log.Fatal(err)
 		}
 		resps = r.ItemsResponse
-	case "keywords":
+	case "keyword":
 		var r *ebay.FindItemsByKeywordsResponse
 		r, err = c.FindItemsByKeywords(context.Background(), queryParams)
 		if err != nil {
@@ -75,7 +95,7 @@ func main() {
 			log.Fatal(err)
 		}
 		resps = r.ItemsResponse
-	case "ebay-stores":
+	case "ebay-store":
 		var r *ebay.FindItemsInEBayStoresResponse
 		r, err = c.FindItemsInEBayStores(context.Background(), queryParams)
 		if err != nil {

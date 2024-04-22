@@ -26,14 +26,14 @@
           shellHook = "${config.pre-commit.installationScript}";
         };
         packages = {
-          swippy-api = inputs'.nix-go.legacyPackages.buildGoModule {
+          swippy = inputs'.nix-go.legacyPackages.buildGoModule {
             meta = with lib; {
               description = "RESTful API for interacting with the eBay Finding API";
               homepage = "https://github.com/matthewdargan/swippy-api";
               license = licenses.asl20;
               maintainers = with maintainers; [matthewdargan];
             };
-            pname = "swippy-api";
+            pname = "swippy";
             src = ./.;
             vendorHash = "sha256-G4D/eZjveGEhCVZUtjuFm53rVRWHI5OWvg3iexmKXB4=";
             version = "0.1.0";

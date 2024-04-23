@@ -27,6 +27,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -36,7 +37,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/lib/pq"
 	"github.com/matthewdargan/ebay"
 )
 
@@ -112,12 +113,16 @@ func main() {
 		log.Fatal(resps[0].ErrorMessage)
 	}
 	log.Print(resps)
-	conn, err := pgx.Connect(context.Background(), dbURL)
+	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer conn.Close(context.Background())
-	insertItems(conn, resps)
+	if err := insertItems(db, resps); err != nil {
+		log.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func parseParams(ps string) (map[string]string, error) {
@@ -170,7 +175,7 @@ type eBayItem struct {
 	viewItemURL                                *string
 }
 
-func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
+func insertItems(db *sql.DB, rs []ebay.FindItemsResponse) error {
 	var eBayItems []eBayItem
 	for _, r := range rs {
 		items, err := responseToItems(r)
@@ -180,60 +185,57 @@ func insertItems(conn *pgx.Conn, rs []ebay.FindItemsResponse) {
 		}
 		eBayItems = append(eBayItems, items...)
 	}
-	_, err := conn.CopyFrom(
-		context.Background(), pgx.Identifier{"item"},
-		[]string{
-			"timestamp", "version", "condition_display_name", "condition_id",
-			"country", "gallery_url", "global_id",
-			"is_multi_variation_listing", "item_id",
-			"listing_info_best_offer_enabled",
-			"listing_info_buy_it_now_available", "listing_info_end_time",
-			"listing_info_listing_type",
-			"listing_info_start_time", "listing_info_watch_count", "location",
-			"postal_code", "primary_category_id", "primary_category_name",
-			"product_id_type", "product_id_value",
-			"selling_status_converted_current_price_currency",
-			"selling_status_converted_current_price_value",
-			"selling_status_current_price_currency",
-			"selling_status_current_price_value",
-			"selling_status_selling_state", "selling_status_time_left",
-			"shipping_service_cost_currency", "shipping_service_cost_value",
-			"shipping_type", "ship_to_locations", "subtitle", "title",
-			"top_rated_listing", "view_item_url",
-		},
-		pgx.CopyFromSlice(len(eBayItems), func(i int) ([]any, error) {
-			return []any{
-				eBayItems[i].timestamp, eBayItems[i].version,
-				eBayItems[i].conditionDisplayName, eBayItems[i].conditionID,
-				eBayItems[i].country, eBayItems[i].galleryURL,
-				eBayItems[i].globalID, eBayItems[i].isMultiVariationListing,
-				eBayItems[i].itemID,
-				eBayItems[i].listingInfoBestOfferEnabled,
-				eBayItems[i].listingInfoBuyItNowAvailable,
-				eBayItems[i].listingInfoEndTime,
-				eBayItems[i].listingInfoListingType,
-				eBayItems[i].listingInfoStartTime,
-				eBayItems[i].listingInfoWatchCount, eBayItems[i].location,
-				eBayItems[i].postalCode, eBayItems[i].primaryCategoryID,
-				eBayItems[i].primaryCategoryName, eBayItems[i].productIDType,
-				eBayItems[i].productIDValue,
-				eBayItems[i].sellingStatusConvertedCurrentPriceCurrency,
-				eBayItems[i].sellingStatusConvertedCurrentPriceValue,
-				eBayItems[i].sellingStatusCurrentPriceCurrency,
-				eBayItems[i].sellingStatusCurrentPriceValue,
-				eBayItems[i].sellingStatusSellingState,
-				eBayItems[i].sellingStatusTimeLeft,
-				eBayItems[i].shippingServiceCostCurrency,
-				eBayItems[i].shippingServiceCostValue,
-				eBayItems[i].shippingType, eBayItems[i].shipToLocations,
-				eBayItems[i].subtitle, eBayItems[i].title,
-				eBayItems[i].topRatedListing, eBayItems[i].viewItemURL,
-			}, nil
-		}),
-	)
+	txn, err := db.Begin()
 	if err != nil {
-		log.Printf("failed to insert data: %v", err)
+		return err
 	}
+	stmt, err := txn.Prepare(pq.CopyIn(
+		"item", "timestamp", "version", "condition_display_name",
+		"condition_id", "country", "gallery_url", "global_id",
+		"is_multi_variation_listing", "item_id",
+		"listing_info_best_offer_enabled", "listing_info_buy_it_now_available",
+		"listing_info_end_time", "listing_info_listing_type",
+		"listing_info_start_time", "listing_info_watch_count", "location",
+		"postal_code", "primary_category_id", "primary_category_name",
+		"product_id_type", "product_id_value",
+		"selling_status_converted_current_price_currency",
+		"selling_status_converted_current_price_value",
+		"selling_status_current_price_currency",
+		"selling_status_current_price_value", "selling_status_selling_state",
+		"selling_status_time_left", "shipping_service_cost_currency",
+		"shipping_service_cost_value", "shipping_type", "ship_to_locations",
+		"subtitle", "title", "top_rated_listing", "view_item_url"))
+	if err != nil {
+		return err
+	}
+	for _, it := range eBayItems {
+		_, err = stmt.Exec(
+			it.timestamp, it.version, it.conditionDisplayName, it.conditionID,
+			it.country, it.galleryURL, it.globalID, it.isMultiVariationListing,
+			it.itemID, it.listingInfoBestOfferEnabled,
+			it.listingInfoBuyItNowAvailable, it.listingInfoEndTime,
+			it.listingInfoListingType, it.listingInfoStartTime,
+			it.listingInfoWatchCount, it.location, it.postalCode,
+			it.primaryCategoryID, it.primaryCategoryName, it.productIDType,
+			it.productIDValue, it.sellingStatusConvertedCurrentPriceCurrency,
+			it.sellingStatusConvertedCurrentPriceValue,
+			it.sellingStatusCurrentPriceCurrency,
+			it.sellingStatusCurrentPriceValue, it.sellingStatusSellingState,
+			it.sellingStatusTimeLeft, it.shippingServiceCostCurrency,
+			it.shippingServiceCostValue, it.shippingType, it.shipToLocations,
+			it.subtitle, it.title, it.topRatedListing, it.viewItemURL,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err = stmt.Exec(); err != nil {
+		return err
+	}
+	if err = stmt.Close(); err != nil {
+		return err
+	}
+	return txn.Commit()
 }
 
 func responseToItems(resp ebay.FindItemsResponse) ([]eBayItem, error) {

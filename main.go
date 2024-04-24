@@ -155,7 +155,7 @@ type eBayItem struct {
 	listingInfoWatchCount                      *int
 	location                                   *string
 	postalCode                                 *string
-	primaryCategoryID                          int64
+	primaryCategoryID                          int
 	primaryCategoryName                        string
 	productIDType                              *string
 	productIDValue                             *int64
@@ -282,9 +282,9 @@ func item(it ebay.SearchItem) (*eBayItem, error) {
 		}
 		watchCount = &v
 	}
-	primaryCategoryID, err := strconv.ParseInt(it.PrimaryCategory[0].CategoryID[0], 10, 64)
+	primaryCategoryID, err := strconv.Atoi(it.PrimaryCategory[0].CategoryID[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert primaryCategoryID to int64: %w", err)
+		return nil, fmt.Errorf("cannot convert primaryCategoryID to int: %w", err)
 	}
 	var productIDType *string
 	var productIDValue *int64

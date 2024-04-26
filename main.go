@@ -6,11 +6,7 @@
 //
 // Usage:
 //
-//	swippy -m {advanced|category|keyword|product|ebay-store} -p params
-//
-// The -m flag indicates the eBay Finding API method to call.
-//
-// The -p flag specifies the query parameters for the eBay Finding API call.
+//	swippy {advanced|category|keyword|product|ebay-store} params
 //
 // The “EBAY_APP_ID” and “DB_URL” environment variables are required.
 //
@@ -18,11 +14,11 @@
 //
 // Retrieve phones by keyword:
 //
-//	$ swippy -m keyword -p 'keywords=phone'
+//	$ swippy keyword 'keywords=phone'
 //
 // Retrieve phones by category:
 //
-//	$ swippy -m category -p 'categoryId=9355'
+//	$ swippy category 'categoryId=9355'
 package main
 
 import (
@@ -41,15 +37,8 @@ import (
 	"github.com/matthewdargan/ebay"
 )
 
-var (
-	method = flag.String("m", "", "eBay client method to call")
-	params = flag.String("p", "", "query parameters")
-	appID  = os.Getenv("EBAY_APP_ID")
-	dbURL  = os.Getenv("DB_URL")
-)
-
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: swippy -m {advanced|category|keyword|product|ebay-store} -p params\n")
+	fmt.Fprintf(os.Stderr, "usage: swippy {advanced|category|keyword|product|ebay-store} params\n")
 	os.Exit(2)
 }
 
@@ -58,16 +47,16 @@ func main() {
 	log.SetFlags(0)
 	flag.Usage = usage
 	flag.Parse()
-	if *method == "" || *params == "" {
+	if flag.NArg() != 2 {
 		usage()
 	}
-	queryParams, err := parseParams(*params)
+	queryParams, err := parseParams(flag.Arg(1))
 	if err != nil {
 		log.Fatal(err)
 	}
-	c := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 10}, appID)
+	c := ebay.NewFindingClient(&http.Client{Timeout: time.Second * 10}, os.Getenv("EBAY_APP_ID"))
 	var resps []ebay.FindItemsResponse
-	switch *method {
+	switch flag.Arg(0) {
 	case "advanced":
 		var r *ebay.FindItemsAdvancedResponse
 		r, err = c.FindItemsAdvanced(context.Background(), queryParams)
@@ -113,7 +102,7 @@ func main() {
 		log.Fatal(resps[0].ErrorMessage)
 	}
 	log.Print(resps)
-	db, err := sql.Open("postgres", dbURL)
+	db, err := sql.Open("postgres", os.Getenv("DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}

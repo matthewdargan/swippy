@@ -10,11 +10,7 @@ and stores results in a PostgreSQL database.
 
 Usage:
 
-    swippy -m {advanced|category|keyword|product|ebay-store} -p params
-
-The `-m` flag indicates the eBay Finding API method to call.
-
-The `-p` flag specifies the query parameters for the eBay Finding API call.
+    swippy {advanced|category|keyword|product|ebay-store} params
 
 The `EBAY_APP_ID` and `DB_URL` environment variables are required.
 
@@ -23,11 +19,11 @@ The `EBAY_APP_ID` and `DB_URL` environment variables are required.
 Retrieve phones by keyword:
 
 ```sh
-swippy -m keyword -p 'keywords=phone'
+swippy keyword 'keywords=phone'
 ```
 
 Retrieve phones by category:
 
 ```sh
-swippy -m category -p 'categoryId=9355'
+swippy category 'categoryId=9355'
 ```

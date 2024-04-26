@@ -6,7 +6,7 @@
 //
 // Usage:
 //
-//	swippy -m method -p params
+//	swippy -m {advanced|category|keyword|product|ebay-store} -p params
 //
 // The -m flag indicates the eBay Finding API method to call.
 //
@@ -49,7 +49,7 @@ var (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: swippy -m method -p params\n")
+	fmt.Fprintf(os.Stderr, "usage: swippy -m {advanced|category|keyword|product|ebay-store} -p params\n")
 	os.Exit(2)
 }
 

@@ -10,7 +10,7 @@ and stores results in a PostgreSQL database.
 
 Usage:
 
-    swippy -m method -p params
+    swippy -m {advanced|category|keyword|product|ebay-store} -p params
 
 The `-m` flag indicates the eBay Finding API method to call.
 

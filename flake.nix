@@ -25,19 +25,17 @@
           packages = [inputs'.nix-go.packages.go];
           shellHook = "${config.pre-commit.installationScript}";
         };
-        packages = {
-          swippy = inputs'.nix-go.legacyPackages.buildGoModule {
-            meta = with lib; {
-              description = "Retrieve from the eBay Finding API and store results in a PostgreSQL database";
-              homepage = "https://github.com/matthewdargan/swippy";
-              license = licenses.asl20;
-              maintainers = with maintainers; [matthewdargan];
-            };
-            pname = "swippy";
-            src = ./.;
-            vendorHash = "sha256-Sy8XjzRzzqwarAiujcsGkyIU1f43ZhMwCeuQxvHyym0=";
-            version = "0.2.0";
+        packages.swippy = inputs'.nix-go.legacyPackages.buildGoModule {
+          meta = with lib; {
+            description = "Retrieve from the eBay Finding API and store results in a PostgreSQL database";
+            homepage = "https://github.com/matthewdargan/swippy";
+            license = licenses.asl20;
+            maintainers = with maintainers; [matthewdargan];
           };
+          pname = "swippy";
+          src = ./.;
+          vendorHash = "sha256-Sy8XjzRzzqwarAiujcsGkyIU1f43ZhMwCeuQxvHyym0=";
+          version = "0.2.0";
         };
         pre-commit = {
           check.enable = false;

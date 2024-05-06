@@ -41,6 +41,8 @@
           check.enable = false;
           settings = {
             hooks = {
+              alejandra.enable = true;
+              deadnix.enable = true;
               golangci-lint = {
                 enable = true;
                 package = inputs'.nix-go.packages.golangci-lint;
@@ -49,6 +51,7 @@
                 enable = true;
                 package = inputs'.nix-go.packages.go;
               };
+              statix.enable = true;
             };
             src = ./.;
           };

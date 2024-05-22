@@ -1,8 +1,8 @@
 module github.com/matthewdargan/swippy
 
-go 1.22.2
+go 1.22.3
 
 require (
 	github.com/lib/pq v1.10.9
-	github.com/matthewdargan/ebay v0.2.6
+	github.com/matthewdargan/ebay v0.2.7
 )

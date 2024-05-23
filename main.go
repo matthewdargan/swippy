@@ -236,44 +236,44 @@ func responseToItems(resp ebay.FindItemsResponse) ([]eBayItem, error) {
 		}
 		it.timestamp = resp.Timestamp[0]
 		it.version = resp.Version[0]
-		items[i] = *it
+		items[i] = it
 	}
 	return items, nil
 }
 
-func item(it ebay.SearchItem) (*eBayItem, error) {
+func item(it ebay.SearchItem) (eBayItem, error) {
 	conditionID, err := strconv.Atoi(it.Condition[0].ConditionID[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert conditionID to int: %w", err)
+		return eBayItem{}, fmt.Errorf("cannot convert conditionID to int: %w", err)
 	}
 	isMultiVariationListing, err := strconv.ParseBool(it.IsMultiVariationListing[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert isMultiVariationListing to bool: %w", err)
+		return eBayItem{}, fmt.Errorf("cannot convert isMultiVariationListing to bool: %w", err)
 	}
 	itemID, err := strconv.ParseInt(it.ItemID[0], 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert itemID to int64: %w", err)
+		return eBayItem{}, fmt.Errorf("cannot convert itemID to int64: %w", err)
 	}
 	bestOfferEnabled, err := strconv.ParseBool(it.ListingInfo[0].BestOfferEnabled[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert bestOfferEnabled to bool: %w", err)
+		return eBayItem{}, fmt.Errorf("cannot convert bestOfferEnabled to bool: %w", err)
 	}
 	buyItNowAvailable, err := strconv.ParseBool(it.ListingInfo[0].BuyItNowAvailable[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert buyItNowAvailable to bool: %w", err)
+		return eBayItem{}, fmt.Errorf("cannot convert buyItNowAvailable to bool: %w", err)
 	}
 	var watchCount *int
 	if len(it.ListingInfo[0].WatchCount) > 0 {
 		var v int
 		v, err = strconv.Atoi(it.ListingInfo[0].WatchCount[0])
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert watchCount to int: %w", err)
+			return eBayItem{}, fmt.Errorf("cannot convert watchCount to int: %w", err)
 		}
 		watchCount = &v
 	}
 	primaryCategoryID, err := strconv.Atoi(it.PrimaryCategory[0].CategoryID[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert primaryCategoryID to int: %w", err)
+		return eBayItem{}, fmt.Errorf("cannot convert primaryCategoryID to int: %w", err)
 	}
 	var productIDType *string
 	var productIDValue *int64
@@ -282,7 +282,7 @@ func item(it ebay.SearchItem) (*eBayItem, error) {
 		var v int64
 		v, err = strconv.ParseInt(it.ProductID[0].Value, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert productID value to int64: %w", err)
+			return eBayItem{}, fmt.Errorf("cannot convert productID value to int64: %w", err)
 		}
 		productIDValue = &v
 	}
@@ -298,13 +298,13 @@ func item(it ebay.SearchItem) (*eBayItem, error) {
 		var v float64
 		v, err = strconv.ParseFloat(it.SellingStatus[0].CurrentPrice[0].Value, 64)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert selling status current price value to float64: %w", err)
+			return eBayItem{}, fmt.Errorf("cannot convert selling status current price value to float64: %w", err)
 		}
 		sellingStatusPriceValue = &v
 		sellingStatusConvertedPriceCurrency = &it.SellingStatus[0].ConvertedCurrentPrice[0].CurrencyID
 		v, err = strconv.ParseFloat(it.SellingStatus[0].ConvertedCurrentPrice[0].Value, 64)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert selling status converted current price value to float64: %w", err)
+			return eBayItem{}, fmt.Errorf("cannot convert selling status converted current price value to float64: %w", err)
 		}
 		sellingStatusConvertedPriceValue = &v
 	}
@@ -315,7 +315,7 @@ func item(it ebay.SearchItem) (*eBayItem, error) {
 		var v float64
 		v, err = strconv.ParseFloat(it.ShippingInfo[0].ShippingServiceCost[0].Value, 64)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert shipping service cost value to float64: %w", err)
+			return eBayItem{}, fmt.Errorf("cannot convert shipping service cost value to float64: %w", err)
 		}
 		shippingServiceValue = &v
 		shippingType = &it.ShippingInfo[0].ShippingType[0]
@@ -323,9 +323,9 @@ func item(it ebay.SearchItem) (*eBayItem, error) {
 	}
 	topRatedListing, err := strconv.ParseBool(it.TopRatedListing[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert topRatedListing to bool: %w", err)
+		return eBayItem{}, fmt.Errorf("cannot convert topRatedListing to bool: %w", err)
 	}
-	return &eBayItem{
+	return eBayItem{
 		conditionDisplayName:         it.Condition[0].ConditionDisplayName[0],
 		conditionID:                  conditionID,
 		country:                      it.Country[0],

@@ -1,4 +1,4 @@
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
 github.com/lib/pq v1.10.9/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
-github.com/matthewdargan/ebay v0.2.10 h1:UjsP0rfePuxVTiWiQdlgeIm7gQlXhSg3ZGluBuWQm/8=
-github.com/matthewdargan/ebay v0.2.10/go.mod h1:zxEyOdM1WnIEX5tO5i23oE7GnZq8n2Hy8X+CYka5EPk=
+github.com/matthewdargan/ebay v0.2.12 h1:sjqO1D8ucvYZTGt3EVNkOWrjx6Z+vwcDsxLAWBACkOY=
+github.com/matthewdargan/ebay v0.2.12/go.mod h1:pW9PJFjv3Xf+85tuzFGgE+Zy00nKjyTgtZHkuJ1FQig=

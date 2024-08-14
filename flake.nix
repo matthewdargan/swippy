@@ -34,8 +34,8 @@
           };
           pname = "swippy";
           src = ./.;
-          vendorHash = "sha256-VTeLM0GsDNjWO9TmkD3KKVnfrxImNGJ3zUXi7S3Ixko=";
-          version = "0.2.5";
+          vendorHash = "sha256-KJKgBna3nt2edKY/v8qVmzkU/BNoe0//voR3lDq2TIM=";
+          version = "0.2.6";
         };
         pre-commit = {
           check.enable = false;

@@ -22,7 +22,7 @@
         ...
       }: {
         devShells.default = pkgs.mkShell {
-          packages = [inputs'.nix-go.packages.go];
+          packages = [inputs'.nix-go.packages.go inputs'.nix-go.packages.golangci-lint];
           shellHook = "${config.pre-commit.installationScript}";
         };
         packages.swippy = inputs'.nix-go.legacyPackages.buildGoModule {
@@ -35,7 +35,7 @@
           pname = "swippy";
           src = ./.;
           vendorHash = "sha256-KJKgBna3nt2edKY/v8qVmzkU/BNoe0//voR3lDq2TIM=";
-          version = "0.2.6";
+          version = "0.2.7";
         };
         pre-commit = {
           check.enable = false;
